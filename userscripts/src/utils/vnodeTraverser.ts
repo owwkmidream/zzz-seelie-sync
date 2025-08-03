@@ -40,14 +40,27 @@ function traverseVNode(vnode: VNode, vueInstance?: any, depth = 0): void {
     // 避免重复处理同一个元素
     if (!processedElements.has(vnode.el)) {
       const targetInstance = vueInstance || vnode.component || vnode;
-      vnode.el.__vue__ = targetInstance;
+
+      // 创建一个安全的引用对象，避免循环引用导致 JSON.stringify 报错
+      const safeVueRef = {
+        uid: targetInstance?.uid,
+        type: targetInstance?.type?.name || targetInstance?.type,
+        // 只保留基本属性，避免循环引用
+        props: targetInstance?.props ? { ...targetInstance.props } : undefined,
+        // 添加一个获取完整实例的方法（如果需要的话）
+        __getInstance: () => targetInstance,
+        // 标记这是一个安全引用
+        __isSafeRef: true
+      };
+
+      vnode.el.__vue__ = safeVueRef;
       processedElements.add(vnode.el);
       mountedCount++;
 
       // console.log(`${indent}✓ 挂载 __vue__ 到元素:`,
-        // vnode.el.tagName,
-        // `(uid: ${targetInstance?.uid || 'none'})`,
-        // `(class: ${vnode.el.className || 'none'})`);
+      //   vnode.el.tagName,
+      //   `(uid: ${safeVueRef.uid || 'none'})`,
+      //   `(class: ${vnode.el.className || 'none'})`);
     } else {
       // console.log(`${indent}⚠️ 跳过已处理的元素:`, vnode.el.tagName);
     }
@@ -167,8 +180,22 @@ export function retraverseVNodes(): void {
   startVNodeTraversal();
 }
 
+/**
+ * 安全地获取元素的完整 Vue 实例
+ * @param element DOM 元素
+ * @returns Vue 实例或 null
+ */
+export function getVueInstance(element: HTMLElement): any {
+  const safeRef = element.__vue__;
+  if (safeRef && safeRef.__isSafeRef && typeof safeRef.__getInstance === 'function') {
+    return safeRef.__getInstance();
+  }
+  return safeRef;
+}
+
 // 将函数挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
   (window as any).retraverseVNodes = retraverseVNodes;
   (window as any).startVNodeTraversal = startVNodeTraversal;
+  (window as any).getVueInstance = getVueInstance;
 }
