@@ -32,5 +32,9 @@ declare module '@trim21/gm-fetch' {
     body?: ReadableStream<Uint8Array>;
   }
 
+  // 默认导出
+  export default function GM_fetch(url: string, init?: RequestInit): Promise<Response>;
+
+  // 命名导出
   export function fetch(url: string, init?: RequestInit): Promise<Response>;
 }
