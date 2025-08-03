@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import monkey, { cdn, util } from 'vite-plugin-monkey';
 import AutoImport from 'unplugin-auto-import/vite';
+import Components from 'unplugin-vue-components/vite';
 import checker from 'vite-plugin-checker';
 
 // https://vitejs.dev/config/
@@ -17,6 +18,13 @@ export default defineConfig({
         util.unimportPreset, // 自动导入 GM API
       ],
       dts: true, // 生成类型声明文件
+    }),
+
+    // 自动导入 Vue 组件
+    Components({
+      dts: true, // 生成组件类型声明文件
+      deep: true,
+      dirs: ['src/components'], // 组件目录
     }),
 
     // TypeScript 类型检查
