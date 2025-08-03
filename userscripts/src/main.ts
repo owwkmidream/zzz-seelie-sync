@@ -3,7 +3,7 @@
 // import App from './App.vue'; // 暂时不需要 App 组件
 
 import { initApp } from './app';
-
+import './examples/zzzApiUsage'
 // 启动应用
 initApp();
 

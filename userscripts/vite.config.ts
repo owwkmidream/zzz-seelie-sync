@@ -32,19 +32,17 @@ export default defineConfig({
         icon: 'https://vitejs.dev/logo.svg',
         namespace: 'npm/vite-plugin-monkey',
         match: ['https://zzz.seelie.me/*'],
-        // GM API 权限（自动检测）
-        grant: [
-          // 'GM_xmlhttpRequest', // 修正：应该是 GM_xmlhttpRequest
-          // 'GM_setValue',
-          // 'GM_getValue',
-        ],
-        // 允许跨域请求到任何域名
-        connect: ['*'],
+        // GM API 权限
+        grant: ['GM.xmlHttpRequest'],
+        // 允许跨域请求到米哈游API
+        connect: ['act-api-takumi.mihoyo.com'],
+
       },
       build: {
         autoGrant: true, // 自动检测并添加 @grant
         externalGlobals: {
           vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js'),
+          '@trim21/gm-fetch': cdn.jsdelivr('GM_fetch', 'dist/index.global.js')
         },
       },
     }),
