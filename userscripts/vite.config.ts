@@ -28,15 +28,17 @@ export default defineConfig({
     // 油猴脚本配置
     monkey({
       entry: 'src/main.ts',
+      server: {
+        mountGmApi: true, // 挂载 GM API
+      },
       userscript: {
         icon: 'https://vitejs.dev/logo.svg',
         namespace: 'npm/vite-plugin-monkey',
         match: ['https://zzz.seelie.me/*'],
         // GM API 权限
-        grant: ['GM.xmlHttpRequest'],
+        grant: [],
         // 允许跨域请求到米哈游API
         connect: ['act-api-takumi.mihoyo.com'],
-
       },
       build: {
         autoGrant: true, // 自动检测并添加 @grant

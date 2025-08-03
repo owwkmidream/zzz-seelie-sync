@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@trim21/gm-fetch':
+        specifier: ^0.3.0
+        version: 0.3.0
       vue:
         specifier: ^3.5.17
         version: 3.5.18(typescript@5.8.3)
@@ -409,6 +412,9 @@ packages:
     resolution: {integrity: sha512-CvUo2ixeIQGtF6WvuB87XWqPQkoFAFqW+HUo/WzHwuHDvIwZCtjdWXoYCcr06iKGydiqTclC4jU/TNObC/xKZg==}
     cpu: [x64]
     os: [win32]
+
+  '@trim21/gm-fetch@0.3.0':
+    resolution: {integrity: sha512-HMZvNUX1dX9uuE0ZjZijPoy39ueNEL1ScsDsDqV4YxtH5izf532ioDhPzDZQqv78ni10BT0IOmR5Fi0GahjFzQ==}
 
   '@types/eslint@9.6.1':
     resolution: {integrity: sha512-FXx2pKgId/WyYo2jXw63kk7/+TY7u7AziEJxJAnSFzHlqTAS3Ync6SvgYAN/k4/PQpnnVuzoMuVnByKK2qp0ag==}
@@ -1553,6 +1559,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.46.2':
     optional: true
+
+  '@trim21/gm-fetch@0.3.0': {}
 
   '@types/eslint@9.6.1':
     dependencies:
