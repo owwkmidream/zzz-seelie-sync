@@ -58,6 +58,21 @@ function findVueRouter(): any {
 }
 
 /**
+ * 获取当前路由信息
+ */
+export function getCurrentRoute(): any {
+  const router = findVueRouter();
+  if (!router) {
+    console.error('❌ 未找到 Router 实例');
+    return null;
+  }
+
+  const currentRoute = router.currentRoute?.value || router.currentRoute;
+  console.log('📍 当前路由:', currentRoute?.path);
+  return currentRoute;
+}
+
+/**
  * 路由监听 Hook
  * @param callback 路由变化时的回调函数
  * @param options 配置选项
@@ -103,7 +118,8 @@ export function useRouterWatcher(
 
   return {
     router,
-    unwatch
+    unwatch,
+    getCurrentRoute: () => router.currentRoute?.value || router.currentRoute
   };
 }
 
@@ -134,4 +150,5 @@ export function useRouterRerun(
 if (typeof window !== 'undefined') {
   (window as any).useRouterWatcher = useRouterWatcher;
   (window as any).useRouterRerun = useRouterRerun;
+  (window as any).getCurrentRoute = getCurrentRoute;
 }
