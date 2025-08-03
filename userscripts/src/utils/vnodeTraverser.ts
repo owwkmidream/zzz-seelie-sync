@@ -174,6 +174,27 @@ export function retraverseVNodes(): void {
   startVNodeTraversal();
 }
 
+
+
+/**
+ * 清除所有元素的 __vue__ 属性（可选，用于完全重新挂载）
+ */
+export function clearAllVueInstances(): void {
+  console.log('🧹 清除所有 __vue__ 属性...');
+
+  const allElements = document.querySelectorAll('*');
+  let clearedCount = 0;
+
+  allElements.forEach(el => {
+    if ((el as HTMLElement).__vue__) {
+      delete (el as HTMLElement).__vue__;
+      clearedCount++;
+    }
+  });
+
+  console.log(`✓ 已清除 ${clearedCount} 个元素的 __vue__ 属性`);
+}
+
 /**
  * 获取元素的 Vue 实例
  * @param element DOM 元素
@@ -188,4 +209,5 @@ if (typeof window !== 'undefined') {
   (window as any).retraverseVNodes = retraverseVNodes;
   (window as any).startVNodeTraversal = startVNodeTraversal;
   (window as any).getVueInstance = getVueInstance;
+  (window as any).clearAllVueInstances = clearAllVueInstances;
 }
