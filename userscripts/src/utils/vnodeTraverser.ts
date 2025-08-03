@@ -3,7 +3,7 @@
 // 扩展 HTMLElement 类型
 declare global {
   interface HTMLElement {
-    _vue?: any;
+    __vue__?: any;
     _vnode?: any;
   }
 }
@@ -25,7 +25,7 @@ let mountedCount = 0;
 let processedElements = new WeakSet<HTMLElement>();
 
 /**
- * 递归遍历 VNode 树，为每个有 el 的节点挂载 _vue 属性
+ * 递归遍历 VNode 树，为每个有 el 的节点挂载 __vue__ 属性
  * @param vnode 当前 VNode
  * @param vueInstance 对应的 Vue 组件实例
  * @param depth 遍历深度，用于调试
@@ -35,36 +35,36 @@ function traverseVNode(vnode: VNode, vueInstance?: any, depth = 0): void {
 
   const indent = '  '.repeat(depth);
 
-  // 如果当前 vnode 有 el 元素，挂载 _vue 属性
+  // 如果当前 vnode 有 el 元素，挂载 __vue__ 属性
   if (vnode.el && vnode.el instanceof HTMLElement) {
     // 避免重复处理同一个元素
     if (!processedElements.has(vnode.el)) {
       const targetInstance = vueInstance || vnode.component || vnode;
-      vnode.el._vue = targetInstance;
+      vnode.el.__vue__ = targetInstance;
       processedElements.add(vnode.el);
       mountedCount++;
 
-      console.log(`${indent}✓ 挂载 _vue 到元素:`,
-        vnode.el.tagName,
-        `(uid: ${targetInstance?.uid || 'none'})`,
-        `(class: ${vnode.el.className || 'none'})`);
+      // console.log(`${indent}✓ 挂载 __vue__ 到元素:`,
+        // vnode.el.tagName,
+        // `(uid: ${targetInstance?.uid || 'none'})`,
+        // `(class: ${vnode.el.className || 'none'})`);
     } else {
-      console.log(`${indent}⚠️ 跳过已处理的元素:`, vnode.el.tagName);
+      // console.log(`${indent}⚠️ 跳过已处理的元素:`, vnode.el.tagName);
     }
   }
 
   // 如果有 component，递归遍历其 subTree
   if (vnode.component?.subTree) {
-    console.log(`${indent}→ 遍历组件 subTree (uid: ${vnode.component.uid})`);
+    // console.log(`${indent}→ 遍历组件 subTree (uid: ${vnode.component.uid})`);
     traverseVNode(vnode.component.subTree, vnode.component, depth + 1);
   }
 
   // 遍历 dynamicChildren
   if (vnode.dynamicChildren && Array.isArray(vnode.dynamicChildren)) {
-    console.log(`${indent}→ 遍历 dynamicChildren (${vnode.dynamicChildren.length} 个)`);
+    // console.log(`${indent}→ 遍历 dynamicChildren (${vnode.dynamicChildren.length} 个)`);
     vnode.dynamicChildren.forEach((child, index) => {
       if (child) {
-        console.log(`${indent}  [${index}]:`, child.type?.name || child.type || 'unknown');
+        // console.log(`${indent}  [${index}]:`, child.type?.name || child.type || 'unknown');
         traverseVNode(child, child.component || vueInstance, depth + 1);
       }
     });
@@ -72,10 +72,10 @@ function traverseVNode(vnode: VNode, vueInstance?: any, depth = 0): void {
 
   // 遍历普通 children
   if (vnode.children && Array.isArray(vnode.children)) {
-    console.log(`${indent}→ 遍历 children (${vnode.children.length} 个)`);
+    // console.log(`${indent}→ 遍历 children (${vnode.children.length} 个)`);
     vnode.children.forEach((child, index) => {
       if (typeof child === 'object' && child !== null) {
-        console.log(`${indent}  [${index}]:`, (child as VNode).type?.name || (child as VNode).type || 'unknown');
+        // console.log(`${indent}  [${index}]:`, (child as VNode).type?.name || (child as VNode).type || 'unknown');
         traverseVNode(child as VNode, vueInstance, depth + 1);
       }
     });
@@ -123,17 +123,17 @@ export function startVNodeTraversal(): void {
 
   const endTime = performance.now();
   console.log(`🎉 VNode 遍历完成！耗时: ${(endTime - startTime).toFixed(2)}ms`);
-  console.log(`📊 共为 ${mountedCount} 个元素挂载了 _vue 属性`);
+  console.log(`📊 共为 ${mountedCount} 个元素挂载了 __vue__ 属性`);
 
   // 验证挂载结果
   const elementsWithVue = document.querySelectorAll('*');
   let verifyCount = 0;
   elementsWithVue.forEach(el => {
-    if ((el as HTMLElement)._vue) {
+    if ((el as HTMLElement).__vue__) {
       verifyCount++;
     }
   });
-  console.log(`✓ 验证结果: ${verifyCount} 个元素拥有 _vue 属性`);
+  console.log(`✓ 验证结果: ${verifyCount} 个元素拥有 __vue__ 属性`);
 }
 
 /**

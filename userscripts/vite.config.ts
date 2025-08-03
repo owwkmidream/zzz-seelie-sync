@@ -2,7 +2,6 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import monkey, { cdn, util } from 'vite-plugin-monkey';
 import AutoImport from 'unplugin-auto-import/vite';
-import eslint from '@nabla/vite-plugin-eslint';
 import checker from 'vite-plugin-checker';
 
 // https://vitejs.dev/config/
@@ -18,13 +17,6 @@ export default defineConfig({
         util.unimportPreset, // 自动导入 GM API
       ],
       dts: true, // 生成类型声明文件
-    }),
-
-    // ESLint 集成
-    eslint({
-      eslintOptions: {
-        cache: false,
-      },
     }),
 
     // TypeScript 类型检查
