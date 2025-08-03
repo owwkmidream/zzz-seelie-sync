@@ -1,5 +1,13 @@
 // Vue 3 VNode 遍历工具
 
+// 扩展 HTMLElement 类型
+declare global {
+  interface HTMLElement {
+    _vue?: any;
+    _vnode?: any;
+  }
+}
+
 interface VNode {
   el?: HTMLElement;
   component?: {
@@ -14,7 +22,7 @@ interface VNode {
 }
 
 let mountedCount = 0;
-const processedElements = new WeakSet<HTMLElement>();
+let processedElements = new WeakSet<HTMLElement>();
 
 /**
  * 递归遍历 VNode 树，为每个有 el 的节点挂载 _vue 属性
@@ -100,7 +108,7 @@ export function startVNodeTraversal(): void {
 
   // 重置计数器和已处理元素集合
   mountedCount = 0;
-  processedElements.clear?.() || (processedElements as any).clear();
+  processedElements = new WeakSet<HTMLElement>(); // 重新创建 WeakSet 来清空
 
   const startTime = performance.now();
 
