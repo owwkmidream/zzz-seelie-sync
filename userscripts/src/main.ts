@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+// Vue API 通过 auto-import 自动导入，无需手动 import
 import './style.css';
 import App from './App.vue';
 

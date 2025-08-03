@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-
+// ref 通过 auto-import 自动导入
 defineProps<{ msg: string }>();
 
 const count = ref(0);
