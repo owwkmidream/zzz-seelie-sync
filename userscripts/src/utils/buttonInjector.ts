@@ -17,7 +17,6 @@ export function injectButtonOnRoute(
   } = {}
 ) {
   const {
-    text = '测试按钮',
     className = '',
     onClick = () => console.log('🔘 自定义按钮被点击！'),
     position = 'after'
@@ -26,7 +25,7 @@ export function injectButtonOnRoute(
   console.log(`🔍 尝试在路由 ${targetPath} 下插入按钮...`);
 
   // 查找目标元素
-  const targetElement = document.querySelector(selector);
+  const targetElement = document.querySelector(selector) as HTMLElement;
   if (!targetElement) {
     console.error(`❌ 未找到目标元素: ${selector}`);
     return null;
@@ -35,29 +34,26 @@ export function injectButtonOnRoute(
   console.log('✓ 找到目标元素:', targetElement);
 
   // 检查是否已经插入过按钮（避免重复插入）
-  const existingButton = targetElement.parentElement?.querySelector('.custom-injected-button');
+  const existingButton = targetElement.parentElement?.querySelector('.custom-injected-button') as HTMLElement;
   if (existingButton) {
     console.log('⚠️ 按钮已存在，跳过插入');
     return existingButton;
   }
 
-  // 克隆目标元素作为按钮模板
+  // 深度克隆目标元素作为按钮模板（包含所有子元素）
   const button = targetElement.cloneNode(true) as HTMLElement;
-
-  // 修改按钮属性
-  button.textContent = text;
   button.className = `${targetElement.className} ${className} custom-injected-button`;
 
-  // 添加绿色样式（Tailwind CSS）
-  const greenClasses = ['bg-green-400', 'hover:bg-green-500', 'text-white'];
+  // 添加绿色文字样式（Tailwind CSS）
+  const greenClasses = ['text-green-400'];
   greenClasses.forEach(cls => {
     if (!button.classList.contains(cls)) {
       button.classList.add(cls);
     }
   });
 
-  // 移除可能的冲突样式
-  const conflictClasses = ['bg-gray-', 'bg-blue-', 'bg-red-', 'text-gray-'];
+  // 移除可能的冲突文字颜色样式
+  const conflictClasses = ['text-gray-', 'text-blue-', 'text-red-', 'text-white', 'text-black'];
   conflictClasses.forEach(prefix => {
     Array.from(button.classList).forEach(cls => {
       if (cls.startsWith(prefix)) {
@@ -142,7 +138,6 @@ export class RouteButtonManager {
       // 延迟一点确保页面元素已渲染
       setTimeout(() => {
         this.addButton('button.h-7.w-7', {
-          text: '✨',
           className: 'ml-2',
           onClick: () => {
             console.log('🎉 Planner 页面的自定义按钮被点击了！');
