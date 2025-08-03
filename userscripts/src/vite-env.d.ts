@@ -2,6 +2,14 @@
 /// <reference types="vite-plugin-monkey/client" />
 //// <reference types="vite-plugin-monkey/global" />
 
+// 扩展 HTMLElement 接口，添加 _vue 和 _vnode 属性
+declare global {
+  interface HTMLElement {
+    _vue?: any;
+    _vnode?: any;
+  }
+}
+
 // 声明 @trim21/gm-fetch 的类型
 declare module '@trim21/gm-fetch' {
   export interface RequestInit {

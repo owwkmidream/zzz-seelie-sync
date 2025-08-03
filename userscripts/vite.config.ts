@@ -39,7 +39,7 @@ export default defineConfig({
       userscript: {
         icon: 'https://vitejs.dev/logo.svg',
         namespace: 'npm/vite-plugin-monkey',
-        match: ['https://www.google.com/'],
+        match: ['https://zzz.seelie.me/*'],
         // GM API 权限（自动检测）
         grant: [
           // 'GM_xmlhttpRequest', // 修正：应该是 GM_xmlhttpRequest
@@ -53,7 +53,6 @@ export default defineConfig({
         autoGrant: true, // 自动检测并添加 @grant
         externalGlobals: {
           vue: cdn.jsdelivr('Vue', 'dist/vue.global.prod.js'),
-          '@trim21/gm-fetch': cdn.jsdelivr('gmFetch', 'dist/index.global.js'),
         },
       },
     }),
