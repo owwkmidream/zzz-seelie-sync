@@ -1,6 +1,6 @@
 // Vue API 通过 auto-import 自动导入，无需手动 import
-import './style.css';
-import App from './App.vue';
+// import './style.css'; // 注释掉样式导入，避免影响目标网站
+// import App from './App.vue'; // 暂时不需要 App 组件
 
 // Vue 3 VNode 遍历功能
 interface VNode {
@@ -24,7 +24,7 @@ function traverseVNode(vnode: VNode, vueInstance?: any): void {
   if (vnode.el && vnode.el instanceof HTMLElement) {
     const targetInstance = vueInstance || vnode.component || vnode;
     vnode.el._vue = targetInstance;
-    console.log('挂载 _vue 属性到元素:', vnode.el.tagName, vnode.el);
+    // console.log('挂载 _vue 属性到元素:', vnode.el.tagName, vnode.el);
   }
 
   // 如果有 component，递归遍历其 subTree
@@ -81,16 +81,16 @@ function startVNodeTraversal(): void {
 function initVNodeTraversal(): void {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-      setTimeout(startVNodeTraversal, 2000);
+      setTimeout(startVNodeTraversal, 0);
     });
   } else {
-    setTimeout(startVNodeTraversal, 2000);
+    setTimeout(startVNodeTraversal, 0);
   }
 }
 
 // 启动 VNode 遍历功能
 console.log('Vue 3 VNode 遍历脚本已加载');
-// initVNodeTraversal();
+initVNodeTraversal();
 
 // 原有的 Vue 应用创建逻辑保持不变
 // createApp(App).mount(
