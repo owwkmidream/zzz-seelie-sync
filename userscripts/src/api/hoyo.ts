@@ -10,6 +10,9 @@ const AVATAR_URL = 'https://act-api-takumi.mihoyo.com/event/nap_cultivate_tool';
 const GAME_RECORD_URL = 'https://api-takumi-record.mihoyo.com/event/game_record_zzz/api/zzz';
 const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api';
 
+// 初始化请求标记
+let avatarUrlInitialized = false;
+
 // 异步获取通用请求头
 async function getDefaultHeaders(): Promise<Record<string, string>> {
   const deviceInfo = await getDeviceInfo();
@@ -212,6 +215,35 @@ export enum EquipmentType {
   Slot6 = 6  // 生攻防/冲击力/异常掌控/能量自动回复
 }
 
+/**
+ * 获取nap_token
+ */
+async function initializeAvatarUrl(): Promise<void> {
+  if (avatarUrlInitialized) {
+    return;
+  }
+
+  console.log('🔄 初始化 nap_token cookie...');
+
+  try {
+    const initResponse = await GM_fetch('https://api-takumi.mihoyo.com/common/badge/v1/login/info?game_biz=nap_cn', {
+      method: 'GET'
+    });
+
+    if (!initResponse.ok) {
+      console.warn(`⚠️ 初始化请求失败: HTTP ${initResponse.status}`);
+    } else {
+      console.log('✅ nap_token cookie 初始化完成');
+    }
+
+    avatarUrlInitialized = true;
+  } catch (error) {
+    console.warn('⚠️ 初始化请求异常:', error);
+    // 即使初始化失败也标记为已尝试，避免重复请求
+    avatarUrlInitialized = true;
+  }
+}
+
 // 通用请求函数
 async function request<T = any>(
   endpoint: string,
@@ -224,6 +256,11 @@ async function request<T = any>(
   } = {}
 ): Promise<ApiResponse<T>> {
   const { method = 'GET', params = {}, body, headers = {} } = options;
+
+  // 如果是 AVATAR_URL 的请求，先进行初始化
+  if (baseUrl === AVATAR_URL) {
+    await initializeAvatarUrl();
+  }
 
   // 构建URL
   let url = `${baseUrl}${endpoint}`;
@@ -709,6 +746,8 @@ export function clearDeviceInfo(): void {
   // 清除缓存
   deviceInfoCache = null;
   deviceInfoPromise = null;
+  // 重置初始化标记
+  avatarUrlInitialized = false;
   console.log('🗑️ 已清除localStorage设备信息和缓存');
 }
 
@@ -744,6 +783,14 @@ export async function refreshDeviceFingerprint(): Promise<void> {
   }
 }
 
+/**
+ * 重置 AVATAR_URL 初始化状态（用于调试）
+ */
+export function resetAvatarUrlInitialization(): void {
+  avatarUrlInitialized = false;
+  console.log('🔄 已重置 AVATAR_URL 初始化状态');
+}
+
 // 将主要函数挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
   (window as any).ZZZApi = {
@@ -768,6 +815,7 @@ if (typeof window !== 'undefined') {
     getEnergyProgress,
     clearDeviceInfo,
     getCurrentDeviceInfo,
-    refreshDeviceFingerprint
+    refreshDeviceFingerprint,
+    resetAvatarUrlInitialization
   };
 }
