@@ -763,6 +763,157 @@ class SeelieDataManager {
   }
 
   /**
+   * 同步单个角色的完整数据（角色、天赋、武器）
+   * @param data 角色数据
+   * @returns 同步结果统计
+   */
+  syncCharacter(data: CharacterDataInput): { success: number; failed: number; errors: string[] } {
+    const result = {
+      success: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
+
+    const character = data.avatar || data;
+    const characterName = character.name_mi18n || `角色ID:${character.id}`;
+
+    console.log(`🔄 开始同步角色: ${characterName}`);
+
+    try {
+      // 1. 同步角色基础数据
+      if (this.setCharacter(data)) {
+        result.success++;
+        console.log(`✓ ${characterName} - 角色数据同步成功`);
+      } else {
+        result.failed++;
+        result.errors.push(`${characterName} - 角色数据同步失败`);
+      }
+
+      // 2. 同步角色天赋数据
+      if (this.setTalents(data)) {
+        result.success++;
+        console.log(`✓ ${characterName} - 天赋数据同步成功`);
+      } else {
+        result.failed++;
+        result.errors.push(`${characterName} - 天赋数据同步失败`);
+      }
+
+      // 3. 同步武器数据（如果存在）
+      if (data.weapon) {
+        if (this.setWeapon(data)) {
+          result.success++;
+          console.log(`✓ ${characterName} - 武器数据同步成功`);
+        } else {
+          result.failed++;
+          result.errors.push(`${characterName} - 武器数据同步失败`);
+        }
+      } else {
+        // 没有武器数据，尝试清除现有武器目标
+        if (this.setWeapon(data)) {
+          console.log(`✓ ${characterName} - 武器目标已清除`);
+        }
+      }
+
+      console.log(`✅ ${characterName} 同步完成 - 成功: ${result.success}, 失败: ${result.failed}`);
+
+    } catch (error) {
+      result.failed++;
+      const errorMsg = `${characterName} - 同步过程中发生错误: ${error}`;
+      result.errors.push(errorMsg);
+      console.error(`❌ ${errorMsg}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * 同步多个角色的完整数据
+   * @param dataList 角色数据数组
+   * @returns 同步结果统计
+   */
+  syncAllCharacters(dataList: CharacterDataInput[]): {
+    total: number;
+    success: number;
+    failed: number;
+    errors: string[];
+    details: Array<{ character: string; result: { success: number; failed: number; errors: string[] } }>;
+  } {
+    const overallResult = {
+      total: dataList.length,
+      success: 0,
+      failed: 0,
+      errors: [] as string[],
+      details: [] as Array<{ character: string; result: { success: number; failed: number; errors: string[] } }>
+    };
+
+    console.log(`🚀 开始批量同步 ${dataList.length} 个角色`);
+
+    dataList.forEach((data, index) => {
+      const character = data.avatar || data;
+      const characterName = character.name_mi18n || `角色ID:${character.id}`;
+
+      console.log(`📝 [${index + 1}/${dataList.length}] 同步角色: ${characterName}`);
+
+      try {
+        const result = this.syncCharacter(data);
+
+        // 记录详细结果
+        overallResult.details.push({
+          character: characterName,
+          result
+        });
+
+        // 统计总体结果
+        if (result.failed === 0) {
+          overallResult.success++;
+        } else {
+          overallResult.failed++;
+          overallResult.errors.push(...result.errors);
+        }
+
+      } catch (error) {
+        overallResult.failed++;
+        const errorMsg = `${characterName} - 批量同步失败: ${error}`;
+        overallResult.errors.push(errorMsg);
+        overallResult.details.push({
+          character: characterName,
+          result: { success: 0, failed: 1, errors: [errorMsg] }
+        });
+        console.error(`❌ ${errorMsg}`);
+      }
+    });
+
+    // 输出总体统计
+    console.log(`🎯 批量同步完成:`);
+    console.log(`   总计: ${overallResult.total} 个角色`);
+    console.log(`   成功: ${overallResult.success} 个角色`);
+    console.log(`   失败: ${overallResult.failed} 个角色`);
+
+    if (overallResult.errors.length > 0) {
+      console.log(`   错误详情:`);
+      overallResult.errors.forEach(error => console.log(`     - ${error}`));
+    }
+
+    // 设置成功提示
+    if (overallResult.success > 0) {
+      this.setToast(
+        `成功同步 ${overallResult.success}/${overallResult.total} 个角色`,
+        overallResult.failed === 0 ? 'success' : 'warning'
+      );
+    }
+
+    // 设置错误提示
+    if (overallResult.failed > 0) {
+      this.setToast(
+        `${overallResult.failed} 个角色同步失败，请查看控制台`,
+        'error'
+      );
+    }
+
+    return overallResult;
+  }
+
+  /**
    * 重新初始化（当页面路由变化时调用）
    */
   refresh(): void {
@@ -817,6 +968,30 @@ export const setWeapon = (data: CharacterDataInput): boolean => {
   return seelieDataManager.setWeapon(data);
 };
 
+/**
+ * 同步单个角色完整数据的便捷函数
+ * @param data 角色数据对象
+ * @returns 同步结果统计
+ */
+export const syncCharacter = (data: CharacterDataInput): { success: number; failed: number; errors: string[] } => {
+  return seelieDataManager.syncCharacter(data);
+};
+
+/**
+ * 同步多个角色完整数据的便捷函数
+ * @param dataList 角色数据数组
+ * @returns 同步结果统计
+ */
+export const syncAllCharacters = (dataList: CharacterDataInput[]): {
+  total: number;
+  success: number;
+  failed: number;
+  errors: string[];
+  details: Array<{ character: string; result: { success: number; failed: number; errors: string[] } }>;
+} => {
+  return seelieDataManager.syncAllCharacters(dataList);
+};
+
 // 挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
   (window as any).setResinData = setResinData;
@@ -824,4 +999,6 @@ if (typeof window !== 'undefined') {
   (window as any).setCharacter = setCharacter;
   (window as any).setTalents = setTalents;
   (window as any).setWeapon = setWeapon;
+  (window as any).syncCharacter = syncCharacter;
+  (window as any).syncAllCharacters = syncAllCharacters;
 }
