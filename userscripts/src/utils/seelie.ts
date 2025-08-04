@@ -17,7 +17,7 @@ export interface ResinDataInput {
 /**
  * AccountResin 格式
  */
-export interface AccountResin {
+interface AccountResin {
   amount: number;
   time: string;
 }
@@ -26,7 +26,7 @@ export interface AccountResin {
  * Seelie 数据操作工具类
  * 提供对 #app._vnode.component.ctx.accountResin 等属性的读写操作
  */
-export class SeelieDataManager {
+class SeelieDataManager {
   private appElement: HTMLElement | null = null;
   private rootComponent: any = null;
 
@@ -190,10 +190,6 @@ export class SeelieDataManager {
 // 创建全局实例
 export const seelieDataManager = new SeelieDataManager();
 
-// 便捷的全局函数
-export const getAccountResin = (): AccountResin | null => seelieDataManager.getAccountResin();
-export const setAccountResin = (value: ResinDataInput): boolean => seelieDataManager.setAccountResin(value);
-
 /**
  * 设置树脂数据的便捷函数
  * @param data 树脂数据对象
@@ -204,8 +200,5 @@ export const setResinData = (data: ResinDataInput): boolean => {
 
 // 挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
-  (window as any).seelieDataManager = seelieDataManager;
-  (window as any).getAccountResin = getAccountResin;
-  (window as any).setAccountResin = setAccountResin;
   (window as any).setResinData = setResinData;
 }
