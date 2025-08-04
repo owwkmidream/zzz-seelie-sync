@@ -303,6 +303,24 @@ export async function batchGetAvatarDetail(
   avatarList: AvatarDetailRequest[],
   region: string = 'prod_gf_cn'
 ): Promise<AvatarDetail[]> {
+  // 如果列表长度大于9，分批处理
+  if (avatarList.length > 9) {
+    const results: AvatarDetail[] = [];
+    const batchSize = 9;
+
+    for (let i = 0; i < avatarList.length; i += batchSize) {
+      const batch = avatarList.slice(i, i + batchSize);
+      const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', AVATAR_URL, {
+        method: 'POST',
+        params: { uid: String(uid), region },
+        body: { avatar_list: batch }
+      });
+      results.push(...response.data.list);
+    }
+
+    return results;
+  }
+
   const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', AVATAR_URL, {
     method: 'POST',
     params: { uid: String(uid), region },
