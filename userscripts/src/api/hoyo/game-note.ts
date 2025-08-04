@@ -1,0 +1,69 @@
+// 米哈游绝区零游戏便笺API
+
+import type { GameNoteData, EnergyInfo } from './types';
+import { request, ensureUserInfo, getUserInfo, GAME_RECORD_URL } from './client';
+
+/**
+ * 获取绝区零游戏便笺信息（体力等）
+ * @param roleId 角色ID，如果不提供则使用缓存的用户UID
+ * @param server 服务器，默认国服
+ */
+export async function getGameNote(
+  roleId?: string | number,
+  server: string = 'prod_gf_cn'
+): Promise<GameNoteData> {
+  // 如果没有提供 roleId，确保用户信息已初始化并使用缓存的用户信息
+  if (!roleId) {
+    await ensureUserInfo();
+    const userInfoCache = getUserInfo();
+    if (userInfoCache) {
+      roleId = userInfoCache.uid;
+      server = userInfoCache.region;
+    } else {
+      throw new Error('❌ 未提供角色ID且无法从缓存获取用户信息，请确保已登录米游社');
+    }
+  }
+  const response = await request<GameNoteData>('/note', GAME_RECORD_URL, {
+    method: 'GET',
+    params: {
+      server,
+      role_id: String(roleId)
+    }
+  });
+
+  return response.data;
+}
+
+/**
+ * 获取体力信息
+ * @param roleId 角色ID，如果不提供则使用缓存的用户UID
+ * @param server 服务器，默认国服
+ */
+export async function getEnergyInfo(
+  roleId?: string | number,
+  server: string = 'prod_gf_cn'
+): Promise<EnergyInfo> {
+  const gameNote = await getGameNote(roleId, server);
+  return gameNote.energy;
+}
+
+/**
+ * 格式化体力恢复时间
+ * @param energy 体力信息
+ */
+export function formatEnergyRestoreTime(energy: EnergyInfo): string {
+  const { hour, minute } = energy;
+  if (hour === 0 && minute === 0) {
+    return '体力已满';
+  }
+  return `${hour}小时${minute}分钟后恢复满`;
+}
+
+/**
+ * 获取体力恢复进度百分比
+ * @param energy 体力信息
+ */
+export function getEnergyProgress(energy: EnergyInfo): number {
+  const { progress } = energy;
+  return Math.round((progress.current / progress.max) * 100);
+}
