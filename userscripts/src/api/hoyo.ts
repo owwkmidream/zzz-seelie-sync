@@ -3,13 +3,14 @@
 import GM_fetch from '@trim21/gm-fetch';
 
 // 基础配置
-const BASE_URL = 'https://act-api-takumi.mihoyo.com/event/nap_cultivate_tool';
+const AVATAR_URL = 'https://act-api-takumi.mihoyo.com/event/nap_cultivate_tool';
+const GAME_RECORD_URL = 'https://api-takumi-record.mihoyo.com/event/game_record_zzz/api/zzz';
 
 // 通用请求头
 const DEFAULT_HEADERS = {
   'content-type': 'application/json',
-  'x-rpc-device_fp': '38d7fb92a9195',
-  'x-rpc-device_id': 'd9845d41-f76e-40b9-a2c7-fd7cec16f6d8',
+  'x-rpc-device_fp': '38d80df42ad79',
+  'x-rpc-device_id': '4ce52304-b4d5-48b4-88a3-f471c7e1164c',
 };
 
 // 类型定义
@@ -51,6 +52,23 @@ export interface AvatarDetailRequest {
   is_teaser: boolean;
   teaser_need_weapon: boolean;
   teaser_sp_skill: boolean;
+}
+
+// 绝区零体力信息类型定义
+export interface EnergyInfo {
+  progress: {
+    max: number;
+    current: number;
+  };
+  restore: number;
+  day_type: number;
+  hour: number;
+  minute: number;
+}
+
+export interface GameNoteData {
+  energy: EnergyInfo;
+  // 可以根据实际返回数据添加更多字段
 }
 
 export interface Property {
@@ -146,7 +164,7 @@ export enum AvatarProfession {
   Anomaly = 3,
   Support = 4,
   Defense = 5,
-  Special = 6
+  Rupture = 6
 }
 
 export enum SkillType {
@@ -170,6 +188,7 @@ export enum EquipmentType {
 // 通用请求函数
 async function request<T = any>(
   endpoint: string,
+  baseUrl: string,
   options: {
     method?: 'GET' | 'POST';
     params?: Record<string, string | number>;
@@ -180,7 +199,7 @@ async function request<T = any>(
   const { method = 'GET', params = {}, body, headers = {} } = options;
 
   // 构建URL
-  let url = `${BASE_URL}${endpoint}`;
+  let url = `${baseUrl}${endpoint}`;
   if (Object.keys(params).length > 0) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -234,7 +253,7 @@ export async function getAvatarBasicList(
   uid: string | number,
   region: string = 'prod_gf_cn'
 ): Promise<AvatarBasicInfo[]> {
-  const response = await request<{ list: AvatarBasicInfo[] }>('/user/avatar_basic_list', {
+  const response = await request<{ list: AvatarBasicInfo[] }>('/user/avatar_basic_list', AVATAR_URL, {
     method: 'GET',
     params: { uid: String(uid), region }
   });
@@ -253,7 +272,7 @@ export async function batchGetAvatarDetail(
   avatarList: AvatarDetailRequest[],
   region: string = 'prod_gf_cn'
 ): Promise<AvatarDetail[]> {
-  const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', {
+  const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', AVATAR_URL, {
     method: 'POST',
     params: { uid: String(uid), region },
     body: { avatar_list: avatarList }
@@ -301,6 +320,39 @@ export async function getAvatarDetail(
   return details[0];
 }
 
+/**
+ * 获取绝区零游戏便笺信息（体力等）
+ * @param roleId 角色ID
+ * @param server 服务器，默认国服
+ */
+export async function getGameNote(
+  roleId: string | number,
+  server: string = 'prod_gf_cn'
+): Promise<GameNoteData> {
+  const response = await request<GameNoteData>('/note', GAME_RECORD_URL, {
+    method: 'GET',
+    params: {
+      server,
+      role_id: String(roleId)
+    }
+  });
+
+  return response.data;
+}
+
+/**
+ * 获取体力信息
+ * @param roleId 角色ID
+ * @param server 服务器，默认国服
+ */
+export async function getEnergyInfo(
+  roleId: string | number,
+  server: string = 'prod_gf_cn'
+): Promise<EnergyInfo> {
+  const gameNote = await getGameNote(roleId, server);
+  return gameNote.energy;
+}
+
 // 工具函数
 
 /**
@@ -327,7 +379,7 @@ export function getProfessionName(profession: number): string {
     [AvatarProfession.Anomaly]: '异常',
     [AvatarProfession.Support]: '支援',
     [AvatarProfession.Defense]: '防护',
-    [AvatarProfession.Special]: '特殊'
+    [AvatarProfession.Rupture]: '命破'
   };
   return professionNames[profession] || '未知';
 }
@@ -421,12 +473,35 @@ export function getARankAvatars(avatarList: AvatarBasicInfo[]): AvatarBasicInfo[
   return avatarList.filter(item => item.unlocked && item.avatar.rarity === 'A');
 }
 
+/**
+ * 格式化体力恢复时间
+ * @param energy 体力信息
+ */
+export function formatEnergyRestoreTime(energy: EnergyInfo): string {
+  const { hour, minute } = energy;
+  if (hour === 0 && minute === 0) {
+    return '体力已满';
+  }
+  return `${hour}小时${minute}分钟后恢复满`;
+}
+
+/**
+ * 获取体力恢复进度百分比
+ * @param energy 体力信息
+ */
+export function getEnergyProgress(energy: EnergyInfo): number {
+  const { progress } = energy;
+  return Math.round((progress.current / progress.max) * 100);
+}
+
 // 将主要函数挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
   (window as any).ZZZApi = {
     getAvatarBasicList,
     batchGetAvatarDetail,
     getAvatarDetail,
+    getGameNote,
+    getEnergyInfo,
     getElementName,
     getProfessionName,
     getSkillTypeName,
@@ -435,6 +510,8 @@ if (typeof window !== 'undefined') {
     groupAvatarsByElement,
     groupAvatarsByProfession,
     getSRankAvatars,
-    getARankAvatars
+    getARankAvatars,
+    formatEnergyRestoreTime,
+    getEnergyProgress
   };
 }
