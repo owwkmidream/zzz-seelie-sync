@@ -1,6 +1,28 @@
 // Seelie 工具类 - 用于操作 Vue 应用中的数据
 
 /**
+ * 树脂数据输入格式
+ */
+export interface ResinDataInput {
+  progress: {
+    max: number;
+    current: number;
+  };
+  restore: number;
+  day_type: number;
+  hour: number;
+  minute: number;
+}
+
+/**
+ * AccountResin 格式
+ */
+export interface AccountResin {
+  amount: number;
+  time: string;
+}
+
+/**
  * Seelie 数据操作工具类
  * 提供对 #app._vnode.component.ctx.accountResin 等属性的读写操作
  */
@@ -70,10 +92,10 @@ export class SeelieDataManager {
 
   /**
    * 设置 accountResin 属性值
-   * @param value 要设置的新值
+   * @param value 输入参数格式: ResinDataInput
    * @returns 是否设置成功
    */
-  setAccountResin(value: any): boolean {
+  setAccountResin(value: ResinDataInput): boolean {
     const ctx = this.getContext();
     if (!ctx) {
       console.warn('⚠️ 无法获取组件上下文');
@@ -82,11 +104,16 @@ export class SeelieDataManager {
 
     try {
       const oldValue = ctx.accountResin;
-      ctx.accountResin = value;
+
+      // 转换输入参数为 accountResin 格式
+      const convertedValue = this.convertToAccountResinFormat(value);
+
+      ctx.accountResin = convertedValue;
 
       console.log('✏️ 设置 accountResin:', {
         oldValue,
-        newValue: value
+        inputValue: value,
+        convertedValue
       });
 
       return true;
@@ -94,6 +121,39 @@ export class SeelieDataManager {
       console.error('❌ 设置 accountResin 失败:', error);
       return false;
     }
+  }
+
+  /**
+   * 将输入参数转换为 accountResin 格式
+   * @param input 输入参数 ResinDataInput
+   * @returns 转换后的格式 AccountResin
+   */
+  private convertToAccountResinFormat(input: ResinDataInput): AccountResin {
+    if (!input || !input.progress) {
+      throw new Error('输入参数格式错误，缺少 progress 字段');
+    }
+
+    const { progress, restore } = input;
+    const currentAmount = progress.current;
+    const maxAmount = progress.max;
+    const restoreSeconds = restore;
+
+    // 回复间隔6分钟
+    const resinInterval = 360;
+
+    // 计算当前 amount 的更新时间
+    // 参考逻辑：this.dayjs().add(u, "seconds").subtract(this.resinInterval * (m - n), "seconds").toString()
+    // 即：now + restore - resinInterval * (max - current)
+    const now = new Date();
+    const theoreticalRestoreTime = (maxAmount - currentAmount) * resinInterval; // 理论恢复时间（秒）
+
+    // time = now + API返回的实际恢复时间 - 理论恢复时间
+    const updateTime = new Date(now.getTime() + (restoreSeconds - theoreticalRestoreTime) * 1000);
+
+    return {
+      amount: currentAmount,
+      time: updateTime.toString()
+    };
   }
 
 
@@ -131,12 +191,21 @@ export class SeelieDataManager {
 export const seelieDataManager = new SeelieDataManager();
 
 // 便捷的全局函数
-export const getAccountResin = () => seelieDataManager.getAccountResin();
-export const setAccountResin = (value: any) => seelieDataManager.setAccountResin(value);
+export const getAccountResin = (): AccountResin | null => seelieDataManager.getAccountResin();
+export const setAccountResin = (value: ResinDataInput): boolean => seelieDataManager.setAccountResin(value);
+
+/**
+ * 设置树脂数据的便捷函数
+ * @param data 树脂数据对象
+ */
+export const setResinData = (data: ResinDataInput): boolean => {
+  return seelieDataManager.setAccountResin(data);
+};
 
 // 挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
   (window as any).seelieDataManager = seelieDataManager;
   (window as any).getAccountResin = getAccountResin;
   (window as any).setAccountResin = setAccountResin;
+  (window as any).setResinData = setResinData;
 }
