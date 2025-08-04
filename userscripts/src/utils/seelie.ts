@@ -48,6 +48,36 @@ interface CharacterSkill {
 }
 
 /**
+ * 武器属性信息
+ */
+interface WeaponProperty {
+  property_name: string;
+  property_id: number;
+  base: string;
+  level: number;
+  valid: boolean;
+  system_id: number;
+  add: number;
+}
+
+/**
+ * 武器数据
+ */
+interface WeaponData {
+  id: number;
+  level: number;
+  name: string;
+  star: number;
+  icon: string;
+  rarity: string;
+  properties: WeaponProperty[];
+  main_properties: WeaponProperty[];
+  talent_title: string;
+  talent_content: string;
+  profession: number;
+}
+
+/**
  * 角色数据输入格式
  */
 export interface CharacterDataInput {
@@ -83,6 +113,7 @@ export interface CharacterDataInput {
     promotes: number;
     unlock: boolean;
   };
+  weapon?: WeaponData;
 }
 
 /**
@@ -95,6 +126,23 @@ interface CharacterStats {
   growth: number;
   core: number[];
   ascHP: number[];
+}
+
+/**
+ * 武器统计数据 Mock
+ */
+interface WeaponStatsCommon {
+  rate: { [level: number]: number };
+  ascRate: number[];
+}
+
+/**
+ * 武器数据 Mock
+ */
+interface WeaponInfo {
+  id: number;
+  name: string;
+  craftable?: boolean;
 }
 
 /**
@@ -145,6 +193,38 @@ class SeelieDataManager {
 
   // Mock 突破等级数组
   private ascensions: number[] = [1, 10, 20, 30, 40, 50, 60];
+
+  // Mock 技能类型映射
+  private skills: { [key: number]: string } = {
+    0: 'basic',    // 普通攻击
+    1: 'special',  // 特殊技
+    2: 'evade',    // 闪避
+    3: 'chain',    // 连携技
+    5: 'core',     // 核心被动
+    6: 'assist'    // 支援技
+  };
+
+  // Mock 武器统计数据
+  private weaponsStatsCommon: WeaponStatsCommon = {
+    rate: {
+      1: 0, 10: 1000, 20: 2000, 30: 3000, 40: 4000, 50: 5000, 60: 6000
+    },
+    ascRate: [0, 500, 1000, 1500, 2000, 2500, 3000]
+  };
+
+  // Mock 武器基础攻击力数据
+  private weaponsStats: { [id: number]: number } = {
+    14109: 743, // 霰落星殿
+    14001: 500, // 加农转子
+    // 可以根据需要添加更多武器数据
+  };
+
+  // Mock 武器信息数据
+  private weapons: { [key: string]: WeaponInfo } = {
+    'weapon_1': { id: 14109, name: '霰落星殿' },
+    'weapon_2': { id: 14001, name: '加农转子', craftable: true },
+    // 可以根据需要添加更多武器数据
+  };
 
   constructor() {
     this.init();
@@ -369,6 +449,37 @@ class SeelieDataManager {
   }
 
   /**
+   * 获取武器突破等级
+   * @param weapon 武器数据
+   * @returns 突破等级
+   */
+  private getWeaponAsc(weapon: WeaponData): number {
+    const levelRate = this.weaponsStatsCommon.rate[weapon.level] || 0;
+    const atkProperty = weapon.main_properties.find(p => p.property_id === 12101);
+    if (!atkProperty) {
+      console.warn(`⚠️ 武器 ${weapon.name} 缺少攻击力属性`);
+      return this.ascensions.findIndex(level => level >= weapon.level);
+    }
+
+    const actualATK = parseInt(atkProperty.base);
+    const baseATK = this.weaponsStats[weapon.id] || 500;
+    const growthATK = baseATK * levelRate / 10000;
+    const calculatedBaseATK = baseATK + growthATK;
+
+    // 查找匹配的突破等级
+    for (let i = 0; i < this.weaponsStatsCommon.ascRate.length; i++) {
+      const ascRate = this.weaponsStatsCommon.ascRate[i];
+      const ascATK = baseATK * ascRate / 10000;
+      if (Math.floor(calculatedBaseATK + ascATK) === actualATK) {
+        return i;
+      }
+    }
+
+    console.log(`ATK error: ${weapon.name}, base: ${baseATK}, growth: ${growthATK}, fixed: ${calculatedBaseATK}, target: ${actualATK}`);
+    return this.ascensions.findIndex(level => level >= weapon.level);
+  }
+
+  /**
    * 设置角色数据
    * @param data 角色数据
    * @returns 是否设置成功
@@ -448,6 +559,210 @@ class SeelieDataManager {
   }
 
   /**
+   * 设置角色天赋数据
+   * @param data 角色数据
+   * @returns 是否设置成功
+   */
+  setTalents(data: CharacterDataInput): boolean {
+    const proxy = this.getProxy();
+    if (!proxy) {
+      console.warn('⚠️ 无法获取组件 proxy 对象');
+      return false;
+    }
+
+    try {
+      const character = data.avatar || data;
+
+      // 查找角色在 characters 中的键名
+      const characterKey = Object.keys(proxy.characters || {}).find(key =>
+        proxy.characters[key].id === character.id
+      );
+
+      if (!characterKey) {
+        throw new Error("Character not found.");
+      }
+
+      // 查找现有天赋目标
+      const existingGoal = (proxy.goals || []).find((goal: any) =>
+        goal.character === characterKey && goal.type === "talent"
+      );
+
+      const talents: any = {};
+
+      // 处理每个技能
+      character.skills.forEach(skill => {
+        const skillType = this.skills[skill.skill_type];
+        if (!skillType) return;
+
+        let currentLevel = skill.level;
+
+        // 根据技能类型和角色命座调整等级
+        if (skillType === 'core') {
+          currentLevel--; // 核心被动等级减1
+        } else if (character.rank >= 5) {
+          currentLevel -= 4; // 5命以上减4
+        } else if (character.rank >= 3) {
+          currentLevel -= 2; // 3命以上减2
+        }
+
+        // 计算目标等级
+        let targetLevel = existingGoal?.[skillType]?.goal;
+        if (!targetLevel || targetLevel < currentLevel) {
+          targetLevel = currentLevel;
+        }
+
+        talents[skillType] = {
+          current: currentLevel,
+          goal: targetLevel || currentLevel
+        };
+      });
+
+      // 调用 addGoal 方法
+      if (typeof proxy.addGoal === 'function') {
+        proxy.addGoal({
+          type: "talent",
+          character: characterKey,
+          ...talents
+        });
+
+        console.log('✓ 角色天赋数据设置成功:', {
+          character: characterKey,
+          talents
+        });
+
+        return true;
+      } else {
+        console.warn('⚠️ addGoal 方法不存在');
+        return false;
+      }
+
+    } catch (error) {
+      console.error('❌ 设置角色天赋数据失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 设置武器数据
+   * @param data 角色数据（包含武器信息）
+   * @returns 是否设置成功
+   */
+  setWeapon(data: CharacterDataInput): boolean {
+    const proxy = this.getProxy();
+    if (!proxy) {
+      console.warn('⚠️ 无法获取组件 proxy 对象');
+      return false;
+    }
+
+    try {
+      const character = data.avatar || data;
+      const weapon = data.weapon;
+
+      // 查找角色在 characters 中的键名
+      const characterKey = Object.keys(proxy.characters || {}).find(key =>
+        proxy.characters[key].id === character.id
+      );
+
+      if (!characterKey) {
+        throw new Error("Character not found.");
+      }
+
+      // 查找现有武器目标
+      const existingGoal = (proxy.goals || []).find((goal: any) =>
+        goal.character === characterKey && goal.type === "weapon"
+      );
+
+      // 如果没有武器数据，移除现有目标
+      if (!weapon) {
+        if (existingGoal && typeof proxy.removeGoal === 'function') {
+          proxy.removeGoal(existingGoal);
+          console.log('✓ 移除武器目标成功');
+        }
+        return true;
+      }
+
+      // 计算当前武器数据
+      const currentAsc = this.getWeaponAsc(weapon);
+      const current = {
+        level: weapon.level,
+        asc: currentAsc
+      };
+
+      // 初始化目标数据
+      let goal = {
+        level: current.level,
+        asc: current.asc
+      };
+
+      // 查找现有武器信息和新武器信息
+      const existingWeapon = existingGoal ? this.weapons[existingGoal.weapon] : null;
+      const weaponKey = Object.keys(this.weapons).find(key =>
+        this.weapons[key].id === weapon.id
+      );
+      const newWeapon = weaponKey ? this.weapons[weaponKey] : null;
+
+      if (!weaponKey) {
+        throw new Error("Weapon not found.");
+      }
+
+      // 如果是同一把武器，保持现有目标
+      if (existingWeapon?.id === newWeapon?.id) {
+        goal.level = existingGoal.goal.level;
+        if (goal.level < current.level) {
+          goal.level = current.level;
+        }
+
+        goal.asc = existingGoal.goal.asc;
+        if (goal.asc < current.asc) {
+          goal.asc = current.asc;
+        }
+
+        // 处理可锻造武器的精炼等级
+        if (newWeapon?.craftable) {
+          (current as any).craft = weapon.star;
+          (goal as any).craft = existingGoal.goal.craft;
+          if ((goal as any).craft < (current as any).craft) {
+            (goal as any).craft = (current as any).craft;
+          }
+        }
+      } else {
+        // 不同武器，处理可锻造武器
+        if (newWeapon?.craftable) {
+          (current as any).craft = weapon.star;
+          (goal as any).craft = weapon.star;
+        }
+      }
+
+      // 调用 addGoal 方法
+      if (typeof proxy.addGoal === 'function') {
+        proxy.addGoal({
+          type: "weapon",
+          character: characterKey,
+          weapon: weaponKey,
+          current,
+          goal
+        });
+
+        console.log('✓ 武器数据设置成功:', {
+          character: characterKey,
+          weapon: weaponKey,
+          current,
+          goal
+        });
+
+        return true;
+      } else {
+        console.warn('⚠️ addGoal 方法不存在');
+        return false;
+      }
+
+    } catch (error) {
+      console.error('❌ 设置武器数据失败:', error);
+      return false;
+    }
+  }
+
+  /**
    * 重新初始化（当页面路由变化时调用）
    */
   refresh(): void {
@@ -486,9 +801,27 @@ export const setCharacter = (data: CharacterDataInput): boolean => {
   return seelieDataManager.setCharacter(data);
 };
 
+/**
+ * 设置角色天赋数据的便捷函数
+ * @param data 角色数据对象
+ */
+export const setTalents = (data: CharacterDataInput): boolean => {
+  return seelieDataManager.setTalents(data);
+};
+
+/**
+ * 设置武器数据的便捷函数
+ * @param data 角色数据对象（包含武器信息）
+ */
+export const setWeapon = (data: CharacterDataInput): boolean => {
+  return seelieDataManager.setWeapon(data);
+};
+
 // 挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
   (window as any).setResinData = setResinData;
   (window as any).setToast = setToast;
   (window as any).setCharacter = setCharacter;
+  (window as any).setTalents = setTalents;
+  (window as any).setWeapon = setWeapon;
 }
