@@ -41,15 +41,6 @@ export {
 export {
   resolveUserInfo,
   processBatches,
-  getElementName,
-  getProfessionName,
-  getSkillTypeName,
-  getEquipmentSlotName,
-  filterUnlockedAvatars,
-  groupAvatarsByElement,
-  groupAvatarsByProfession,
-  getSRankAvatars,
-  getARankAvatars
 } from './utils';
 
 // 将主要函数挂载到全局对象，方便调试
