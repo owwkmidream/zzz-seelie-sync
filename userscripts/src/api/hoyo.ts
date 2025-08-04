@@ -13,6 +13,17 @@ const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api';
 // 初始化请求标记
 let avatarUrlInitialized = false;
 
+// 用户信息缓存
+export interface UserInfo {
+  uid: string;
+  nickname: string;
+  level: number;
+  region: string;
+  accountId: string;
+}
+
+let userInfoCache: UserInfo | null = null;
+
 // 异步获取通用请求头
 async function getDefaultHeaders(): Promise<Record<string, string>> {
   const deviceInfo = await getDeviceInfo();
@@ -216,9 +227,9 @@ export enum EquipmentType {
 }
 
 /**
- * 获取nap_token
+ * 获取nap_token并缓存用户信息
  */
-async function initializeAvatarUrl(): Promise<void> {
+async function initializeNapToken(): Promise<void> {
   if (avatarUrlInitialized) {
     return;
   }
@@ -233,7 +244,23 @@ async function initializeAvatarUrl(): Promise<void> {
     if (!initResponse.ok) {
       console.warn(`⚠️ 初始化请求失败: HTTP ${initResponse.status}`);
     } else {
-      console.log('✅ nap_token cookie 初始化完成');
+      const data = await initResponse.json();
+
+      if (data.retcode === 0 && data.data) {
+        // 缓存用户信息
+        userInfoCache = {
+          uid: data.data.game_uid,
+          nickname: data.data.nickname,
+          level: data.data.level,
+          region: data.data.region,
+          accountId: data.data.account_id
+        };
+
+        console.log('✅ nap_token cookie 初始化完成');
+        console.log(`👤 用户信息: ${userInfoCache.nickname} (UID: ${userInfoCache.uid}, 等级: ${userInfoCache.level})`);
+      } else {
+        console.warn('⚠️ 用户信息获取失败:', data.message);
+      }
     }
 
     avatarUrlInitialized = true;
@@ -259,7 +286,7 @@ async function request<T = any>(
 
   // 如果是 AVATAR_URL 的请求，先进行初始化
   if (baseUrl === AVATAR_URL) {
-    await initializeAvatarUrl();
+    await initializeNapToken();
   }
 
   // 构建URL
@@ -314,13 +341,22 @@ async function request<T = any>(
 
 /**
  * 获取角色基础列表
- * @param uid 用户UID
+ * @param uid 用户UID，如果不提供则使用缓存的用户UID
  * @param region 服务器区域，默认国服
  */
 export async function getAvatarBasicList(
-  uid: string | number,
+  uid?: string | number,
   region: string = 'prod_gf_cn'
 ): Promise<AvatarBasicInfo[]> {
+  // 如果没有提供 uid，尝试使用缓存的用户信息
+  if (!uid && userInfoCache) {
+    uid = userInfoCache.uid;
+    region = userInfoCache.region;
+  }
+
+  if (!uid) {
+    throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息');
+  }
   const response = await request<{ list: AvatarBasicInfo[] }>('/user/avatar_basic_list', AVATAR_URL, {
     method: 'GET',
     params: { uid: String(uid), region }
@@ -331,15 +367,24 @@ export async function getAvatarBasicList(
 
 /**
  * 批量获取角色详细信息
- * @param uid 用户UID
+ * @param uid 用户UID，如果不提供则使用缓存的用户UID
  * @param avatarList 角色请求列表
  * @param region 服务器区域，默认国服
  */
 export async function batchGetAvatarDetail(
-  uid: string | number,
+  uid: string | number | undefined,
   avatarList: AvatarDetailRequest[],
   region: string = 'prod_gf_cn'
 ): Promise<AvatarDetail[]> {
+  // 如果没有提供 uid，尝试使用缓存的用户信息
+  if (!uid && userInfoCache) {
+    uid = userInfoCache.uid;
+    region = userInfoCache.region;
+  }
+
+  if (!uid) {
+    throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息');
+  }
   const batchSize = 10;
   // 如果列表长度大于10，分批处理
   if (avatarList.length > batchSize) {
@@ -369,14 +414,14 @@ export async function batchGetAvatarDetail(
 
 /**
  * 获取单个角色详细信息
- * @param uid 用户UID
  * @param avatarId 角色ID
+ * @param uid 用户UID，如果不提供则使用缓存的用户UID
  * @param region 服务器区域，默认国服
  * @param options 额外选项
  */
 export async function getAvatarDetail(
-  uid: string | number,
   avatarId: number,
+  uid?: string | number,
   region: string = 'prod_gf_cn',
   options: {
     is_teaser?: boolean;
@@ -384,6 +429,15 @@ export async function getAvatarDetail(
     teaser_sp_skill?: boolean;
   } = {}
 ): Promise<AvatarDetail> {
+  // 如果没有提供 uid，尝试使用缓存的用户信息
+  if (!uid && userInfoCache) {
+    uid = userInfoCache.uid;
+    region = userInfoCache.region;
+  }
+
+  if (!uid) {
+    throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息');
+  }
   const {
     is_teaser = false,
     teaser_need_weapon = false,
@@ -408,13 +462,22 @@ export async function getAvatarDetail(
 
 /**
  * 获取绝区零游戏便笺信息（体力等）
- * @param roleId 角色ID
+ * @param roleId 角色ID，如果不提供则使用缓存的用户UID
  * @param server 服务器，默认国服
  */
 export async function getGameNote(
-  roleId: string | number,
+  roleId?: string | number,
   server: string = 'prod_gf_cn'
 ): Promise<GameNoteData> {
+  // 如果没有提供 roleId，尝试使用缓存的用户信息
+  if (!roleId && userInfoCache) {
+    roleId = userInfoCache.uid;
+    server = userInfoCache.region;
+  }
+
+  if (!roleId) {
+    throw new Error('❌ 未提供角色ID且无法从缓存获取用户信息');
+  }
   const response = await request<GameNoteData>('/note', GAME_RECORD_URL, {
     method: 'GET',
     params: {
@@ -428,11 +491,11 @@ export async function getGameNote(
 
 /**
  * 获取体力信息
- * @param roleId 角色ID
+ * @param roleId 角色ID，如果不提供则使用缓存的用户UID
  * @param server 服务器，默认国服
  */
 export async function getEnergyInfo(
-  roleId: string | number,
+  roleId?: string | number,
   server: string = 'prod_gf_cn'
 ): Promise<EnergyInfo> {
   const gameNote = await getGameNote(roleId, server);
@@ -791,6 +854,22 @@ export function resetAvatarUrlInitialization(): void {
   console.log('🔄 已重置 AVATAR_URL 初始化状态');
 }
 
+/**
+ * 获取缓存的用户信息
+ */
+export function getUserInfo(): UserInfo | null {
+  return userInfoCache;
+}
+
+/**
+ * 清除用户信息缓存
+ */
+export function clearUserInfo(): void {
+  userInfoCache = null;
+  avatarUrlInitialized = false;
+  console.log('🗑️ 已清除用户信息缓存');
+}
+
 // 将主要函数挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
   (window as any).ZZZApi = {
@@ -816,6 +895,8 @@ if (typeof window !== 'undefined') {
     clearDeviceInfo,
     getCurrentDeviceInfo,
     refreshDeviceFingerprint,
-    resetAvatarUrlInitialization
+    resetAvatarUrlInitialization,
+    getUserInfo,
+    clearUserInfo
   };
 }
