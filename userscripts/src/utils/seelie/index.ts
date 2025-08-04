@@ -1,0 +1,84 @@
+// Seelie 工具类主入口文件
+
+import type { ResinDataInput, CharacterDataInput, SyncResult, BatchSyncResult, ToastType } from '../../types/seelie'
+import { CharacterManager } from './managers'
+
+/**
+ * Seelie 数据操作工具类
+ * 提供对 Vue 应用中数据的完整操作接口
+ */
+export class SeelieDataManager extends CharacterManager {
+  // 继承所有功能，无需额外实现
+}
+
+// 创建全局实例
+export const seelieDataManager = new SeelieDataManager()
+
+/**
+ * 设置树脂数据的便捷函数
+ */
+export const setResinData = (data: ResinDataInput): boolean => {
+  return seelieDataManager.setAccountResin(data)
+}
+
+/**
+ * 设置 Toast 消息的便捷函数
+ */
+export const setToast = (message: string, type: ToastType = 'success'): boolean => {
+  return seelieDataManager.setToast(message, type)
+}
+
+/**
+ * 设置角色数据的便捷函数
+ */
+export const setCharacter = (data: CharacterDataInput): boolean => {
+  return seelieDataManager.setCharacter(data)
+}
+
+/**
+ * 设置角色天赋数据的便捷函数
+ */
+export const setTalents = (data: CharacterDataInput): boolean => {
+  return seelieDataManager.setTalents(data)
+}
+
+/**
+ * 设置武器数据的便捷函数
+ */
+export const setWeapon = (data: CharacterDataInput): boolean => {
+  return seelieDataManager.setWeapon(data)
+}
+
+/**
+ * 同步单个角色完整数据的便捷函数
+ */
+export const syncCharacter = (data: CharacterDataInput): SyncResult => {
+  return seelieDataManager.syncCharacter(data)
+}
+
+/**
+ * 同步多个角色完整数据的便捷函数
+ */
+export const syncAllCharacters = (dataList: CharacterDataInput[]): BatchSyncResult => {
+  return seelieDataManager.syncAllCharacters(dataList)
+}
+
+// 挂载到全局对象，方便调试
+if (typeof window !== 'undefined') {
+  (window as any).setResinData = setResinData;
+  (window as any).setToast = setToast;
+  (window as any).setCharacter = setCharacter;
+  (window as any).setTalents = setTalents;
+  (window as any).setWeapon = setWeapon;
+  (window as any).syncCharacter = syncCharacter;
+  (window as any).syncAllCharacters = syncAllCharacters;
+}
+
+// 导出类型
+export type {
+  ResinDataInput,
+  CharacterDataInput,
+  SyncResult,
+  BatchSyncResult,
+  ToastType
+} from '../../types/seelie'

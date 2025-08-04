@@ -36,7 +36,7 @@ let debounceTimer: number | null = null;
 function traverseVNode(vnode: VNode, vueInstance?: any, depth = 0): void {
   if (!vnode) return;
 
-  const indent = '  '.repeat(depth);
+  // const indent = '  '.repeat(depth); // 用于调试输出，暂时注释
 
   // 如果当前 vnode 有 el 元素，挂载 __vue__ 属性
   if (vnode.el && vnode.el instanceof HTMLElement) {
@@ -72,7 +72,7 @@ function traverseVNode(vnode: VNode, vueInstance?: any, depth = 0): void {
   // 遍历 dynamicChildren
   if (vnode.dynamicChildren && Array.isArray(vnode.dynamicChildren)) {
     // console.log(`${indent}→ 遍历 dynamicChildren (${vnode.dynamicChildren.length} 个)`);
-    vnode.dynamicChildren.forEach((child, index) => {
+    vnode.dynamicChildren.forEach((child) => {
       if (child) {
         // console.log(`${indent}  [${index}]:`, child.type?.name || child.type || 'unknown');
         traverseVNode(child, child.component || vueInstance, depth + 1);
@@ -83,7 +83,7 @@ function traverseVNode(vnode: VNode, vueInstance?: any, depth = 0): void {
   // 遍历普通 children
   if (vnode.children && Array.isArray(vnode.children)) {
     // console.log(`${indent}→ 遍历 children (${vnode.children.length} 个)`);
-    vnode.children.forEach((child, index) => {
+    vnode.children.forEach((child) => {
       if (typeof child === 'object' && child !== null) {
         // console.log(`${indent}  [${index}]:`, (child as VNode).type?.name || (child as VNode).type || 'unknown');
         traverseVNode(child as VNode, vueInstance, depth + 1);
