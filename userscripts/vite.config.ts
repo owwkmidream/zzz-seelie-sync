@@ -49,7 +49,8 @@ export default defineConfig({
         connect: [
           'act-api-takumi.mihoyo.com',
           'api-takumi-record.mihoyo.com',
-          'public-data-api.mihoyo.com'
+          'public-data-api.mihoyo.com',
+          'api-takumi.mihoyo.com'
         ],
       },
       build: {
