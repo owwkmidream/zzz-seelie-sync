@@ -271,6 +271,16 @@ async function initializeNapToken(): Promise<void> {
   }
 }
 
+/**
+ * 确保用户信息已初始化
+ * 如果没有用户信息缓存，会自动调用初始化
+ */
+async function ensureUserInfo(): Promise<void> {
+  if (!userInfoCache) {
+    await initializeNapToken();
+  }
+}
+
 // 通用请求函数
 async function request<T = any>(
   endpoint: string,
@@ -348,14 +358,15 @@ export async function getAvatarBasicList(
   uid?: string | number,
   region: string = 'prod_gf_cn'
 ): Promise<AvatarBasicInfo[]> {
-  // 如果没有提供 uid，尝试使用缓存的用户信息
-  if (!uid && userInfoCache) {
-    uid = userInfoCache.uid;
-    region = userInfoCache.region;
-  }
-
+  // 如果没有提供 uid，确保用户信息已初始化并使用缓存的用户信息
   if (!uid) {
-    throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息');
+    await ensureUserInfo();
+    if (userInfoCache) {
+      uid = userInfoCache.uid;
+      region = userInfoCache.region;
+    } else {
+      throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息，请确保已登录米游社');
+    }
   }
   const response = await request<{ list: AvatarBasicInfo[] }>('/user/avatar_basic_list', AVATAR_URL, {
     method: 'GET',
@@ -376,14 +387,15 @@ export async function batchGetAvatarDetail(
   avatarList: AvatarDetailRequest[],
   region: string = 'prod_gf_cn'
 ): Promise<AvatarDetail[]> {
-  // 如果没有提供 uid，尝试使用缓存的用户信息
-  if (!uid && userInfoCache) {
-    uid = userInfoCache.uid;
-    region = userInfoCache.region;
-  }
-
+  // 如果没有提供 uid，确保用户信息已初始化并使用缓存的用户信息
   if (!uid) {
-    throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息');
+    await ensureUserInfo();
+    if (userInfoCache) {
+      uid = userInfoCache.uid;
+      region = userInfoCache.region;
+    } else {
+      throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息，请确保已登录米游社');
+    }
   }
   const batchSize = 10;
   // 如果列表长度大于10，分批处理
@@ -429,14 +441,15 @@ export async function getAvatarDetail(
     teaser_sp_skill?: boolean;
   } = {}
 ): Promise<AvatarDetail> {
-  // 如果没有提供 uid，尝试使用缓存的用户信息
-  if (!uid && userInfoCache) {
-    uid = userInfoCache.uid;
-    region = userInfoCache.region;
-  }
-
+  // 如果没有提供 uid，确保用户信息已初始化并使用缓存的用户信息
   if (!uid) {
-    throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息');
+    await ensureUserInfo();
+    if (userInfoCache) {
+      uid = userInfoCache.uid;
+      region = userInfoCache.region;
+    } else {
+      throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息，请确保已登录米游社');
+    }
   }
   const {
     is_teaser = false,
@@ -469,14 +482,15 @@ export async function getGameNote(
   roleId?: string | number,
   server: string = 'prod_gf_cn'
 ): Promise<GameNoteData> {
-  // 如果没有提供 roleId，尝试使用缓存的用户信息
-  if (!roleId && userInfoCache) {
-    roleId = userInfoCache.uid;
-    server = userInfoCache.region;
-  }
-
+  // 如果没有提供 roleId，确保用户信息已初始化并使用缓存的用户信息
   if (!roleId) {
-    throw new Error('❌ 未提供角色ID且无法从缓存获取用户信息');
+    await ensureUserInfo();
+    if (userInfoCache) {
+      roleId = userInfoCache.uid;
+      server = userInfoCache.region;
+    } else {
+      throw new Error('❌ 未提供角色ID且无法从缓存获取用户信息，请确保已登录米游社');
+    }
   }
   const response = await request<GameNoteData>('/note', GAME_RECORD_URL, {
     method: 'GET',
@@ -870,6 +884,15 @@ export function clearUserInfo(): void {
   console.log('🗑️ 已清除用户信息缓存');
 }
 
+/**
+ * 手动初始化用户信息
+ * 可以在使用其他API之前调用，确保用户信息已缓存
+ */
+export async function initializeUserInfo(): Promise<UserInfo | null> {
+  await ensureUserInfo();
+  return userInfoCache;
+}
+
 // 将主要函数挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
   (window as any).ZZZApi = {
@@ -897,6 +920,7 @@ if (typeof window !== 'undefined') {
     refreshDeviceFingerprint,
     resetAvatarUrlInitialization,
     getUserInfo,
-    clearUserInfo
+    clearUserInfo,
+    initializeUserInfo
   };
 }
