@@ -6,50 +6,49 @@
 function findVueRouter(): any {
   const appElement = document.querySelector('#app') as any;
 
-  if (!appElement?.__vue_app__?._context?.provides) {
-    console.error('❌ 未找到 Vue App 实例或 provides');
+  if (!appElement?.__vue_app__) {
+    console.error('❌ 未找到 Vue App 实例');
     return null;
   }
 
-  const provides = appElement.__vue_app__._context.provides;
   console.log('🔍 查找 Vue Router 实例...');
 
-  // 获取所有 Symbol 键
-  const symbols = Object.getOwnPropertySymbols(provides);
-  // console.log(`找到 ${symbols.length} 个 Symbol 属性`);
-
-  // 遍历所有 Symbol 属性，查找 Vue Router
-  for (const symbol of symbols) {
-    const value = provides[symbol];
-
-    // console.log(`检查 Symbol: ${symbol.toString()}`);
-    // console.log('值的类型:', typeof value);
-
-    // 检查是否是 Vue Router 实例
-    if (value && typeof value === 'object') {
-      const methods = Object.keys(value).filter(key => typeof value[key] === 'function');
-      // console.log('对象方法:', methods);
-
-      // Vue Router 通常有这些方法
-      if (typeof value.afterEach === 'function' &&
-        typeof value.beforeEach === 'function' &&
-        typeof value.push === 'function') {
-        // console.log('✓ 找到 Vue Router 实例:', symbol.toString());
-        console.log('Router 实例:', value);
-        return value;
-      }
+  // 首选方法：直接从 __vue_app__.config.globalProperties.$router 获取
+  const router = appElement.__vue_app__.config?.globalProperties?.$router;
+  if (router) {
+    if (typeof router.afterEach === 'function' &&
+      typeof router.beforeEach === 'function' &&
+      typeof router.push === 'function') {
+      console.log('✓ 从 __vue_app__.config.globalProperties.$router 找到 Router 实例');
+      console.log('Router 实例:', router);
+      return router;
     }
   }
 
-  // 备用方法：尝试从全局对象查找
-  console.log('🔍 尝试备用方法查找 Router...');
+  // 备选方法：从 _context.provides 中查找
+  const context = appElement.__vue_app__._context;
+  if (context?.provides) {
+    console.log('🔍 尝试从 provides 查找 Router...');
+    const provides = context.provides;
 
-  // 检查是否有全局的 router 实例
-  if (typeof window !== 'undefined') {
-    const globalRouter = (window as any).$router || (window as any).router;
-    if (globalRouter && typeof globalRouter.afterEach === 'function') {
-      console.log('✓ 从全局对象找到 Router 实例');
-      return globalRouter;
+    // 获取所有 Symbol 键
+    const symbols = Object.getOwnPropertySymbols(provides);
+
+    // 遍历所有 Symbol 属性，查找 Vue Router
+    for (const symbol of symbols) {
+      const value = provides[symbol];
+
+      // 检查是否是 Vue Router 实例
+      if (value && typeof value === 'object') {
+        // Vue Router 通常有这些方法
+        if (typeof value.afterEach === 'function' &&
+          typeof value.beforeEach === 'function' &&
+          typeof value.push === 'function') {
+          console.log('✓ 从 provides 找到 Router 实例:', symbol.toString());
+          console.log('Router 实例:', value);
+          return value;
+        }
+      }
     }
   }
 
@@ -138,7 +137,7 @@ export function useRouterRerun(
   const { delay = 100, immediate = true } = options;
 
   return useRouterWatcher(
-    (to, from) => {
+    () => {
       console.log('🔄 路由变化，重新执行函数...');
       fn();
     },
