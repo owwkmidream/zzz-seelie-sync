@@ -46,7 +46,11 @@ export default defineConfig({
         // GM API 权限
         grant: ['GM.xmlHttpRequest'],
         // 允许跨域请求到米哈游API
-        connect: ['act-api-takumi.mihoyo.com'],
+        connect: [
+          'act-api-takumi.mihoyo.com',
+          'api-takumi-record.mihoyo.com',
+          'public-data-api.mihoyo.com'
+        ],
       },
       build: {
         autoGrant: true, // 自动检测并添加 @grant
