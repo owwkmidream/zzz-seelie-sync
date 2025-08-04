@@ -205,13 +205,13 @@ class SeelieDataManager {
    * @returns accountResin 的当前值
    */
   getAccountResin(): any {
-    const ctx = this.getContext();
-    if (!ctx) {
-      console.warn('⚠️ 无法获取组件上下文');
+    const proxy = this.getProxy();
+    if (!proxy) {
+      console.warn('⚠️ 无法获取组件 proxy 对象');
       return null;
     }
 
-    const accountResin = ctx.accountResin;
+    const accountResin = proxy.accountResin;
     console.log('📖 获取 accountResin:', accountResin);
     return accountResin;
   }
@@ -222,19 +222,19 @@ class SeelieDataManager {
    * @returns 是否设置成功
    */
   setAccountResin(value: ResinDataInput): boolean {
-    const ctx = this.getContext();
-    if (!ctx) {
-      console.warn('⚠️ 无法获取组件上下文');
+    const proxy = this.getProxy();
+    if (!proxy) {
+      console.warn('⚠️ 无法获取组件 proxy 对象');
       return false;
     }
 
     try {
-      const oldValue = ctx.accountResin;
+      const oldValue = proxy.accountResin;
 
       // 转换输入参数为 accountResin 格式
       const convertedValue = this.convertToAccountResinFormat(value);
 
-      ctx.accountResin = convertedValue;
+      proxy.accountResin = convertedValue;
 
       console.log('✏️ 设置 accountResin:', {
         oldValue,
@@ -289,16 +289,16 @@ class SeelieDataManager {
    * @returns 组件上下文的详细信息
    */
   getContextInfo(): any {
-    const ctx = this.getContext();
-    if (!ctx) {
+    const proxy = this.getProxy();
+    if (!proxy) {
       return null;
     }
 
     return {
-      keys: Object.keys(ctx),
-      accountResin: ctx.accountResin,
-      hasAccountResin: 'accountResin' in ctx,
-      contextType: typeof ctx
+      keys: Object.keys(proxy),
+      accountResin: proxy.accountResin,
+      hasAccountResin: 'accountResin' in proxy,
+      contextType: typeof proxy
     };
   }
 
@@ -374,9 +374,9 @@ class SeelieDataManager {
    * @returns 是否设置成功
    */
   setCharacter(data: CharacterDataInput): boolean {
-    const ctx = this.getContext();
-    if (!ctx) {
-      console.warn('⚠️ 无法获取组件上下文');
+    const proxy = this.getProxy();
+    if (!proxy) {
+      console.warn('⚠️ 无法获取组件 proxy 对象');
       return false;
     }
 
@@ -384,8 +384,8 @@ class SeelieDataManager {
       const character = data.avatar || data;
 
       // 查找角色在 characters 中的键名
-      const characterKey = Object.keys(ctx.characters || {}).find(key =>
-        ctx.characters[key].id === character.id
+      const characterKey = Object.keys(proxy.characters || {}).find(key =>
+        proxy.characters[key].id === character.id
       );
 
       if (!characterKey) {
@@ -393,7 +393,7 @@ class SeelieDataManager {
       }
 
       // 查找现有目标
-      const existingGoal = (ctx.goals || []).find((goal: any) =>
+      const existingGoal = (proxy.goals || []).find((goal: any) =>
         goal.character === characterKey && goal.type === "character"
       );
 
@@ -411,8 +411,8 @@ class SeelieDataManager {
       }
 
       // 调用 addGoal 方法
-      if (typeof ctx.addGoal === 'function') {
-        ctx.addGoal({
+      if (typeof proxy.addGoal === 'function') {
+        proxy.addGoal({
           type: "character",
           character: characterKey,
           cons: character.rank,
