@@ -3,6 +3,7 @@
 import { initVNodeTraversal, startVNodeTraversal } from './utils/vnodeTraverser';
 import { useRouterWatcher } from './utils/useRouterWatcher';
 import { RouteButtonManager } from './utils/buttonInjector';
+import { seelieDataManager } from './utils/seelie';
 
 /**
  * 初始化应用
@@ -25,6 +26,9 @@ export function initApp(): void {
       console.log('🔄 路由变化，重新执行功能...');
       startVNodeTraversal();
 
+      // 刷新 seelie 数据管理器
+      seelieDataManager.refresh();
+
       // 处理按钮注入
       buttonManager.onRouteChange(to?.path || '');
     }, {
@@ -36,6 +40,7 @@ export function initApp(): void {
     if (typeof window !== 'undefined') {
       (window as any).unwatchRouter = unwatch;
       (window as any).buttonManager = buttonManager;
+      (window as any).seelieDataManager = seelieDataManager;
     }
   }, 500); // 延迟 500ms 确保 Router 完全初始化
 }
