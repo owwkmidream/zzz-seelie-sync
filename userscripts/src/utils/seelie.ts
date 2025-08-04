@@ -75,6 +75,16 @@ class SeelieDataManager {
   }
 
   /**
+   * 获取根组件的 proxy 对象
+   */
+  private getProxy(): any {
+    if (!this.ensureInitialized()) {
+      return null;
+    }
+    return this.rootComponent.proxy;
+  }
+
+  /**
    * 获取 accountResin 属性值
    * @returns accountResin 的当前值
    */
@@ -177,6 +187,35 @@ class SeelieDataManager {
   }
 
   /**
+   * 设置 Toast 消息
+   * @param message Toast 消息内容
+   * @param type Toast 类型: 'error' | 'warning' | 'success'
+   * @returns 是否设置成功
+   */
+  setToast(message: string, type: 'error' | 'warning' | 'success' = 'success'): boolean {
+    const proxy = this.getProxy();
+    if (!proxy) {
+      console.warn('⚠️ 无法获取组件 proxy 对象');
+      return false;
+    }
+
+    try {
+      proxy.toast = message;
+      proxy.toastType = type;
+
+      console.log('🍞 设置 Toast:', {
+        message,
+        type
+      });
+
+      return true;
+    } catch (error) {
+      console.error('❌ 设置 Toast 失败:', error);
+      return false;
+    }
+  }
+
+  /**
    * 重新初始化（当页面路由变化时调用）
    */
   refresh(): void {
@@ -198,7 +237,17 @@ export const setResinData = (data: ResinDataInput): boolean => {
   return seelieDataManager.setAccountResin(data);
 };
 
+/**
+ * 设置 Toast 消息的便捷函数
+ * @param message Toast 消息内容
+ * @param type Toast 类型: 'error' | 'warning' | 'success'
+ */
+export const setToast = (message: string, type: 'error' | 'warning' | 'success' = 'success'): boolean => {
+  return seelieDataManager.setToast(message, type);
+};
+
 // 挂载到全局对象，方便调试
 if (typeof window !== 'undefined') {
   (window as any).setResinData = setResinData;
+  (window as any).setToast = setToast;
 }
