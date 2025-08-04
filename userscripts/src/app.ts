@@ -1,6 +1,6 @@
 // 应用主逻辑
 
-import { initVNodeTraversal, startVNodeTraversal } from './utils/vnodeTraverser';
+import { initVNodeTraversal } from './utils/vnodeTraverser';
 import { useRouterWatcher } from './utils/useRouterWatcher';
 import { RouteButtonManager } from './utils/buttonInjector';
 import './utils/seelie';
