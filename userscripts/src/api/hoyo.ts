@@ -10,12 +10,16 @@ const AVATAR_URL = 'https://act-api-takumi.mihoyo.com/event/nap_cultivate_tool';
 const GAME_RECORD_URL = 'https://api-takumi-record.mihoyo.com/event/game_record_zzz/api/zzz';
 const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api';
 
-// 通用请求头
-const DEFAULT_HEADERS = {
-  'content-type': 'application/json',
-  'x-rpc-device_fp': getDeviceFp(),
-  'x-rpc-device_id': getDeviceId(),
-};
+// 异步获取通用请求头
+async function getDefaultHeaders(): Promise<Record<string, string>> {
+  const deviceInfo = await getDeviceInfo();
+
+  return {
+    'content-type': 'application/json',
+    'x-rpc-device_fp': deviceInfo.deviceFp,
+    'x-rpc-device_id': deviceInfo.deviceId,
+  };
+}
 
 // 类型定义
 
@@ -230,13 +234,17 @@ async function request<T = any>(
     });
     url += `?${searchParams.toString()}`;
   }
-  
-  // 合并请求头
+
+  // 异步获取并合并请求头
+  const defaultHeaders = await getDefaultHeaders();
   const finalHeaders = {
-    ...DEFAULT_HEADERS,
+    ...defaultHeaders,
     ...headers
   };
-  if (DEFAULT_HEADERS['x-rpc-device_fp'] === '0000000000000') throw '❌ fp有误，请检查';
+
+  if (finalHeaders['x-rpc-device_fp'] === '0000000000000') {
+    throw new Error('❌ 设备指纹有误，请检查');
+  }
   console.log(`🌐 请求 ${method} ${url}`);
 
   try {
@@ -461,55 +469,82 @@ export function generateHexString(length: number): string {
   return result;
 }
 
+// 设备信息缓存，避免重复获取
+let deviceInfoCache: DeviceInfo | null = null;
+let deviceInfoPromise: Promise<DeviceInfo> | null = null;
+
 /**
- * 获取或生成设备信息（同步）
+ * 获取或生成设备信息（异步）
  */
-function getDeviceInfo(): DeviceInfo {
-  // 尝试从localStorage获取完整设备信息
-  const stored = localStorage.getItem(DEVICE_INFO_KEY);
-  if (stored) {
-    try {
-      const deviceInfo: DeviceInfo = JSON.parse(stored);
-      console.log('📱 从localStorage获取设备信息:', deviceInfo);
-      return deviceInfo;
-    } catch (error) {
-      console.warn('⚠️ 解析设备信息失败，将重新生成:', error);
-    }
+async function getDeviceInfo(): Promise<DeviceInfo> {
+  // 如果已有缓存，直接返回
+  if (deviceInfoCache) {
+    return deviceInfoCache;
   }
 
-  // 生成新的设备信息
-  const newDeviceId = generateUUID();
-  const deviceInfo: DeviceInfo = {
-    deviceId: newDeviceId,
-    deviceFp: '0000000000000',
-    timestamp: Date.now()
-  };
+  // 如果正在获取中，等待现有的 Promise
+  if (deviceInfoPromise) {
+    return deviceInfoPromise;
+  }
 
-  // 异步获取真实设备指纹并更新
-  getDeviceFingerprint(newDeviceId).then(realFp => {
-    deviceInfo.deviceFp = realFp;
-    localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(deviceInfo));
-    console.log('📱 生成新设备信息:', deviceInfo);
-  }).catch(error => {
-    console.error('❌ 获取设备指纹失败:', error);
-  });
+  // 创建新的获取 Promise
+  deviceInfoPromise = (async () => {
+    // 尝试从localStorage获取完整设备信息
+    const stored = localStorage.getItem(DEVICE_INFO_KEY);
+    if (stored) {
+      try {
+        const deviceInfo: DeviceInfo = JSON.parse(stored);
+        console.log('📱 从localStorage获取设备信息:', deviceInfo);
 
-  return deviceInfo;
+        // 检查设备指纹是否有效
+        if (deviceInfo.deviceFp && deviceInfo.deviceFp !== '0000000000000') {
+          deviceInfoCache = deviceInfo;
+          return deviceInfo;
+        }
+      } catch (error) {
+        console.warn('⚠️ 解析设备信息失败，将重新生成:', error);
+      }
+    }
+
+    // 生成新的设备信息
+    const newDeviceId = generateUUID();
+    console.log('🔄 生成新设备ID:', newDeviceId);
+
+    try {
+      // 异步获取真实设备指纹
+      const realFp = await getDeviceFingerprint(newDeviceId);
+
+      const deviceInfo: DeviceInfo = {
+        deviceId: newDeviceId,
+        deviceFp: realFp,
+        timestamp: Date.now()
+      };
+
+      // 保存到localStorage
+      localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(deviceInfo));
+      console.log('📱 生成新设备信息:', deviceInfo);
+
+      deviceInfoCache = deviceInfo;
+      return deviceInfo;
+    } catch (error) {
+      console.error('❌ 获取设备指纹失败:', error);
+
+      // 如果获取失败，使用临时设备信息
+      const fallbackInfo: DeviceInfo = {
+        deviceId: newDeviceId,
+        deviceFp: '0000000000000',
+        timestamp: Date.now()
+      };
+
+      deviceInfoCache = fallbackInfo;
+      return fallbackInfo;
+    }
+  })();
+
+  return deviceInfoPromise;
 }
 
-/**
- * 获取设备ID
- */
-function getDeviceId(): string {
-  return getDeviceInfo().deviceId;
-}
 
-/**
- * 获取设备指纹
- */
-function getDeviceFp(): string {
-  return getDeviceInfo().deviceFp;
-}
 
 /**
  * 获取属性类型名称
@@ -655,32 +690,42 @@ export function getEnergyProgress(energy: EnergyInfo): number {
  */
 export function clearDeviceInfo(): void {
   localStorage.removeItem(DEVICE_INFO_KEY);
-  console.log('🗑️ 已清除localStorage设备信息');
+  // 清除缓存
+  deviceInfoCache = null;
+  deviceInfoPromise = null;
+  console.log('🗑️ 已清除localStorage设备信息和缓存');
 }
 
 /**
  * 获取当前设备信息（用于调试）
  */
-export function getCurrentDeviceInfo(): DeviceInfo {
-  return getDeviceInfo();
+export async function getCurrentDeviceInfo(): Promise<DeviceInfo> {
+  return await getDeviceInfo();
 }
 
 /**
  * 强制刷新设备指纹
  */
-export function refreshDeviceFingerprint(): Promise<void> {
-  const deviceInfo = getDeviceInfo();
+export async function refreshDeviceFingerprint(): Promise<void> {
+  const deviceInfo = await getDeviceInfo();
   console.log('🔄 开始刷新设备指纹...');
 
-  return getDeviceFingerprint(deviceInfo.deviceId).then(newFp => {
+  try {
+    const newFp = await getDeviceFingerprint(deviceInfo.deviceId);
     const updatedInfo: DeviceInfo = {
       ...deviceInfo,
       deviceFp: newFp,
       timestamp: Date.now()
     };
+
     localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(updatedInfo));
+    // 更新缓存
+    deviceInfoCache = updatedInfo;
     console.log('✅ 设备指纹刷新完成:', updatedInfo);
-  });
+  } catch (error) {
+    console.error('❌ 刷新设备指纹失败:', error);
+    throw error;
+  }
 }
 
 // 将主要函数挂载到全局对象，方便调试
