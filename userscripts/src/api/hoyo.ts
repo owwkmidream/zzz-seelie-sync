@@ -2,9 +2,16 @@
 
 import GM_fetch from '@trim21/gm-fetch';
 
+// 本地存储键名
+const STORAGE_KEYS = {
+  DEVICE_ID: 'zzz_device_id',
+  DEVICE_FP: 'zzz_device_fp'
+} as const;
+
 // 基础配置
 const AVATAR_URL = 'https://act-api-takumi.mihoyo.com/event/nap_cultivate_tool';
 const GAME_RECORD_URL = 'https://api-takumi-record.mihoyo.com/event/game_record_zzz/api/zzz';
+const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api';
 
 // 通用请求头
 const DEFAULT_HEADERS = {
@@ -69,6 +76,17 @@ export interface EnergyInfo {
 export interface GameNoteData {
   energy: EnergyInfo;
   // 可以根据实际返回数据添加更多字段
+}
+
+// 设备指纹相关类型定义
+export interface DeviceFpRequest {
+  device_id: string;
+  seed_id: string;
+  seed_time: string;
+  platform: string;
+  device_fp: string;
+  app_name: string;
+  ext_fields: string;
 }
 
 export interface Property {
@@ -353,7 +371,90 @@ export async function getEnergyInfo(
   return gameNote.energy;
 }
 
+/**
+ * 获取设备指纹
+ * @param deviceId 设备ID
+ * @returns 设备指纹信息
+ */
+export async function getDeviceFingerprint(deviceId: string): Promise<string> {
+
+  const requestBody: DeviceFpRequest = {
+    device_id: deviceId,
+    seed_id: generateUUID(),
+    seed_time: Date.now().toString(),
+    platform: '4',
+    device_fp: generateHexString(13),
+    app_name: 'bbs_cn',
+    ext_fields: JSON.stringify({
+      userAgent: navigator.userAgent
+    })
+  };
+
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+
+  console.log(`🔐 获取设备指纹，设备ID: ${deviceId}`);
+
+  try {
+    const response = await GM_fetch(`${DEVICE_FP_URL}/getFp`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data: ApiResponse<{ device_fp: string }> = await response.json();
+
+    if (data.retcode !== 0) {
+      throw new Error(`设备指纹获取失败 ${data.retcode}: ${data.message}`);
+    }
+
+    console.log(`✅ 设备指纹获取成功: ${data.data.device_fp}`);
+    return data.data.device_fp;
+
+  } catch (error) {
+    console.error(`❌ 设备指纹获取失败:`, error);
+    throw error;
+  }
+}
+
 // 工具函数
+
+/**
+ * 生成 UUID v4 字符串
+ * @returns UUID v4 格式的字符串
+ */
+export function generateUUID(): string {
+  // 使用 crypto.randomUUID() 如果可用（现代浏览器）
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  // 回退方案：手动生成 UUID v4
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+/**
+ * 生成指定长度的十六进制字符串
+ * @param length 字符串长度
+ * @returns 十六进制字符串
+ */
+export function generateHexString(length: number): string {
+  const chars = '0123456789abcdef';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
+}
 
 /**
  * 获取属性类型名称
@@ -502,6 +603,9 @@ if (typeof window !== 'undefined') {
     getAvatarDetail,
     getGameNote,
     getEnergyInfo,
+    getDeviceFingerprint,
+    generateUUID,
+    generateHexString,
     getElementName,
     getProfessionName,
     getSkillTypeName,
