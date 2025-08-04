@@ -477,9 +477,7 @@ function getDeviceInfo(): DeviceInfo {
     }
   }
 
-  // 生成新设备信息
-
-  // // 生成新的设备信息
+  // 生成新的设备信息
   const newDeviceId = generateUUID();
   const deviceInfo: DeviceInfo = {
     deviceId: newDeviceId,
@@ -487,7 +485,7 @@ function getDeviceInfo(): DeviceInfo {
     timestamp: Date.now()
   };
 
-  // // 异步获取真实设备指纹并更新
+  // 异步获取真实设备指纹并更新
   getDeviceFingerprint(newDeviceId).then(realFp => {
     deviceInfo.deviceFp = realFp;
     localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(deviceInfo));
