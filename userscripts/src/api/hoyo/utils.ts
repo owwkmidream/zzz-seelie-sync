@@ -1,122 +1,63 @@
-// 米哈游绝区零API工具函数
+// 米哈游绝区零API通用工具函数
 
-import type {
-  AvatarBasicInfo
-} from './types';
+import { ensureUserInfo, getUserInfo } from './client';
 
 /**
- * 获取属性类型名称
+ * 获取用户信息的通用处理函数
+ * 如果提供了 uid，直接使用；否则从缓存获取
+ * @param uid 用户提供的UID
+ * @param region 用户提供的区域
+ * @returns 处理后的用户信息
  */
-export function getElementName(elementType: number): string {
-  const elementNames: Record<number, string> = {
-    200: '物理', // ElementType.Physical
-    201: '火',   // ElementType.Fire
-    202: '冰',   // ElementType.Ice
-    203: '电',   // ElementType.Electric
-    205: '以太'  // ElementType.Ether
-  };
-  return elementNames[elementType] || '未知';
+export async function resolveUserInfo(
+  uid?: string | number,
+  region?: string
+): Promise<{ uid: string; region: string }> {
+  // 如果提供了 uid，直接使用
+  if (uid) {
+    return {
+      uid: String(uid),
+      region: region || 'prod_gf_cn'
+    };
+  }
+
+  // 如果没有提供 uid，确保用户信息已初始化并使用缓存的用户信息
+  await ensureUserInfo();
+  const userInfoCache = getUserInfo();
+
+  if (userInfoCache) {
+    return {
+      uid: userInfoCache.uid,
+      region: region || userInfoCache.region
+    };
+  }
+
+  throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息，请确保已登录米游社');
 }
 
 /**
- * 获取职业类型名称
+ * 分批处理数组的通用函数
+ * @param items 要处理的数组
+ * @param batchSize 每批的大小
+ * @param processor 处理函数，接收一批数据并返回处理结果
+ * @returns 所有批次的处理结果合并后的数组
  */
-export function getProfessionName(profession: number): string {
-  const professionNames: Record<number, string> = {
-    1: '攻击', // AvatarProfession.Attack
-    2: '击破', // AvatarProfession.Stun
-    3: '异常', // AvatarProfession.Anomaly
-    4: '支援', // AvatarProfession.Support
-    5: '防护', // AvatarProfession.Defense
-    6: '命破'  // AvatarProfession.Rupture
-  };
-  return professionNames[profession] || '未知';
-}
+export async function processBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  processor: (batch: T[]) => Promise<R[]>
+): Promise<R[]> {
+  if (items.length <= batchSize) {
+    return processor(items);
+  }
 
-/**
- * 获取技能类型名称
- */
-export function getSkillTypeName(skillType: number): string {
-  const skillTypeNames: Record<number, string> = {
-    0: '普通攻击', // SkillType.NormalAttack
-    1: '特殊技',   // SkillType.SpecialSkill
-    2: '闪避技能', // SkillType.Dodge
-    3: '连携技',   // SkillType.Chain
-    5: '核心被动', // SkillType.CorePassive
-    6: '支援技能'  // SkillType.SupportSkill
-  };
-  return skillTypeNames[skillType] || '未知技能';
-}
+  const results: R[] = [];
 
-/**
- * 获取装备位置名称
- */
-export function getEquipmentSlotName(slotType: number): string {
-  const slotNames: Record<number, string> = {
-    1: '1号位驱动盘', // EquipmentType.Slot1
-    2: '2号位驱动盘', // EquipmentType.Slot2
-    3: '3号位驱动盘', // EquipmentType.Slot3
-    4: '4号位驱动盘', // EquipmentType.Slot4
-    5: '5号位驱动盘', // EquipmentType.Slot5
-    6: '6号位驱动盘'  // EquipmentType.Slot6
-  };
-  return slotNames[slotType] || '未知位置';
-}/**
- * 
-筛选已解锁的角色
- */
-export function filterUnlockedAvatars(avatarList: AvatarBasicInfo[]): AvatarBasicInfo[] {
-  return avatarList.filter(item => item.unlocked);
-}
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await processor(batch);
+    results.push(...batchResults);
+  }
 
-/**
- * 按属性分组角色
- */
-export function groupAvatarsByElement(avatarList: AvatarBasicInfo[]): Record<string, AvatarBasicInfo[]> {
-  const groups: Record<string, AvatarBasicInfo[]> = {};
-
-  avatarList.forEach(item => {
-    if (item.unlocked) {
-      const elementName = getElementName(item.avatar.element_type);
-      if (!groups[elementName]) {
-        groups[elementName] = [];
-      }
-      groups[elementName].push(item);
-    }
-  });
-
-  return groups;
-}
-
-/**
- * 按职业分组角色
- */
-export function groupAvatarsByProfession(avatarList: AvatarBasicInfo[]): Record<string, AvatarBasicInfo[]> {
-  const groups: Record<string, AvatarBasicInfo[]> = {};
-
-  avatarList.forEach(item => {
-    if (item.unlocked) {
-      const professionName = getProfessionName(item.avatar.avatar_profession);
-      if (!groups[professionName]) {
-        groups[professionName] = [];
-      }
-      groups[professionName].push(item);
-    }
-  });
-
-  return groups;
-}
-
-/**
- * 获取S级角色列表
- */
-export function getSRankAvatars(avatarList: AvatarBasicInfo[]): AvatarBasicInfo[] {
-  return avatarList.filter(item => item.unlocked && item.avatar.rarity === 'S');
-}
-
-/**
- * 获取A级角色列表
- */
-export function getARankAvatars(avatarList: AvatarBasicInfo[]): AvatarBasicInfo[] {
-  return avatarList.filter(item => item.unlocked && item.avatar.rarity === 'A');
+  return results;
 }

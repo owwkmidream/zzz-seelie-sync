@@ -1,7 +1,8 @@
 // 米哈游绝区零游戏便笺API
 
 import type { GameNoteData, EnergyInfo } from './types';
-import { request, ensureUserInfo, getUserInfo, GAME_RECORD_URL } from './client';
+import { request, GAME_RECORD_URL } from './client';
+import { resolveUserInfo } from './utils';
 
 /**
  * 获取绝区零游戏便笺信息（体力等）
@@ -10,24 +11,15 @@ import { request, ensureUserInfo, getUserInfo, GAME_RECORD_URL } from './client'
  */
 export async function getGameNote(
   roleId?: string | number,
-  server: string = 'prod_gf_cn'
+  server?: string
 ): Promise<GameNoteData> {
-  // 如果没有提供 roleId，确保用户信息已初始化并使用缓存的用户信息
-  if (!roleId) {
-    await ensureUserInfo();
-    const userInfoCache = getUserInfo();
-    if (userInfoCache) {
-      roleId = userInfoCache.uid;
-      server = userInfoCache.region;
-    } else {
-      throw new Error('❌ 未提供角色ID且无法从缓存获取用户信息，请确保已登录米游社');
-    }
-  }
+  const userInfo = await resolveUserInfo(roleId, server);
+
   const response = await request<GameNoteData>('/note', GAME_RECORD_URL, {
     method: 'GET',
     params: {
-      server,
-      role_id: String(roleId)
+      server: userInfo.region,
+      role_id: userInfo.uid
     }
   });
 
@@ -41,7 +33,7 @@ export async function getGameNote(
  */
 export async function getEnergyInfo(
   roleId?: string | number,
-  server: string = 'prod_gf_cn'
+  server?: string
 ): Promise<EnergyInfo> {
   const gameNote = await getGameNote(roleId, server);
   return gameNote.energy;

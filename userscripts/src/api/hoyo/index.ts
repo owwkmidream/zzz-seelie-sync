@@ -39,6 +39,8 @@ export {
 
 // 工具函数
 export {
+  resolveUserInfo,
+  processBatches,
   getElementName,
   getProfessionName,
   getSkillTypeName,

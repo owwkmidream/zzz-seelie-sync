@@ -5,7 +5,8 @@ import type {
   AvatarDetail,
   AvatarDetailRequest
 } from './types';
-import { request, ensureUserInfo, getUserInfo, AVATAR_URL } from './client';
+import { request, AVATAR_URL } from './client';
+import { resolveUserInfo, processBatches } from './utils';
 
 /**
  * 获取角色基础列表
@@ -14,22 +15,13 @@ import { request, ensureUserInfo, getUserInfo, AVATAR_URL } from './client';
  */
 export async function getAvatarBasicList(
   uid?: string | number,
-  region: string = 'prod_gf_cn'
+  region?: string
 ): Promise<AvatarBasicInfo[]> {
-  // 如果没有提供 uid，确保用户信息已初始化并使用缓存的用户信息
-  if (!uid) {
-    await ensureUserInfo();
-    const userInfoCache = getUserInfo();
-    if (userInfoCache) {
-      uid = userInfoCache.uid;
-      region = userInfoCache.region;
-    } else {
-      throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息，请确保已登录米游社');
-    }
-  }
+  const userInfo = await resolveUserInfo(uid, region);
+
   const response = await request<{ list: AvatarBasicInfo[] }>('/user/avatar_basic_list', AVATAR_URL, {
     method: 'GET',
-    params: { uid: String(uid), region }
+    params: { uid: userInfo.uid, region: userInfo.region }
   });
 
   return response.data.list;
@@ -44,44 +36,23 @@ export async function getAvatarBasicList(
 export async function batchGetAvatarDetail(
   uid: string | number | undefined,
   avatarList: AvatarDetailRequest[],
-  region: string = 'prod_gf_cn'
+  region?: string
 ): Promise<AvatarDetail[]> {
-  // 如果没有提供 uid，确保用户信息已初始化并使用缓存的用户信息
-  if (!uid) {
-    await ensureUserInfo();
-    const userInfoCache = getUserInfo();
-    if (userInfoCache) {
-      uid = userInfoCache.uid;
-      region = userInfoCache.region;
-    } else {
-      throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息，请确保已登录米游社');
-    }
-  }
-  const batchSize = 10;
-  // 如果列表长度大于10，分批处理
-  if (avatarList.length > batchSize) {
-    const results: AvatarDetail[] = [];
+  const userInfo = await resolveUserInfo(uid, region);
 
-    for (let i = 0; i < avatarList.length; i += batchSize) {
-      const batch = avatarList.slice(i, i + batchSize);
+  // 使用通用分批处理函数
+  return processBatches(
+    avatarList,
+    10,
+    async (batch) => {
       const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', AVATAR_URL, {
         method: 'POST',
-        params: { uid: String(uid), region },
+        params: { uid: userInfo.uid, region: userInfo.region },
         body: { avatar_list: batch }
       });
-      results.push(...response.data.list);
+      return response.data.list;
     }
-
-    return results;
-  }
-
-  const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', AVATAR_URL, {
-    method: 'POST',
-    params: { uid: String(uid), region },
-    body: { avatar_list: avatarList }
-  });
-
-  return response.data.list;
+  );
 }
 
 /**
@@ -94,24 +65,13 @@ export async function batchGetAvatarDetail(
 export async function getAvatarDetail(
   avatarId: number,
   uid?: string | number,
-  region: string = 'prod_gf_cn',
+  region?: string,
   options: {
     is_teaser?: boolean;
     teaser_need_weapon?: boolean;
     teaser_sp_skill?: boolean;
   } = {}
 ): Promise<AvatarDetail> {
-  // 如果没有提供 uid，确保用户信息已初始化并使用缓存的用户信息
-  if (!uid) {
-    await ensureUserInfo();
-    const userInfoCache = getUserInfo();
-    if (userInfoCache) {
-      uid = userInfoCache.uid;
-      region = userInfoCache.region;
-    } else {
-      throw new Error('❌ 未提供 UID 且无法从缓存获取用户信息，请确保已登录米游社');
-    }
-  }
   const {
     is_teaser = false,
     teaser_need_weapon = false,
