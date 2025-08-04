@@ -12,21 +12,18 @@ import './api/hoyo';
 export function initApp(): void {
   console.log('🎯 Vue 3 VNode 遍历脚本已加载 - 目标: https://zzz.seelie.me/*');
 
-  // 初始化 VNode 遍历
+  // 初始化 VNode 遍历（通过全局 mixin 自动处理）
   initVNodeTraversal();
 
   // 创建按钮管理器
   const buttonManager = new RouteButtonManager();
 
-  // 设置路由监听
+  // 设置路由监听（仅用于按钮注入）
   setTimeout(() => {
-    console.log('🚦 设置路由监听...');
+    console.log('🚦 设置路由监听（仅用于按钮注入）...');
 
-    const { unwatch } = useRouterWatcher((to, from) => {
-      // 路由变化时重新遍历 VNode 树
-      console.log('🔄 路由变化，重新执行功能...');
-      startVNodeTraversal();
-
+    const { unwatch } = useRouterWatcher((to) => {
+      console.log('🔄 路由变化，处理按钮注入...');
       // 处理按钮注入
       buttonManager.onRouteChange(to?.path || '');
     }, {

@@ -24,6 +24,9 @@ interface VNode {
 let mountedCount = 0;
 let processedElements = new WeakSet<HTMLElement>();
 
+// 防抖定时器
+let debounceTimer: number | null = null;
+
 /**
  * 递归遍历 VNode 树，为每个有 el 的节点挂载 __vue__ 属性
  * @param vnode 当前 VNode
@@ -144,25 +147,71 @@ export function startVNodeTraversal(): void {
 }
 
 /**
- * 初始化 VNode 遍历
+ * 防抖执行 VNode 遍历
+ */
+function debounceVNodeTraversal(): void {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+
+  debounceTimer = window.setTimeout(() => {
+    console.log('🔄 防抖触发 VNode 遍历...');
+    startVNodeTraversal();
+    debounceTimer = null;
+  }, 50); // 50ms 防抖延迟
+}
+
+/**
+ * 初始化 VNode 遍历 - 通过全局 mixin 自动处理
  */
 export function initVNodeTraversal(): void {
   console.log('🔧 Vue 3 VNode 遍历器初始化...');
 
-  const tryStart = () => {
-    console.log(`📄 页面状态: ${document.readyState}`);
+  const setupMixin = () => {
+    const appElement = document.querySelector('#app') as HTMLElement & { __vue_app__?: any };
+
+    if (!appElement) {
+      console.error('❌ 未找到 #app 元素');
+      return;
+    }
+
+    if (!appElement.__vue_app__) {
+      console.error('❌ #app 元素没有 __vue_app__ 属性');
+      return;
+    }
+
+    console.log('✓ 找到 Vue 应用实例:', appElement.__vue_app__);
+
+    // 添加全局 mixin
+    appElement.__vue_app__.mixin({
+      mounted() {
+        // 在组件挂载时触发防抖遍历
+        if (this.$ && this.$.vnode) {
+          console.log('🔄 组件挂载，触发防抖遍历:', this.$.type?.name || 'Anonymous');
+
+          // 使用 nextTick 确保组件完全挂载后再遍历
+          this.$nextTick(() => {
+            debounceVNodeTraversal();
+          });
+        }
+      }
+    });
+
+    console.log('✅ 全局 mixin 已注册，将在每个组件挂载时自动触发防抖遍历');
+
+    // 注册 mixin 后立即进行第一次完整遍历，处理已经挂载的组件
+    console.log('🔄 注册 mixin 后立即进行第一次完整遍历...');
     startVNodeTraversal();
   };
 
   if (document.readyState === 'loading') {
     console.log('⏳ 等待 DOM 加载完成...');
-    document.addEventListener('DOMContentLoaded', tryStart);
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(setupMixin, 100);
+    });
   } else {
     console.log('✓ DOM 已加载完成');
-    // 使用 requestAnimationFrame 确保在下一帧执行，让 Vue 有时间完成挂载
-    requestAnimationFrame(() => {
-      setTimeout(tryStart, 100); // 稍微延迟一点确保 Vue 完全挂载
-    });
+    setTimeout(setupMixin, 100);
   }
 }
 
@@ -210,4 +259,5 @@ if (typeof window !== 'undefined') {
   (window as any).startVNodeTraversal = startVNodeTraversal;
   (window as any).getVueInstance = getVueInstance;
   (window as any).clearAllVueInstances = clearAllVueInstances;
+  (window as any).debounceVNodeTraversal = debounceVNodeTraversal;
 }
