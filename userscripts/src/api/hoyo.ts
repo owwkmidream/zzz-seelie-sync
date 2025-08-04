@@ -303,10 +303,10 @@ export async function batchGetAvatarDetail(
   avatarList: AvatarDetailRequest[],
   region: string = 'prod_gf_cn'
 ): Promise<AvatarDetail[]> {
-  // 如果列表长度大于9，分批处理
-  if (avatarList.length > 9) {
+  const batchSize = 10;
+  // 如果列表长度大于10，分批处理
+  if (avatarList.length > batchSize) {
     const results: AvatarDetail[] = [];
-    const batchSize = 9;
 
     for (let i = 0; i < avatarList.length; i += batchSize) {
       const batch = avatarList.slice(i, i + batchSize);
