@@ -41,7 +41,7 @@ export default defineConfig({
       },
       userscript: {
         icon: 'https://vitejs.dev/logo.svg',
-        namespace: 'npm/vite-plugin-monkey',
+        namespace: 'github.com/owwkmidream',
         match: ['https://zzz.seelie.me/*'],
         // GM API 权限
         grant: ['GM.xmlHttpRequest'],
