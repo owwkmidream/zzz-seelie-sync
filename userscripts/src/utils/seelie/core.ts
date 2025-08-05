@@ -46,16 +46,6 @@ export class SeelieCore {
   }
 
   /**
-   * 获取根组件的上下文 (ctx)
-   */
-  protected getContext(): any {
-    if (!this.ensureInitialized()) {
-      return null
-    }
-    return this.rootComponent.ctx
-  }
-
-  /**
    * 获取根组件的 proxy 对象
    */
   protected getProxy(): any {
@@ -136,7 +126,7 @@ export class SeelieCore {
   /**
    * 设置 Toast 消息
    */
-  setToast(message: string, type: ToastType = 'success'): boolean {
+  setToast(message: string, type: ToastType = ''): boolean {
     const proxy = this.getProxy()
     if (!proxy) {
       console.warn('⚠️ 无法获取组件 proxy 对象')

@@ -186,4 +186,4 @@ export interface BatchSyncResult extends SyncResult {
 /**
  * Toast 类型
  */
-export type ToastType = 'error' | 'warning' | 'success';
+export type ToastType = 'error' | 'warning' | 'success' | '';
