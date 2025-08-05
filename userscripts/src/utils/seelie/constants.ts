@@ -19,7 +19,7 @@ export const ASCENSIONS: number[] = [1, 10, 20, 30, 40, 50, 60]
 export const SKILLS: { [key: number]: string } = {
   0: 'basic',    // 普通攻击
   1: 'special',  // 特殊技
-  2: 'evade',    // 闪避
+  2: 'dodge',    // 闪避
   3: 'chain',    // 连携技
   5: 'core',     // 核心被动
   6: 'assist'    // 支援技
