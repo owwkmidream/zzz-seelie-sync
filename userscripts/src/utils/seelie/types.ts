@@ -129,11 +129,11 @@ export interface CharacterStats {
 }
 
 /**
- * 武器统计数据
+ * 武器统计数据通用配置
  */
 export interface WeaponStatsCommon {
-  rate: { [level: number]: number };
   ascRate: number[];
+  rate: number[];
 }
 
 /**
@@ -187,3 +187,27 @@ export interface BatchSyncResult extends SyncResult {
  * Toast 类型
  */
 export type ToastType = 'error' | 'warning' | 'success' | '';
+
+/**
+ * Seelie 统计数据结构
+ */
+export interface SeelieStatsData {
+  charactersStats: CharacterStats[];
+  weaponsStats: { [weaponId: string]: number };
+  weaponsStatsCommon: WeaponStatsCommon;
+}
+
+/**
+ * Seelie 语言数据结构（根据实际数据结构定义）
+ */
+export interface SeelieLanguageData {
+  [key: string]: unknown; // 由于语言数据结构复杂且可变，使用 unknown 类型
+}
+
+/**
+ * Seelie 完整数据结构
+ */
+export interface SeelieData {
+  languageData: SeelieLanguageData;
+  statsData: SeelieStatsData;
+}

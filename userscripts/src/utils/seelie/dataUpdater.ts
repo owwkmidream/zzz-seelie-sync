@@ -2,6 +2,7 @@
 // 将 scripts/update-and-restore.js 的逻辑适配到油猴脚本环境
 
 import GM_fetch from '@trim21/gm-fetch'
+import type { SeelieLanguageData, SeelieStatsData } from './types'
 
 /**
  * Seelie 数据更新器
@@ -34,7 +35,7 @@ export class SeelieDataUpdater {
   /**
    * 从 JS 内容中还原绝区零数据
    */
-  private static restoreZzzData(jsContent: string): any {
+  private static restoreZzzData(jsContent: string): SeelieLanguageData {
     console.log('▶️  开始从 JS 内容中还原绝区零数据...')
 
     // 解析所有导出的变量
@@ -79,7 +80,7 @@ export class SeelieDataUpdater {
   /**
    * 解析统计数据 JS 文件
    */
-  private static parseStatsFile(jsContent: string, fileName: string): any {
+  private static parseStatsFile(jsContent: string, fileName: string): unknown {
     try {
       const exportMatch = jsContent.match(/\bexport\s*\{([\s\S]*?)\}/)
       if (!exportMatch) {
@@ -126,9 +127,9 @@ export class SeelieDataUpdater {
   /**
    * 处理统计数据文件
    */
-  private static async processStatsFiles(indexScriptContent: string): Promise<any> {
+  private static async processStatsFiles(indexScriptContent: string): Promise<SeelieStatsData> {
     console.log('▶️  开始处理统计数据文件...')
-    const statsData: any = {}
+    const statsData: Partial<SeelieStatsData> = {}
 
     for (const { name, pattern } of this.STATS_FILE_PATTERNS) {
       const match = indexScriptContent.match(pattern)
@@ -144,21 +145,20 @@ export class SeelieDataUpdater {
       try {
         const statsFileContent = await this.fetchContent(statsFileUrl)
         const parsedData = this.parseStatsFile(statsFileContent, fileName)
-        statsData[name] = parsedData
+          (statsData as any)[name] = parsedData
         console.log(`✅ ${name} 处理完成`)
       } catch (error) {
         console.error(`❌ 处理 ${name} 时出错: ${error.message}`)
       }
     }
 
-    return statsData
+    return statsData as SeelieStatsData
   }
 
   /**
    * 更新 Seelie 数据
-   * @returns Promise<{languageData: any, statsData: any}>
    */
-  static async updateSeelieData(): Promise<{ languageData: any; statsData: any }> {
+  static async updateSeelieData(): Promise<{ languageData: SeelieLanguageData; statsData: SeelieStatsData }> {
     try {
       console.log('🚀 开始更新 Seelie 数据...')
 
@@ -205,7 +205,7 @@ export class SeelieDataUpdater {
   /**
    * 缓存数据到 localStorage
    */
-  static cacheData(languageData: any, statsData: any): void {
+  static cacheData(languageData: SeelieLanguageData, statsData: SeelieStatsData): void {
     try {
       localStorage.setItem('seelie_language_data', JSON.stringify(languageData))
       localStorage.setItem('seelie_stats_data', JSON.stringify(statsData))
@@ -219,7 +219,7 @@ export class SeelieDataUpdater {
   /**
    * 从缓存获取数据
    */
-  static getCachedData(): { languageData: any; statsData: any; timestamp: number } | null {
+  static getCachedData(): { languageData: SeelieLanguageData; statsData: SeelieStatsData; timestamp: number } | null {
     try {
       const languageDataStr = localStorage.getItem('seelie_language_data')
       const statsDataStr = localStorage.getItem('seelie_stats_data')
@@ -243,7 +243,7 @@ export class SeelieDataUpdater {
   /**
    * 获取最新数据（优先网络请求，失败时使用缓存）
    */
-  static async getLatestData(): Promise<{ languageData: any; statsData: any }> {
+  static async getLatestData(): Promise<{ languageData: SeelieLanguageData; statsData: SeelieStatsData }> {
     try {
       console.log('🔄 请求最新 Seelie 数据...')
       const { languageData, statsData } = await this.updateSeelieData()

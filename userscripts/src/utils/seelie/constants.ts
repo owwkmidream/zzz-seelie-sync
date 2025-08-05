@@ -1,6 +1,11 @@
 // Seelie 相关常量定义
 
-import type { CharacterStats, WeaponStatsCommon } from './types'
+import type {
+  CharacterStats,
+  WeaponStatsCommon,
+  SeelieLanguageData,
+  SeelieStatsData
+} from './types'
 import { SeelieDataUpdater } from './dataUpdater'
 
 /**
@@ -32,8 +37,8 @@ export const RESIN_INTERVAL = 360
  * 只在第一次调用时请求网络，后续使用内存缓存
  */
 let runtimeDataCache: {
-  languageData?: any
-  statsData?: any
+  languageData?: SeelieLanguageData
+  statsData?: SeelieStatsData
   loaded?: boolean
   loading?: Promise<void>
 } = {}
@@ -81,7 +86,7 @@ async function lazyLoadSeelieData(): Promise<void> {
 /**
  * 获取语言数据
  */
-export async function getLanguageData(): Promise<any> {
+export async function getLanguageData(): Promise<SeelieLanguageData | undefined> {
   await lazyLoadSeelieData()
   return runtimeDataCache.languageData
 }
@@ -89,7 +94,7 @@ export async function getLanguageData(): Promise<any> {
 /**
  * 获取统计数据
  */
-export async function getStatsData(): Promise<any> {
+export async function getStatsData(): Promise<SeelieStatsData | undefined> {
   await lazyLoadSeelieData()
   return runtimeDataCache.statsData
 }

@@ -57,7 +57,7 @@ export async function calculateWeaponAsc(weapon: WeaponData): Promise<number> {
     const weaponStatsCommon = await getWeaponStatsCommon()
     const weaponStats = await getWeaponStats()
 
-    const levelRate = weaponStatsCommon.rate[weapon.level] || 0
+    const levelRate = weaponStatsCommon.rate[weapon.level - 1] || 0
     const atkProperty = weapon.main_properties.find(p => p.property_id === 12101)
     if (!atkProperty) {
       console.warn(`⚠️ 武器 ${weapon.name} 缺少攻击力属性`)
@@ -65,7 +65,7 @@ export async function calculateWeaponAsc(weapon: WeaponData): Promise<number> {
     }
 
     const actualATK = parseInt(atkProperty.base)
-    const baseATK = weaponStats[weapon.id] || 500
+    const baseATK = weaponStats[weapon.id] || 48
     const growthATK = baseATK * levelRate / 10000
     const calculatedBaseATK = baseATK + growthATK
 
