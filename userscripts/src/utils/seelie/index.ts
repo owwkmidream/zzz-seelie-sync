@@ -40,7 +40,7 @@ export const setToast = (message: string, type: ToastType = 'success'): boolean 
 /**
  * 设置角色数据的便捷函数
  */
-export const setCharacter = (data: CharacterDataInput): boolean => {
+export const setCharacter = async (data: CharacterDataInput): Promise<boolean> => {
   return seelieDataManager.setCharacter(data)
 }
 

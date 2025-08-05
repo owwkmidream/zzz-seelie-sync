@@ -12,7 +12,7 @@ export class CharacterManager extends SeelieCore {
   /**
    * 设置角色基础数据
    */
-  setCharacter(data: CharacterDataInput): boolean {
+  async setCharacter(data: CharacterDataInput): Promise<boolean> {
     try {
       const character = data.avatar || data
       const characterKey = this.findCharacterKey(character.id)
@@ -22,7 +22,7 @@ export class CharacterManager extends SeelieCore {
       }
 
       const existingGoal = this.findExistingGoal(characterKey, "character")
-      const currentAsc = calculateCharacterAsc(character)
+      const currentAsc = await calculateCharacterAsc(character)
 
       let targetLevel = existingGoal?.goal?.level
       if (!targetLevel || targetLevel < character.level) {
