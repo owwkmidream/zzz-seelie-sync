@@ -2,6 +2,15 @@
 
 import type { ResinDataInput, CharacterDataInput, SyncResult, BatchSyncResult, ToastType } from './types'
 import { CharacterManager } from './managers'
+import {
+  getLanguageData,
+  getStatsData,
+  getCharacterStats,
+  getWeaponStats,
+  getWeaponStatsCommon,
+  clearRuntimeDataCache,
+  isDataLoaded
+} from './constants'
 
 /**
  * Seelie 数据操作工具类
@@ -72,6 +81,15 @@ if (typeof window !== 'undefined') {
   (window as any).setWeapon = setWeapon;
   (window as any).syncCharacter = syncCharacter;
   (window as any).syncAllCharacters = syncAllCharacters;
+
+  // 挂载 constants 中的调试函数
+  (window as any).getLanguageData = getLanguageData;
+  (window as any).getStatsData = getStatsData;
+  (window as any).getCharacterStats = getCharacterStats;
+  (window as any).getWeaponStats = getWeaponStats;
+  (window as any).getWeaponStatsCommon = getWeaponStatsCommon;
+  (window as any).clearRuntimeDataCache = clearRuntimeDataCache;
+  (window as any).isDataLoaded = isDataLoaded;
 }
 
 // 导出类型
