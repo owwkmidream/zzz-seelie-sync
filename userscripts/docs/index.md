@@ -1,10 +1,22 @@
 # 文档目录
 
-欢迎查看 Vue 3 VNode 遍历与路由监听脚本的完整文档。
+欢迎查看绝区零数据同步脚本的完整文档。
 
 ## 📚 文档列表
 
-### [README.md](./README.md) - 项目概述
+### 快速入门
+
+#### [overview.md](./overview.md) - 系统总览 ⭐
+
+- 系统架构和核心功能概述
+- 数据流程和技术特性
+- 快速开始指南
+- 最佳实践和故障排除
+- 文档导航和学习路径
+
+### 核心功能文档
+
+#### [README.md](./README.md) - 项目概述
 
 - 项目介绍和功能概述
 - 技术栈说明
@@ -13,7 +25,7 @@
 - 实际应用场景
 - 性能考虑和故障排除
 
-### [API.md](./API.md) - API 参考手册
+#### [API.md](./API.md) - API 参考手册
 
 - VNode 遍历 API 详解
 - 路由监听 API 使用指南
@@ -22,7 +34,7 @@
 - 类型定义和接口
 - 错误处理最佳实践
 
-### [DEVELOPMENT.md](./DEVELOPMENT.md) - 开发指南
+#### [DEVELOPMENT.md](./DEVELOPMENT.md) - 开发指南
 
 - 开发环境设置
 - 项目架构说明
@@ -31,13 +43,74 @@
 - 测试策略和调试技巧
 - 部署和发布流程
 
+### Seelie 工具类文档
+
+#### [seelie-api-v2.md](./seelie-api-v2.md) - Seelie API 文档 (v2.0)
+
+- 重构后的 Seelie 工具类完整 API 参考
+- 模块化架构设计说明
+- 类型定义和接口文档
+- 使用示例和最佳实践
+- 错误处理和调试方法
+- 性能优化建议
+
+#### [seelie-refactor.md](./seelie-refactor.md) - Seelie 重构文档
+
+- 重构过程和设计思路
+- 模块职责分工说明
+- 新旧版本对比
+- 向后兼容性说明
+- 重构优势和改进点
+
+### Hoyo API 文档
+
+#### [hoyo-api-v2.md](./hoyo-api-v2.md) - 米哈游绝区零 API 文档 (v2.0)
+
+- 完整的绝区零 API 客户端文档
+- 角色数据、游戏便笺 API 参考
+- 设备管理和用户认证
+- 批量请求和性能优化
+- 错误处理和故障排除
+
+#### [ZZZ_API_Analysis.md](./ZZZ_API_Analysis.md) - 绝区零 API 分析
+
+- API 接口分析和逆向工程
+- 请求格式和响应结构
+- 认证机制和安全考虑
+
+### 集成使用指南
+
+#### [integration-guide.md](./integration-guide.md) - Seelie & Hoyo API 集成指南
+
+- 完整的数据同步工作流程
+- 高级用法和选择性同步
+- 自动同步和定时任务
+- 错误处理和重试机制
+- 调试工具和性能监控
+- 最佳实践和故障排除
+
+### 其他文档
+
+#### [mihoyo-password-login.md](./mihoyo-password-login.md) - 米游社密码登录
+
+- 米游社登录机制分析
+- 密码登录实现方法
+
 ## 🚀 快速开始
 
-如果你是第一次使用这个脚本，建议按以下顺序阅读：
+如果你是第一次使用这个系统，建议按以下顺序阅读：
 
-1. **[README.md](./README.md)** - 了解项目整体功能和使用方法
-2. **[API.md](./API.md)** - 查看具体的 API 使用方法
-3. **[DEVELOPMENT.md](./DEVELOPMENT.md)** - 如果需要修改或扩展功能
+### 新手推荐路径
+
+1. **[系统总览](./overview.md)** ⭐ - 快速了解整个系统的架构和功能
+2. **[集成使用指南](./integration-guide.md)** - 学习如何使用完整的数据同步功能
+3. **[Seelie API 文档](./seelie-api-v2.md)** - 了解 Seelie 工具类的具体用法
+
+### 开发者路径
+
+1. **[开发指南](./DEVELOPMENT.md)** - 设置开发环境
+2. **[Hoyo API 文档](./hoyo-api-v2.md)** - 了解米哈游 API 客户端
+3. **[API 参考手册](./API.md)** - 查看底层 API 详细信息
 
 ## 📋 功能概览
 
