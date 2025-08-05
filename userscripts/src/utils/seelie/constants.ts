@@ -73,7 +73,7 @@ async function lazyLoadSeelieData(): Promise<void> {
     } catch (error) {
       console.error('❌ Seelie 数据加载失败:', error)
       // 即使失败也标记为已尝试，避免重复请求
-      runtimeDataCache.loaded = true
+      // runtimeDataCache.loaded = true
       throw error
     } finally {
       runtimeDataCache.loading = undefined
