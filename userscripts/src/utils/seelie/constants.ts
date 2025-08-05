@@ -1,29 +1,7 @@
 // Seelie 相关常量定义
 
-import type { CharacterStats, WeaponStatsCommon, WeaponInfo } from './types'
-
-/**
- * 角色统计数据
- */
-export const CHARACTERS_STATS: CharacterStats[] = [
-  {
-    id: 1091,
-    name: "雅",
-    base: 7673,
-    growth: 818426,
-    core: [0, 100, 200, 300, 400, 500],
-    ascHP: [0, 414, 828, 1242, 1656, 2069]
-  },
-  {
-    id: 1221,
-    name: "柳",
-    base: 6500,
-    growth: 750000,
-    core: [0, 90, 180, 270, 360, 450],
-    ascHP: [0, 350, 700, 1050, 1400, 1750]
-  },
-  // 可以根据需要添加更多角色数据
-]
+import type { CharacterStats, WeaponStatsCommon } from './types'
+import { SeelieDataUpdater } from './dataUpdater'
 
 /**
  * 突破等级数组
@@ -43,34 +21,141 @@ export const SKILLS: { [key: number]: string } = {
 }
 
 /**
- * 武器统计数据
- */
-export const WEAPONS_STATS_COMMON: WeaponStatsCommon = {
-  rate: {
-    1: 0, 10: 1000, 20: 2000, 30: 3000, 40: 4000, 50: 5000, 60: 6000
-  },
-  ascRate: [0, 500, 1000, 1500, 2000, 2500, 3000]
-}
-
-/**
- * 武器基础攻击力数据
- */
-export const WEAPONS_STATS: { [id: number]: number } = {
-  14109: 743, // 霰落星殿
-  14001: 500, // 加农转子
-  // 可以根据需要添加更多武器数据
-}
-
-/**
- * 武器信息数据
- */
-export const WEAPONS: { [key: string]: WeaponInfo } = {
-  'weapon_1': { id: 14109, name: '霰落星殿' },
-  'weapon_2': { id: 14001, name: '加农转子', craftable: true },
-  // 可以根据需要添加更多武器数据
-}
-
-/**
  * 树脂恢复间隔（秒）
  */
 export const RESIN_INTERVAL = 360
+
+// ===== 动态数据懒加载功能 =====
+
+/**
+ * 脚本生命周期内的数据缓存
+ * 只在第一次调用时请求网络，后续使用内存缓存
+ */
+let runtimeDataCache: {
+  languageData?: any
+  statsData?: any
+  loaded?: boolean
+  loading?: Promise<void>
+} = {}
+
+/**
+ * 懒加载 Seelie 数据
+ * 脚本生命周期内只请求一次，优先网络请求，失败时使用缓存
+ */
+async function lazyLoadSeelieData(): Promise<void> {
+  // 如果已经加载过，直接返回
+  if (runtimeDataCache.loaded) {
+    return
+  }
+
+  // 如果正在加载中，等待加载完成
+  if (runtimeDataCache.loading) {
+    await runtimeDataCache.loading
+    return
+  }
+
+  // 开始加载数据
+  runtimeDataCache.loading = (async () => {
+    try {
+      console.log('🔄 懒加载 Seelie 数据...')
+      const { languageData, statsData } = await SeelieDataUpdater.getLatestData()
+
+      runtimeDataCache.languageData = languageData
+      runtimeDataCache.statsData = statsData
+      runtimeDataCache.loaded = true
+
+      console.log('✅ Seelie 数据加载完成')
+    } catch (error) {
+      console.error('❌ Seelie 数据加载失败:', error)
+      // 即使失败也标记为已尝试，避免重复请求
+      runtimeDataCache.loaded = true
+      throw error
+    } finally {
+      runtimeDataCache.loading = undefined
+    }
+  })()
+
+  await runtimeDataCache.loading
+}
+
+/**
+ * 获取语言数据
+ */
+export async function getLanguageData(): Promise<any> {
+  await lazyLoadSeelieData()
+  return runtimeDataCache.languageData
+}
+
+/**
+ * 获取统计数据
+ */
+export async function getStatsData(): Promise<any> {
+  await lazyLoadSeelieData()
+  return runtimeDataCache.statsData
+}
+
+/**
+ * 获取角色统计数据
+ */
+export async function getCharacterStats(): Promise<CharacterStats[]> {
+  try {
+    const statsData = await getStatsData()
+    if (statsData?.charactersStats && Array.isArray(statsData.charactersStats)) {
+      console.log('✅ 使用动态角色统计数据')
+      return statsData.charactersStats
+    }
+  } catch (error) {
+    console.warn('⚠️ 获取角色统计数据失败:', error)
+  }
+
+  throw new Error('无法获取角色统计数据')
+}
+
+/**
+ * 获取武器统计数据
+ */
+export async function getWeaponStats(): Promise<{ [id: number]: number }> {
+  try {
+    const statsData = await getStatsData()
+    if (statsData?.weaponsStats && typeof statsData.weaponsStats === 'object') {
+      console.log('✅ 使用动态武器统计数据')
+      return statsData.weaponsStats
+    }
+  } catch (error) {
+    console.warn('⚠️ 获取武器统计数据失败:', error)
+  }
+
+  throw new Error('无法获取武器统计数据')
+}
+
+/**
+ * 获取武器通用统计数据
+ */
+export async function getWeaponStatsCommon(): Promise<WeaponStatsCommon> {
+  try {
+    const statsData = await getStatsData()
+    if (statsData?.weaponsStatsCommon && typeof statsData.weaponsStatsCommon === 'object') {
+      console.log('✅ 使用动态武器通用统计数据')
+      return statsData.weaponsStatsCommon
+    }
+  } catch (error) {
+    console.warn('⚠️ 获取武器通用统计数据失败:', error)
+  }
+
+  throw new Error('无法获取武器通用统计数据')
+}
+
+/**
+ * 清除运行时数据缓存（用于调试）
+ */
+export function clearRuntimeDataCache(): void {
+  runtimeDataCache = {}
+  console.log('🗑️ 已清除运行时数据缓存')
+}
+
+/**
+ * 检查数据是否已加载
+ */
+export function isDataLoaded(): boolean {
+  return !!runtimeDataCache.loaded
+}
