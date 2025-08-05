@@ -1,6 +1,6 @@
 // Seelie 核心功能类
 
-import type { ResinDataInput, AccountResin, ToastType } from './types'
+import type { ResinDataInput, AccountResin, ToastType, CharacterInfo, WeaponInfo } from './types'
 import { RESIN_INTERVAL } from './constants'
 
 /**
@@ -196,7 +196,7 @@ export class SeelieCore {
   /**
    * 获取组件的 characters 数据
    */
-  protected getCharacters(): any {
+  protected getCharacters(): Record<string, CharacterInfo> {
     const proxy = this.getProxy()
     return proxy?.characters || {}
   }
@@ -204,7 +204,7 @@ export class SeelieCore {
   /**
    * 获取组件的 weapons 数据
    */
-  protected getWeapons(): any {
+  protected getWeapons(): Record<string, WeaponInfo> {
     const proxy = this.getProxy()
     return proxy?.weapons || {}
   }

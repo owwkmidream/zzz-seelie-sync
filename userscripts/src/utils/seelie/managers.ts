@@ -1,6 +1,6 @@
 // Seelie 数据管理器
 
-import type { CharacterDataInput, SyncResult, BatchSyncResult } from './types'
+import type { CharacterDataInput, SyncResult, BatchSyncResult, CharacterInfo, WeaponInfo } from './types'
 import { SeelieCore } from './core'
 import { calculateCharacterAsc, calculateWeaponAsc, calculateSkillLevel } from './calculators'
 import { SKILLS } from './constants'
@@ -156,22 +156,22 @@ export class CharacterManager extends SeelieCore {
       }
 
       // 处理现有目标
-      const weapons = this.getWeapons()
-      const existingWeapon = existingGoal ? weapons[existingGoal.weapon] : null
-      const newWeapon = weapons[weaponKey]
+      const weapons: Record<string, WeaponInfo> = this.getWeapons()
+      const existingWeapon: WeaponInfo | null = existingGoal ? weapons[existingGoal.weapon] : null
+      const newWeapon: WeaponInfo = weapons[weaponKey]
 
       if (existingWeapon?.id === newWeapon?.id) {
         // 同一把武器，保持现有目标
         goal.level = Math.max(existingGoal.goal.level, current.level)
         goal.asc = Math.max(existingGoal.goal.asc, current.asc)
 
-        if (newWeapon && typeof newWeapon === 'object' && 'craftable' in newWeapon && newWeapon.craftable) {
+        if (newWeapon.craftable) {
           (current as any).craft = weapon.star;
           (goal as any).craft = Math.max(existingGoal.goal.craft || weapon.star, weapon.star)
         }
       } else {
         // 不同武器，处理可锻造武器
-        if (newWeapon && typeof newWeapon === 'object' && 'craftable' in newWeapon && newWeapon.craftable) {
+        if (newWeapon.craftable) {
           (current as any).craft = weapon.star;
           (goal as any).craft = weapon.star
         }
@@ -302,7 +302,7 @@ export class CharacterManager extends SeelieCore {
    * 查找角色键名
    */
   private findCharacterKey(characterId: number): string | null {
-    const characters = this.getCharacters()
+    const characters: Record<string, CharacterInfo> = this.getCharacters()
     return Object.keys(characters).find(key => characters[key].id === characterId) || null
   }
 
@@ -310,7 +310,7 @@ export class CharacterManager extends SeelieCore {
    * 查找武器键名
    */
   private findWeaponKey(weaponId: number): string | null {
-    const weapons = this.getWeapons()
+    const weapons: Record<string, WeaponInfo> = this.getWeapons()
     return Object.keys(weapons).find(key => weapons[key].id === weaponId) || null
   }
 

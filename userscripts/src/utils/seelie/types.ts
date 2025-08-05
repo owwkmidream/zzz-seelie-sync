@@ -141,8 +141,25 @@ export interface WeaponStatsCommon {
  */
 export interface WeaponInfo {
   id: number;
-  name: string;
+  tier: number;
+  style: string;
+  dim_hash: string;
   craftable?: boolean;
+}
+
+/**
+ * 角色信息
+ */
+export interface CharacterInfo {
+  id: number;
+  release: string;
+  tier: number;
+  attribute: string;
+  style: string;
+  faction: string;
+  boss: string;
+  boss_weekly: string;
+  dim_hash: string;
 }
 
 /**
