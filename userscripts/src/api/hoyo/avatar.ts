@@ -24,7 +24,7 @@ export async function getAvatarBasicList(
     params: { uid: userInfo.uid, region: userInfo.region }
   });
 
-  return response.data.list;
+  return response.data.list.filter(avatar => avatar.unlocked === true);
 }
 
 /**
