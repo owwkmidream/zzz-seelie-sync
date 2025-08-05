@@ -45,22 +45,22 @@ export const setTalents = (data: CharacterDataInput): boolean => {
 /**
  * 设置武器数据的便捷函数
  */
-export const setWeapon = (data: CharacterDataInput): boolean => {
-  return seelieDataManager.setWeapon(data)
+export const setWeapon = async (data: CharacterDataInput): Promise<boolean> => {
+  return await seelieDataManager.setWeapon(data)
 }
 
 /**
  * 同步单个角色完整数据的便捷函数
  */
-export const syncCharacter = (data: CharacterDataInput): SyncResult => {
-  return seelieDataManager.syncCharacter(data)
+export const syncCharacter = async (data: CharacterDataInput): Promise<SyncResult> => {
+  return await seelieDataManager.syncCharacter(data)
 }
 
 /**
  * 同步多个角色完整数据的便捷函数
  */
-export const syncAllCharacters = (dataList: CharacterDataInput[]): BatchSyncResult => {
-  return seelieDataManager.syncAllCharacters(dataList)
+export const syncAllCharacters = async (dataList: CharacterDataInput[]): Promise<BatchSyncResult> => {
+  return await seelieDataManager.syncAllCharacters(dataList)
 }
 
 // 挂载到全局对象，方便调试

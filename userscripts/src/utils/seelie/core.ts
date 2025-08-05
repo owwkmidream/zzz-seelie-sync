@@ -202,6 +202,14 @@ export class SeelieCore {
   }
 
   /**
+   * 获取组件的 weapons 数据
+   */
+  protected getWeapons(): any {
+    const proxy = this.getProxy()
+    return proxy?.weapons || {}
+  }
+
+  /**
    * 获取组件的 goals 数据
    */
   protected getGoals(): any[] {

@@ -3,7 +3,7 @@
 import type { CharacterDataInput, SyncResult, BatchSyncResult } from './types'
 import { SeelieCore } from './core'
 import { calculateCharacterAsc, calculateWeaponAsc, calculateSkillLevel } from './calculators'
-import { SKILLS, WEAPONS } from './constants'
+import { SKILLS } from './constants'
 
 /**
  * 角色数据管理器
@@ -119,7 +119,7 @@ export class CharacterManager extends SeelieCore {
   /**
    * 设置武器数据
    */
-  setWeapon(data: CharacterDataInput): boolean {
+  async setWeapon(data: CharacterDataInput): Promise<boolean> {
     try {
       const character = data.avatar || data
       const weapon = data.weapon
@@ -144,7 +144,7 @@ export class CharacterManager extends SeelieCore {
         throw new Error("Weapon not found.")
       }
 
-      const currentAsc = calculateWeaponAsc(weapon)
+      const currentAsc = await calculateWeaponAsc(weapon)
       const current = {
         level: weapon.level,
         asc: currentAsc
@@ -156,21 +156,22 @@ export class CharacterManager extends SeelieCore {
       }
 
       // 处理现有目标
-      const existingWeapon = existingGoal ? WEAPONS[existingGoal.weapon] : null
-      const newWeapon = WEAPONS[weaponKey]
+      const weapons = this.getWeapons()
+      const existingWeapon = existingGoal ? weapons[existingGoal.weapon] : null
+      const newWeapon = weapons[weaponKey]
 
       if (existingWeapon?.id === newWeapon?.id) {
         // 同一把武器，保持现有目标
         goal.level = Math.max(existingGoal.goal.level, current.level)
         goal.asc = Math.max(existingGoal.goal.asc, current.asc)
 
-        if (newWeapon?.craftable) {
+        if (newWeapon && typeof newWeapon === 'object' && 'craftable' in newWeapon && newWeapon.craftable) {
           (current as any).craft = weapon.star;
           (goal as any).craft = Math.max(existingGoal.goal.craft || weapon.star, weapon.star)
         }
       } else {
         // 不同武器，处理可锻造武器
-        if (newWeapon?.craftable) {
+        if (newWeapon && typeof newWeapon === 'object' && 'craftable' in newWeapon && newWeapon.craftable) {
           (current as any).craft = weapon.star;
           (goal as any).craft = weapon.star
         }
@@ -204,7 +205,7 @@ export class CharacterManager extends SeelieCore {
   /**
    * 同步单个角色的完整数据
    */
-  syncCharacter(data: CharacterDataInput): SyncResult {
+  async syncCharacter(data: CharacterDataInput): Promise<SyncResult> {
     const result: SyncResult = {
       success: 0,
       failed: 0,
@@ -222,9 +223,10 @@ export class CharacterManager extends SeelieCore {
       { name: '武器数据', fn: () => this.setWeapon(data) }
     ]
 
-    operations.forEach(({ name, fn }) => {
+    for (const { name, fn } of operations) {
       try {
-        if (fn()) {
+        const success = await fn()
+        if (success) {
           result.success++
           console.log(`✓ ${characterName} - ${name}同步成功`)
         } else {
@@ -237,7 +239,7 @@ export class CharacterManager extends SeelieCore {
         result.errors.push(errorMsg)
         console.error(`❌ ${errorMsg}`)
       }
-    })
+    }
 
     console.log(`✅ ${characterName} 同步完成 - 成功: ${result.success}, 失败: ${result.failed}`)
     return result
@@ -246,7 +248,7 @@ export class CharacterManager extends SeelieCore {
   /**
    * 同步多个角色的完整数据
    */
-  syncAllCharacters(dataList: CharacterDataInput[]): BatchSyncResult {
+  async syncAllCharacters(dataList: CharacterDataInput[]): Promise<BatchSyncResult> {
     const overallResult: BatchSyncResult = {
       total: dataList.length,
       success: 0,
@@ -257,14 +259,15 @@ export class CharacterManager extends SeelieCore {
 
     console.log(`🚀 开始批量同步 ${dataList.length} 个角色`)
 
-    dataList.forEach((data, index) => {
+    for (let index = 0; index < dataList.length; index++) {
+      const data = dataList[index]
       const character = data.avatar || data
       const characterName = character.name_mi18n || `角色ID:${character.id}`
 
       console.log(`📝 [${index + 1}/${dataList.length}] 同步角色: ${characterName}`)
 
       try {
-        const result = this.syncCharacter(data)
+        const result = await this.syncCharacter(data)
 
         overallResult.details.push({
           character: characterName,
@@ -287,7 +290,7 @@ export class CharacterManager extends SeelieCore {
         })
         console.error(`❌ ${errorMsg}`)
       }
-    })
+    }
 
     this.logBatchResult(overallResult)
     this.showBatchToast(overallResult)
@@ -307,7 +310,8 @@ export class CharacterManager extends SeelieCore {
    * 查找武器键名
    */
   private findWeaponKey(weaponId: number): string | null {
-    return Object.keys(WEAPONS).find(key => WEAPONS[key].id === weaponId) || null
+    const weapons = this.getWeapons()
+    return Object.keys(weapons).find(key => weapons[key].id === weaponId) || null
   }
 
   /**
