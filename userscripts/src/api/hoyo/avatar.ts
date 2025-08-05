@@ -34,15 +34,23 @@ export async function getAvatarBasicList(
  * @param region 服务器区域，默认国服
  */
 export async function batchGetAvatarDetail(
+  avatarList: AvatarDetailRequest[] | number[],
   uid: string | number | undefined,
-  avatarList: AvatarDetailRequest[],
   region?: string
 ): Promise<AvatarDetail[]> {
   const userInfo = await resolveUserInfo(uid, region);
-
+  // 判断数组类型并进行相应处理
+  const processedAvatarList: AvatarDetailRequest[] = typeof avatarList[0] === 'number'
+    ? (avatarList as number[]).map(id => ({
+        avatar_id: id,
+        is_teaser: false,
+        teaser_need_weapon: false,
+        teaser_sp_skill: false
+      }))
+    : avatarList as AvatarDetailRequest[];
   // 使用通用分批处理函数
   return processBatches(
-    avatarList,
+    processedAvatarList,
     10,
     async (batch) => {
       const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', AVATAR_URL, {
@@ -85,7 +93,7 @@ export async function getAvatarDetail(
     teaser_sp_skill
   }];
 
-  const details = await batchGetAvatarDetail(uid, avatarList, region);
+  const details = await batchGetAvatarDetail(avatarList, uid, region);
 
   if (details.length === 0) {
     throw new Error(`未找到角色 ${avatarId} 的详细信息`);
