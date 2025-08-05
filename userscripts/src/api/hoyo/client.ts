@@ -17,7 +17,7 @@ export const GAME_RECORD_URL = 'https://api-takumi-record.mihoyo.com/event/game_
 export const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api';
 
 // 初始化请求标记
-let avatarUrlInitialized = false;
+let NapTokenInitialized = false;
 
 // 用户信息缓存
 let userInfoCache: UserInfo | null = null;
@@ -41,7 +41,7 @@ async function getDefaultHeaders(): Promise<Record<string, string>> {
  * 获取nap_token并缓存用户信息
  */
 async function initializeNapToken(): Promise<void> {
-  if (avatarUrlInitialized) {
+  if (NapTokenInitialized) {
     return;
   }
 
@@ -74,15 +74,15 @@ async function initializeNapToken(): Promise<void> {
       }
     }
 
-    avatarUrlInitialized = true;
+    NapTokenInitialized = true;
   } catch (error) {
     console.warn('⚠️ 初始化请求异常:', error);
     // 即使初始化失败也标记为已尝试，避免重复请求
-    avatarUrlInitialized = true;
+    NapTokenInitialized = true;
   }
-}/**
- 
-* 确保用户信息已初始化
+}
+/**
+ * 确保用户信息已初始化
  * 如果没有用户信息缓存，会自动调用初始化
  */
 export async function ensureUserInfo(): Promise<void> {
@@ -155,9 +155,10 @@ export async function request<T = any>(
     console.error(`❌ 请求失败:`, error);
     throw error;
   }
-}/**
- * 获
-取设备指纹
+}
+
+/**
+ * 获取设备指纹
  * @param deviceId 设备ID
  * @returns 设备指纹信息
  */
@@ -203,7 +204,9 @@ export async function getDeviceFingerprint(deviceId: string): Promise<string> {
     console.error(`❌ 设备指纹获取失败:`, error);
     throw error;
   }
-}/**
+}
+
+/**
 
  * 生成 UUID v4 字符串
  * @returns UUID v4 格式的字符串
@@ -314,7 +317,7 @@ export function getUserInfo(): UserInfo | null {
 
 export function clearUserInfo(): void {
   userInfoCache = null;
-  avatarUrlInitialized = false;
+  NapTokenInitialized = false;
   console.log('🗑️ 已清除用户信息缓存');
 }
 
@@ -327,7 +330,7 @@ export function clearDeviceInfo(): void {
   localStorage.removeItem(DEVICE_INFO_KEY);
   deviceInfoCache = null;
   deviceInfoPromise = null;
-  avatarUrlInitialized = false;
+  NapTokenInitialized = false;
   console.log('🗑️ 已清除localStorage设备信息和缓存');
 }
 
@@ -356,7 +359,7 @@ export async function refreshDeviceFingerprint(): Promise<void> {
   }
 }
 
-export function resetAvatarUrlInitialization(): void {
-  avatarUrlInitialized = false;
+export function resetNapTokenlInitialization(): void {
+  NapTokenInitialized = false;
   console.log('🔄 已重置 AVATAR_URL 初始化状态');
 }

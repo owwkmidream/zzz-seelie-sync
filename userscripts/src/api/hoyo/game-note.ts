@@ -38,24 +38,3 @@ export async function getEnergyInfo(
   const gameNote = await getGameNote(roleId, server);
   return gameNote.energy;
 }
-
-/**
- * 格式化体力恢复时间
- * @param energy 体力信息
- */
-export function formatEnergyRestoreTime(energy: EnergyInfo): string {
-  const { hour, minute } = energy;
-  if (hour === 0 && minute === 0) {
-    return '体力已满';
-  }
-  return `${hour}小时${minute}分钟后恢复满`;
-}
-
-/**
- * 获取体力恢复进度百分比
- * @param energy 体力信息
- */
-export function getEnergyProgress(energy: EnergyInfo): number {
-  const { progress } = energy;
-  return Math.round((progress.current / progress.max) * 100);
-}

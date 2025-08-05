@@ -16,10 +16,7 @@ export {
   clearDeviceInfo,
   getCurrentDeviceInfo,
   refreshDeviceFingerprint,
-  resetAvatarUrlInitialization,
-  AVATAR_URL,
-  GAME_RECORD_URL,
-  DEVICE_FP_URL
+  resetNapTokenlInitialization,
 } from './client';
 
 // 角色相关API
@@ -33,8 +30,6 @@ export {
 export {
   getGameNote,
   getEnergyInfo,
-  formatEnergyRestoreTime,
-  getEnergyProgress
 } from './game-note';
 
 // 工具函数
@@ -62,7 +57,7 @@ if (typeof window !== 'undefined') {
             clearDeviceInfo: clientModule.clearDeviceInfo,
             getCurrentDeviceInfo: clientModule.getCurrentDeviceInfo,
             refreshDeviceFingerprint: clientModule.refreshDeviceFingerprint,
-            resetAvatarUrlInitialization: clientModule.resetAvatarUrlInitialization,
+            resetNapTokenlInitialization: clientModule.resetNapTokenlInitialization,
             getUserInfo: clientModule.getUserInfo,
             clearUserInfo: clientModule.clearUserInfo,
             initializeUserInfo: clientModule.initializeUserInfo,
