@@ -48,37 +48,70 @@ async function initializeNapToken(): Promise<void> {
   console.log('🔄 初始化 nap_token cookie...');
 
   try {
-    const initResponse = await GM_fetch('https://api-takumi.mihoyo.com/common/badge/v1/login/info?game_biz=nap_cn', {
+    // 第一步：获取用户游戏角色信息
+    const rolesResponse = await GM_fetch('https://api-takumi.mihoyo.com/binding/api/getUserGameRolesByCookie?game_biz=nap_cn', {
       method: 'GET'
     });
 
-    if (!initResponse.ok) {
-      console.warn(`⚠️ 初始化请求失败: HTTP ${initResponse.status}`);
-    } else {
-      const data = await initResponse.json();
-
-      if (data.retcode === 0 && data.data) {
-        // 缓存用户信息
-        userInfoCache = {
-          uid: data.data.game_uid,
-          nickname: data.data.nickname,
-          level: data.data.level,
-          region: data.data.region,
-          accountId: data.data.account_id
-        };
-
-        console.log('✅ nap_token cookie 初始化完成');
-        console.log(`👤 用户信息: ${userInfoCache.nickname} (UID: ${userInfoCache.uid}, 等级: ${userInfoCache.level})`);
-      } else {
-        console.warn('⚠️ 用户信息获取失败:', data.message);
-      }
+    if (!rolesResponse.ok) {
+      throw new Error(`获取用户角色失败: HTTP ${rolesResponse.status}`);
     }
+
+    const rolesData = await rolesResponse.json();
+
+    if (rolesData.retcode !== 0) {
+      throw new Error(`获取用户角色失败: ${rolesData.message}`);
+    }
+
+    if (!rolesData.data?.list || rolesData.data.list.length === 0) {
+      throw new Error('未找到绝区零游戏角色');
+    }
+
+    // 获取第一个角色信息
+    const roleInfo = rolesData.data.list[0];
+    console.log(`🎮 找到角色: ${roleInfo.nickname} (UID: ${roleInfo.game_uid}, 等级: ${roleInfo.level})`);
+
+    // 第二步：使用角色信息设置 nap_token
+    const tokenResponse = await GM_fetch('https://api-takumi.mihoyo.com/common/badge/v1/login/account', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        region: roleInfo.region,
+        uid: roleInfo.game_uid,
+        game_biz: roleInfo.game_biz
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      throw new Error(`设置 nap_token 失败: HTTP ${tokenResponse.status}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+
+    if (tokenData.retcode !== 0) {
+      throw new Error(`设置 nap_token 失败: ${tokenData.message}`);
+    }
+
+    // 缓存用户信息
+    userInfoCache = {
+      uid: roleInfo.game_uid,
+      nickname: roleInfo.nickname,
+      level: roleInfo.level,
+      region: roleInfo.region,
+      accountId: roleInfo.game_uid // 使用 game_uid 作为 accountId
+    };
+
+    console.log('✅ nap_token cookie 初始化完成');
+    console.log(`👤 用户信息: ${userInfoCache.nickname} (UID: ${userInfoCache.uid}, 等级: ${userInfoCache.level})`);
 
     NapTokenInitialized = true;
   } catch (error) {
-    console.warn('⚠️ 初始化请求异常:', error);
+    console.error('❌ 初始化 nap_token 失败:', error);
     // 即使初始化失败也标记为已尝试，避免重复请求
-    NapTokenInitialized = true;
+    // NapTokenInitialized = true;
+    throw error;
   }
 }
 /**
