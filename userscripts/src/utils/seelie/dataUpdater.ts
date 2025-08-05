@@ -28,7 +28,8 @@ export class SeelieDataUpdater {
       }
       return await response.text()
     } catch (error) {
-      throw new Error(`获取 ${url} 时网络错误: ${error.message}`)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(`获取 ${url} 时网络错误: ${errorMessage}`)
     }
   }
 
@@ -73,14 +74,15 @@ export class SeelieDataUpdater {
 
       throw new Error('未能在任何数据块中找到绝区零的锚点关键词。')
     } catch (error) {
-      throw new Error(`还原数据时发生错误: ${error.message}`)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(`还原数据时发生错误: ${errorMessage}`)
     }
   }
 
   /**
    * 解析统计数据 JS 文件
    */
-  private static parseStatsFile(jsContent: string, fileName: string): unknown {
+  private static parseStatsFile(jsContent: string): unknown {
     try {
       const exportMatch = jsContent.match(/\bexport\s*\{([\s\S]*?)\}/)
       if (!exportMatch) {
@@ -120,7 +122,8 @@ export class SeelieDataUpdater {
       const scriptRunner = new Function(executionCode)
       return scriptRunner()
     } catch (error) {
-      throw new Error(`解析统计文件时发生错误: ${error.message}`)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(`解析统计文件时发生错误: ${errorMessage}`)
     }
   }
 
@@ -144,11 +147,12 @@ export class SeelieDataUpdater {
 
       try {
         const statsFileContent = await this.fetchContent(statsFileUrl)
-        const parsedData = this.parseStatsFile(statsFileContent, fileName)
-          (statsData as any)[name] = parsedData
+        const parsedData: unknown = this.parseStatsFile(statsFileContent);
+        (statsData as any)[name] = parsedData
         console.log(`✅ ${name} 处理完成`)
       } catch (error) {
-        console.error(`❌ 处理 ${name} 时出错: ${error.message}`)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        console.error(`❌ 处理 ${name} 时出错: ${errorMessage}`)
       }
     }
 
@@ -197,7 +201,8 @@ export class SeelieDataUpdater {
       console.log('🎉 Seelie 数据更新完成！')
       return { languageData, statsData }
     } catch (error) {
-      console.error(`❌ Seelie 数据更新失败: ${error.message}`)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error(`❌ Seelie 数据更新失败: ${errorMessage}`)
       throw error
     }
   }
