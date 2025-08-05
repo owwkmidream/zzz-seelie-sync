@@ -1,6 +1,6 @@
 // Seelie 相关常量定义
 
-import type { CharacterStats, WeaponStatsCommon, WeaponInfo } from '../../types/seelie'
+import type { CharacterStats, WeaponStatsCommon, WeaponInfo } from './types'
 
 /**
  * 角色统计数据

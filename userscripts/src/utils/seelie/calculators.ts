@@ -1,6 +1,6 @@
 // Seelie 计算工具函数
 
-import type { CharacterDataInput, WeaponData } from '../../types/seelie'
+import type { CharacterDataInput, WeaponData } from './types'
 import { CHARACTERS_STATS, ASCENSIONS, WEAPONS_STATS_COMMON, WEAPONS_STATS } from './constants'
 
 /**

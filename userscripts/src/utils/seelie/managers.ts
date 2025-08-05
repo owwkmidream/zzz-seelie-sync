@@ -1,6 +1,6 @@
 // Seelie 数据管理器
 
-import type { CharacterDataInput, SyncResult, BatchSyncResult } from '../../types/seelie'
+import type { CharacterDataInput, SyncResult, BatchSyncResult } from './types'
 import { SeelieCore } from './core'
 import { calculateCharacterAsc, calculateWeaponAsc, calculateSkillLevel } from './calculators'
 import { SKILLS, WEAPONS } from './constants'

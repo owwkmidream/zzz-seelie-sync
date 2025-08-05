@@ -1,6 +1,6 @@
 // Seelie 核心功能类
 
-import type { ResinDataInput, AccountResin, ToastType } from '../../types/seelie'
+import type { ResinDataInput, AccountResin, ToastType } from './types'
 import { RESIN_INTERVAL } from './constants'
 
 /**

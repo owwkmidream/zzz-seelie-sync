@@ -1,6 +1,6 @@
 // Seelie 工具类主入口文件
 
-import type { ResinDataInput, CharacterDataInput, SyncResult, BatchSyncResult, ToastType } from '../../types/seelie'
+import type { ResinDataInput, CharacterDataInput, SyncResult, BatchSyncResult, ToastType } from './types'
 import { CharacterManager } from './managers'
 
 /**
@@ -81,4 +81,4 @@ export type {
   SyncResult,
   BatchSyncResult,
   ToastType
-} from '../../types/seelie'
+} from './types'
