@@ -381,14 +381,22 @@ export class CharacterManager extends SeelieCore {
   //     )
   //   }
   // }
-
   // 辅助函数
+
+  // 缓存变量
+  private _minimumSetCoverCache: {id: number, style: string}[] | null = null
+  private _minimumSetWeaponsCache: Record<string, number> | null = null
 
   /**
    * 使用贪心算法找到最小集合覆盖的角色ID列表
    * 目标是用最少的角色覆盖所有属性组合（属性、风格、模拟材料、周本）
    */
   findMinimumSetCoverIds(): {id: number, style: string}[] {
+    // 检查缓存
+    if (this._minimumSetCoverCache !== null) {
+      logger.debug('📦 使用缓存的最小集合覆盖结果')
+      return this._minimumSetCoverCache
+    }
     const charactersData = this.getCharacters()
     // 将对象转换为数组，以便于迭代
     const charactersArray = Object.values(charactersData)
@@ -465,6 +473,9 @@ export class CharacterManager extends SeelieCore {
     }
 
     logger.debug(`🎯 最小集合覆盖完成，共选择 ${resultIds.length} 个角色: ${resultIds.join(', ')}`)
+    
+    // 缓存结果
+    this._minimumSetCoverCache = resultIds
     return resultIds
   }
 
@@ -473,6 +484,12 @@ export class CharacterManager extends SeelieCore {
    * 返回每个职业对应一个武器
    */
   findMinimumSetWeapons(): Record<string, number> {
+    // 检查缓存
+    if (this._minimumSetWeaponsCache !== null) {
+      logger.debug('📦 使用缓存的最小武器集合结果')
+      return this._minimumSetWeaponsCache
+    }
+
     const weaponsData = this.getWeapons();
     // 将对象转换为数组，以便于迭代
     const weaponsArray = Object.values(weaponsData);
@@ -484,6 +501,8 @@ export class CharacterManager extends SeelieCore {
       }
     }
 
+    // 缓存结果
+    this._minimumSetWeaponsCache = result
     return result;
   }
 }
