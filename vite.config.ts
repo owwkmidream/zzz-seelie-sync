@@ -1,6 +1,58 @@
 import { defineConfig } from 'vite';
 import monkey, { cdn } from 'vite-plugin-monkey';
 import { resolve } from 'path';
+import { execSync } from 'node:child_process';
+import { name as packageName, version as packageVersion } from './package.json';
+
+// 版本号处理
+let scriptVersion = packageVersion;
+if (process.env.RELEASE) {
+  // release Actions - 使用 package.json 版本
+  scriptVersion = packageVersion;
+} else {
+  // local & nightly Actions - 使用 git describe
+  try {
+    const gitDescribe = process.env.GHD_DESCRIBE || execSync('git describe --tags --always --dirty').toString().trim();
+    // 如果有 tag，格式如 v1.0.0-6-g0230769，去掉 v 前缀
+    if (gitDescribe.startsWith('v')) {
+      scriptVersion = gitDescribe.slice(1);
+      // 将 v1.0.0-6-g0230769 转换为 1.0.0.6-g0230769
+      scriptVersion = scriptVersion.replace(/^(\d+\.\d+\.\d+)-/, (_, p1) => `${p1}.`);
+    } else {
+      // 如果没有 tag，使用 commit hash
+      scriptVersion = `${packageVersion}-${gitDescribe}`;
+    }
+  } catch (error) {
+    // 如果 git 命令失败，使用默认版本
+    scriptVersion = `${packageVersion}-dev`;
+  }
+}
+
+// 构建文件名
+const isDev = process.env.NODE_ENV === 'development';
+const fileName = `${packageName}.user.js`;
+const metaFileName = `${packageName}.meta.js`;
+
+// 下载和更新 URL
+const branchBaseUrl = (branch: string) =>
+  `https://raw.githubusercontent.com/owwkmidream/zzz-seelie-sync/refs/heads/${branch}/dist/`;
+
+let downloadURL: string | undefined;
+let updateURL: string | undefined;
+
+if (isDev) {
+  // 开发模式不设置 URL
+} else if (process.env.RELEASE) {
+  // 正式发布
+  const baseUrl = branchBaseUrl('release');
+  downloadURL = `${baseUrl}${fileName}`;
+  updateURL = `${baseUrl}${metaFileName}`;
+} else {
+  // 夜间构建
+  const baseUrl = branchBaseUrl('release-nightly');
+  downloadURL = `${baseUrl}${fileName}`;
+  updateURL = `${baseUrl}${metaFileName}`;
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -18,8 +70,17 @@ export default defineConfig({
         mountGmApi: true, // 挂载 GM API
       },
       userscript: {
-        icon: 'https://vitejs.dev/logo.svg',
+        name: 'ZZZ Seelie 数据同步',
+        description: '绝区零 Seelie 网站数据同步脚本',
+        version: scriptVersion,
+        author: 'owwkmidream',
+        icon: 'https://zzz.seelie.me/img/logo.svg',
         namespace: 'github.com/owwkmidream',
+        supportURL: 'https://github.com/owwkmidream/zzz-seelie-sync/issues',
+        homepageURL: 'https://github.com/owwkmidream/zzz-seelie-sync',
+        downloadURL,
+        updateURL,
+        license: 'MIT',
         match: ['https://zzz.seelie.me/*'],
         // GM API 权限
         grant: ['GM.xmlHttpRequest'],
@@ -30,8 +91,11 @@ export default defineConfig({
           'public-data-api.mihoyo.com',
           'api-takumi.mihoyo.com'
         ],
+        'run-at': 'document-end',
       },
       build: {
+        fileName,
+        metaFileName: process.env.CI ? metaFileName : undefined,
         autoGrant: true, // 自动检测并添加 @grant
         externalGlobals: {
           '@trim21/gm-fetch': cdn.jsdelivr('GM_fetch')
