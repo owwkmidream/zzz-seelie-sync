@@ -66,7 +66,7 @@ export default [
       'no-console': isProduction ? 'error' : 'off',
       'no-debugger': 'error',
       'no-unused-vars': 'off', // 使用 TypeScript 版本，所以禁用 ESLint 自带的
-      'no-undef': 'off',      
+      'no-undef': 'off',
     },
   },
 ];
