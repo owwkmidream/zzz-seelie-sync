@@ -2,7 +2,8 @@ import { logger } from '@logger'
 import {
   getAvatarBasicList,
   batchGetAvatarDetail,
-  getGameNote
+  getGameNote,
+  AvatarCalcData
 } from '@/api/hoyo'
 import {
   setResinData,
@@ -19,7 +20,7 @@ import {
   setInventory
 } from '@/utils/seelie'
 import { batchGetAvatarItemCalc } from '../api/hoyo/items'
-import { ItemsData } from '../utils/seelie/types'
+import { ItemsData, SeelieLanguageData } from '../utils/seelie/types'
 import { getLanguageData } from '../utils/seelie/constants'
 
 /**
@@ -171,134 +172,225 @@ export class SyncService {
     }
   }
 
-  /** 
-   * 同步养成材料信息
+  /**
+   * 同步养成材料数据
    */
   async syncItemsData(): Promise<boolean> {
     try {
-      logger.debug('🔋 开始同步养成材料...')
+      logger.debug('🔋 开始始同步养成材料数据...')
 
-      // 计算最小集合
-      const minSetChar = findMinimumSetCoverIds();
-      const minSetWeapon = findMinimumSetWeapons();
+      // 获取最小集合数据
+      const minSetChar = findMinimumSetCoverIds()
+      const minSetWeapon = findMinimumSetWeapons()
+
+      // 构建请求参数
+      const calcParams = minSetChar.map(item => ({
+        avatar_id: item.id,
+        weapon_id: minSetWeapon[item.style]
+      }))
 
       // 获取养成材料数据
-      const itemsData = await batchGetAvatarItemCalc(
-        minSetChar.map(item => (
-          {
-            avatar_id: item.id,
-            weapon_id: minSetWeapon[item.style]
-          }
-        )));
-
+      const itemsData = await batchGetAvatarItemCalc(calcParams)
       if (!itemsData) {
-        logger.error('❌ 获取养成材料失败')
-        setToast('获取养成材料失败', 'error')
+        const message = '获取养成材料数据失败'
+        logger.error(`❌ ${message}`)
+        setToast(message, 'error')
         return false
       }
 
-      // 展开数据并去重
-      const userOwnItems: Record<string, number> = {} // id-value
-      const userNeedGets: Record<string, string> = {} // id-name
+      // 收集所有物品信息
+      const allItemsInfo = this.collectAllItemsInfo(itemsData)
 
-      for (const item of itemsData) {
-        // ownItems
-        for (const [k, v] of Object.entries(item.user_owns_materials)) {
-          userOwnItems[k] = v;
-        }
-        // needGet
-        for (const obj of item.need_get) {
-          const id = obj.id.toString();
-          // 确保只处理对象自身的属性，而不是原型链上的
-          if (!Object.prototype.hasOwnProperty.call(userNeedGets, id)) {
-            userNeedGets[id] = obj.name;
-          }
-        }
+      // 构建物品数据映射
+      const itemsInventory = this.buildItemsInventory(itemsData, allItemsInfo)
+
+      // 获取语言数据和物品信息
+      const seelieItems = getItems() as ItemsData
+      seelieItems["denny"] = {type: "denny"}
+      const i18nData = await getLanguageData()
+
+      if (!i18nData) {
+        const message = '获取语言数据失败'
+        logger.error(`❌ ${message}`)
+        setToast(message, 'error')
+        return false
       }
 
-      // 构建name-value
-      const userOwnItemsName2Value: Record<string, number> = {}
-      for (const [k, v] of Object.entries(userOwnItems)) {
-        userOwnItemsName2Value[userNeedGets[k]] = v;
-      }
+      // 构建中文名称到 Seelie 物品名称的映射
+      const cnName2SeelieItemName = this.buildCnToSeelieNameMapping(i18nData)
 
-      // 处理到seelie格式
-      const seelieItems = getItems() as ItemsData;
-      const i18n_cn_json = await getLanguageData();
-      const cnName2SeelieItemName: Record<string, string> = {} // cn2seelie-id
-      // 翻转
-      for (const key in i18n_cn_json) {
-        // 确保只处理对象自身的属性，而不是原型链上的
-        if (Object.prototype.hasOwnProperty.call(i18n_cn_json, key)) {
-          const value = i18n_cn_json[key];
-          // 是字符串
-          if (typeof value === 'string') {
-            cnName2SeelieItemName[value] = key;
-          }
+      // 同步到 Seelie
+      const { successNum, failNum } = this.syncItemsToSeelie(
+        itemsInventory,
+        cnName2SeelieItemName,
+        seelieItems
+      )
 
-          // 是数组
-          if (typeof value === 'object' && Array.isArray(value)) {
-            value.forEach((v, i) => {
-              cnName2SeelieItemName[v] = `${key}+${i}` // 形如chip_physical+0格式
-            })
-          }
-        }
-      }
-      
-      let failNum = 0, successNum = 0;
-      // 设置到 Seelie
-      for (const [cnName, num] of Object.entries(userOwnItemsName2Value)) {
-        // 还要做处理
-        const seelieName = cnName2SeelieItemName[cnName];
-        // 如果结尾有+数字，需要特殊处理
-        const seelieNameParts = seelieName.split('+');
-        if (seelieNameParts.length > 1) { // 物理芯片之类的
-          const realName = seelieNameParts[0];
-          const tier = Number(seelieNameParts[1]);
-          const type = seelieItems[realName].type;
-          
-          setInventory(type, realName, tier, num) ? successNum++ : failNum++;
-        } else {
-          const type = seelieItems[seelieName].type;
-
-          setInventory(type, seelieName, 0, num) ? successNum++ : failNum++;
-        }
-      }
-      const success = successNum !== 0;
+      const success = successNum > 0
+      const total = successNum + failNum
 
       if (success) {
-        logger.debug('✅ 库存数据同步成功')
-        setToast(`库存同步成功: 同步${successNum} / ${successNum + failNum}个`, failNum === 0 ? 'success' : 'warning')
+        logger.debug(`✅ 养成材料同步成功: ${successNum}/${total}`)
+        const toastType = failNum === 0 ? 'success' : 'warning'
+        setToast(`养成材料同步成功: ${successNum}/${total}`, toastType)
       } else {
-        logger.warn('❌ 库存数据设置失败')
-        setToast('库存数据设置失败', 'warning')
+        logger.error('❌ 养成材料同步失败')
+        setToast('养成材料同步失败', 'error')
       }
 
       return success
     } catch (error) {
-      logger.error('❌ 库存数据同步失败:', error)
-      setToast('库存数据同步失败', 'error')
+      const message = '养成材料同步失败'
+      logger.error(`❌ ${message}:`, error)
+      setToast(message, 'error')
       return false
     }
   }
 
   /**
-   * 执行完整同步（电量 + 所有角色）
+   * 收集所有物品信息（从所有消耗类型中获取完整的物品信息）
+   */
+  private collectAllItemsInfo(itemsData: AvatarCalcData[]): Record<string, { id: number; name: string }> {
+    const allItemsInfo: Record<string, { id: number; name: string }> = {}
+
+    for (const data of itemsData) {
+      // 从所有消耗类型中收集物品信息
+      const allConsumes = [
+        ...data.avatar_consume,
+        ...data.weapon_consume,
+        ...data.skill_consume,
+        ...data.need_get
+      ]
+
+      for (const item of allConsumes) {
+        const id = item.id.toString()
+        if (!(id in allItemsInfo)) {
+          allItemsInfo[id] = {
+            id: item.id,
+            name: item.name
+          }
+        }
+      }
+    }
+
+    return allItemsInfo
+  }
+
+  /**
+   * 构建物品库存数据（名称到数量的映射）
+   */
+  private buildItemsInventory(
+    itemsData: AvatarCalcData[],
+    allItemsInfo: Record<string, { id: number; name: string }>
+  ): Record<string, number> {
+    const inventory: Record<string, number> = {}
+
+    // 合并所有用户拥有的材料
+    const userOwnItems: Record<string, number> = {}
+    for (const data of itemsData) {
+      Object.assign(userOwnItems, data.user_owns_materials)
+    }
+
+    // 为所有物品构建名称到数量的映射
+    for (const [id, itemInfo] of Object.entries(allItemsInfo)) {
+      const count = userOwnItems[id] || 0 // 如果用户没有该物品，数量为0
+      inventory[itemInfo.name] = count
+    }
+
+    return inventory
+  }
+
+  /**
+   * 构建中文名称到 Seelie 物品名称的映射
+   */
+  private buildCnToSeelieNameMapping(i18nData: SeelieLanguageData): Record<string, string> {
+    const mapping: Record<string, string> = {}
+
+    for (const [key, value] of Object.entries(i18nData)) {
+      if (typeof value === 'string') {
+        mapping[value] = key
+      } else if (Array.isArray(value)) {
+        value.forEach((v, index) => {
+          mapping[v] = `${key}+${index}`
+        })
+      }
+    }
+
+    return mapping
+  }
+
+  /**
+   * 同步物品到 Seelie
+   */
+  private syncItemsToSeelie(
+    itemsInventory: Record<string, number>,
+    cnName2SeelieItemName: Record<string, string>,
+    seelieItems: ItemsData
+  ): { successNum: number; failNum: number } {
+    let successNum = 0
+    let failNum = 0
+
+    for (const [cnName, count] of Object.entries(itemsInventory)) {
+      const seelieName = cnName2SeelieItemName[cnName]
+      if (!seelieName) {
+        failNum++
+        console.error("尝试操作物品出错", seelieName, cnName, cnName2SeelieItemName[cnName])
+        continue
+      }
+
+      try {
+        const seelieNameParts = seelieName.split('+')
+
+        if (seelieNameParts.length > 1) {
+          // 处理分层物品（如物理芯片）
+          const realName = seelieNameParts[0]
+          const tier = Number(seelieNameParts[1])
+          const type = seelieItems[realName].type
+
+          if (type && setInventory(type, realName, tier, count)) {
+            successNum++
+          } else {
+            failNum++
+            console.error("尝试操作物品出错", type, realName, tier, count)
+          }
+        } else {
+          // 处理普通物品
+          const type = seelieItems[seelieName]?.type
+
+          if (type && setInventory(type, seelieName, 0, count)) {
+            successNum++
+          } else {
+            failNum++
+            console.error("尝试操作物品出错", type, seelieName, 0, count)
+          }
+        }
+      } catch {
+        failNum++
+      }
+    }
+
+    return { successNum, failNum }
+  }
+
+  /**
+   * 执行完整同步（电量 + 所有角色 + 养成材料）
    */
   async syncAll(): Promise<{
     resinSync: boolean
     characterSync: BatchSyncResult
+    itemsSync: boolean
   }> {
     logger.debug('🚀 开始执行完整同步...')
     setToast('开始执行完整同步...', '')
 
-    // 并行执行电量同步和角色同步
-    const [resinSync, characterSync] = await Promise.all([
+    // 并行执行所有同步任务
+    const [resinSync, characterSync, itemsSync] = await Promise.all([
       this.syncResinData(),
-      this.syncAllCharacters()
+      this.syncAllCharacters(),
+      this.syncItemsData()
     ])
 
-    const totalSuccess = resinSync && characterSync.success > 0
+    const totalSuccess = resinSync && characterSync.success > 0 && itemsSync
     const message = totalSuccess
       ? '完整同步成功'
       : '完整同步部分失败'
@@ -306,7 +398,7 @@ export class SyncService {
     logger.debug(`${totalSuccess ? '✅' : '⚠️'} ${message}`)
     setToast(message, totalSuccess ? 'success' : 'error')
 
-    return { resinSync, characterSync }
+    return { resinSync, characterSync, itemsSync }
   }
 }
 
@@ -336,11 +428,19 @@ export const syncAllCharacters = (): Promise<BatchSyncResult> => {
 }
 
 /**
- * 执行完整同步（电量 + 所有角色）
+ * 同步养成材料数据
+ */
+export const syncItemsData = (): Promise<boolean> => {
+  return syncService.syncItemsData()
+}
+
+/**
+ * 执行完整同步（电量 + 所有角色 + 养成材料）
  */
 export const syncAll = (): Promise<{
   resinSync: boolean
   characterSync: BatchSyncResult
+  itemsSync: boolean
 }> => {
   return syncService.syncAll()
 }
@@ -352,5 +452,6 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   globalWindow.syncResinData = syncResinData
   globalWindow.syncSingleCharacter = syncSingleCharacter
   globalWindow.syncAllCharacters = syncAllCharacters
+  globalWindow.syncItemsData = syncItemsData
   globalWindow.syncAll = syncAll
 }
