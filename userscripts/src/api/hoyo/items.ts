@@ -24,9 +24,9 @@ export async function getAvatarItemCalc(
     avatar_level: ASCENSIONS[ASCENSIONS.length - 1], // 最大等级
     avatar_current_level: 1,
     avatar_current_promotes: 1,
-    skills: Object.values(SkillType).map(skillType => ({
+    skills: Object.values(SkillType).filter(value => typeof value !== 'string').map(skillType => ({
       skill_type: skillType as SkillType,
-      level: 12,
+      level: skillType === SkillType.CorePassive ? 7 : 12,
       init_level: 1 // 初始
     })),
     weapon_info: {
