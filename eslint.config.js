@@ -50,7 +50,14 @@ export default [
     },
     rules: {
       // TypeScript 相关规则
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_', // 允许以下划线开头的参数
+          varsIgnorePattern: '^_', // 允许以下划线开头的变量
+          caughtErrorsIgnorePattern: '^_', // 允许以下划线开头的错误参数
+        }
+      ],
       // 生产环境严格禁止any，开发环境警告
       '@typescript-eslint/no-explicit-any': isProduction ? 'error' : 'warn',
 
