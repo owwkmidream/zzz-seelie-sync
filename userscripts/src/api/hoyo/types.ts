@@ -185,18 +185,51 @@ export interface AvatarDetail {
 }
 
 // 养成材料相关
+export type MaterialRarity = "C" | "B" | "A" | "S";
+
+/**
+ * 用户材料接口返回
+ */
 export interface AvatarCalcData {
-  user_owns_materials: Record<string, number>;
-  need_get: AvatarCalcNeedGet[];
+  /** 角色升级消耗的材料列表 */
+  avatar_consume: AvatarCalcDetail[];
+  /** 武器升级消耗的材料列表 */
+  weapon_consume: AvatarCalcDetail[];
+  /** 技能升级消耗的材料列表 */
+  skill_consume: AvatarCalcDetail[];
+  /** 货币ID (例如丁尼的ID) */
+  coin_id: number;
+  /** 用户当前拥有的材料，键为材料ID，值为数量 */
+  user_owns_materials: UserOwnsMaterials;
+  /** 用户还需要获取的材料列表 */
+  need_get: AvatarCalcDetail[];
+  /** 货币图标URL */
+  coin_icon: string;
 }
 
-export interface AvatarCalcNeedGet {
+/**
+ * 单个材料消耗或获取的详情
+ */
+export interface AvatarCalcDetail {
+  /** 材料ID */
   id: number;
+  /** 数量 */
   cnt: number;
+  /** 材料名称 */
   name: string;
+  /** 材料图标URL */
   icon: string;
-  rarity: string;
+  /** 材料稀有度 */
+  rarity: MaterialRarity;
+  /** 是否未开放 (通常为false) */
   not_opened: boolean;
+}
+
+/**
+ * 用户拥有的材料列表（键为材料ID，值为数量）
+ */
+export interface UserOwnsMaterials {
+  [materialId: string]: number;
 }
 
 export interface AvatarCalcRequest {
