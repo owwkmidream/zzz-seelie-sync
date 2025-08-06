@@ -24,7 +24,6 @@
 ### 安装依赖
 
 ```bash
-cd userscripts
 pnpm install
 ```
 
@@ -56,6 +55,72 @@ pnpm run type-check
 pnpm run lint
 pnpm run lint:fix  # 自动修复
 ```
+
+## 版本发布
+
+### 自动版本号
+
+项目支持自动版本号管理：
+
+- **开发环境**: 使用 `git describe` 生成版本号，格式如 `1.0.0.6-g0230769`
+- **CI 构建**: 夜间构建使用 git describe，正式发布使用 package.json 版本
+- **本地构建**: 自动检测 git 状态生成版本号
+
+### 发布流程
+
+#### 1. 自动发布（推荐）
+
+```bash
+# 发布补丁版本 (1.0.0 -> 1.0.1)
+pnpm run release:patch
+
+# 发布次要版本 (1.0.0 -> 1.1.0)
+pnpm run release:minor
+
+# 发布主要版本 (1.0.0 -> 2.0.0)
+pnpm run release:major
+```
+
+#### 2. 手动发布
+
+```bash
+# 更新版本号
+npm version patch  # 或 minor, major
+
+# 推送标签
+git push --tags
+```
+
+### GitHub Actions
+
+项目配置了完整的 CI/CD 流程：
+
+#### CI 工作流 (`.github/workflows/ci.yml`)
+
+- **触发条件**: 推送到 main 分支或创建 PR
+- **执行步骤**:
+  1. 类型检查和代码检查
+  2. 构建脚本
+  3. 部署到 `release-nightly` 分支（仅 main 分支）
+
+#### Release 工作流 (`.github/workflows/release.yml`)
+
+- **触发条件**: 推送 `v*` 标签
+- **执行步骤**:
+  1. 构建正式版本
+  2. 部署到 `release` 分支
+  3. 创建 GitHub Release
+  4. 上传 `.user.js` 文件作为附件
+
+### 版本分支
+
+- **`release-nightly`**: 夜间构建，包含最新开发版本
+- **`release`**: 正式发布版本，仅包含标签版本
+
+### 安装链接
+
+- **稳定版本**: `https://raw.githubusercontent.com/owwkmidream/zzz-seelie-sync/refs/heads/release/zzz-seelie-sync.user.js`
+- **开发版本**: `https://raw.githubusercontent.com/owwkmidream/zzz-seelie-sync/refs/heads/release-nightly/zzz-seelie-sync.user.js`
 
 ## 项目结构
 
