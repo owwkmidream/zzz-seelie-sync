@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
+import globals from 'globals';
 
 // 检测是否为生产环境
 const isProduction = process.env.NODE_ENV === 'production';
@@ -13,10 +14,10 @@ export default [
   {
     files: ['*.config.{js,ts}', 'vite.config.{js,ts}', 'eslint.config.{js,ts}'],
     languageOptions: {
-    },
-    env: {
-      node: true, // 启用 Node.js 全局变量 (process, __dirname, __filename, module, require, exports)
-      es2021: true, // 启用 ES2021 的全局变量和语法
+      globals: {
+        ...globals.node,
+        ...globals.es2021,
+      },
     },
     rules: {
       'no-console': 'off',
@@ -33,11 +34,9 @@ export default [
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
-      env: {
-        browser: true, // 启用浏览器全局变量 (window, document, MutationObserver, MutationRecord, fetch, etc.)
-        es2021: true,  // 启用 ES2021 的全局变量和语法 (Promise, Map, Set, async/await 等)
-      },
       globals: {
+        ...globals.browser,
+        ...globals.es2021,
         // 油猴脚本全局变量
         GM_setValue: 'readonly',
         GM_getValue: 'readonly',
