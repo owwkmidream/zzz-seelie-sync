@@ -34,7 +34,7 @@ export default defineConfig({
       build: {
         autoGrant: true, // 自动检测并添加 @grant
         externalGlobals: {
-          '@trim21/gm-fetch': cdn.jsdelivr('GM_fetch', 'dist/index.global.js')
+          '@trim21/gm-fetch': cdn.jsdelivr('GM_fetch')
         },
       },
     }),

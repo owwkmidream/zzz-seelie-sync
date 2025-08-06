@@ -233,7 +233,7 @@ export interface SeelieData {
  * Seelie items数据结构
  */
 export interface ItemData {
-  dim_hash: string | string[];
+  dim_hash?: string | string[];
   type: string;
 }
 
