@@ -1,7 +1,7 @@
 // 材料相关API
 
 import { ASCENSIONS } from "../../utils/seelie/constants";
-import { AVATAR_URL, request } from "./client";
+import { NAP_CULTIVATE_TOOL_URL, request } from "./client";
 import { AvatarCalcData, AvatarCalcRequest, SkillType } from "./types";
 import { resolveUserInfo } from "./utils";
 
@@ -37,7 +37,7 @@ export async function getAvatarItemCalc(
     }
   }
 
-  const response = await request<AvatarCalcData>('/event/nap_cultivate_tool/user/avatar_calc', AVATAR_URL, {
+  const response = await request<AvatarCalcData>('/user/avatar_calc', NAP_CULTIVATE_TOOL_URL, {
     method: 'POST',
     params: { uid: userInfo.uid, region: userInfo.region },
     body: body

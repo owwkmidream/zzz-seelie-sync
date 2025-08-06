@@ -5,7 +5,7 @@ import type {
   AvatarDetail,
   AvatarDetailRequest
 } from './types';
-import { request, AVATAR_URL } from './client';
+import { request, NAP_CULTIVATE_TOOL_URL } from './client';
 import { resolveUserInfo, processBatches } from './utils';
 
 /**
@@ -19,7 +19,7 @@ export async function getAvatarBasicList(
 ): Promise<AvatarBasicInfo[]> {
   const userInfo = await resolveUserInfo(uid, region);
 
-  const response = await request<{ list: AvatarBasicInfo[] }>('/user/avatar_basic_list', AVATAR_URL, {
+  const response = await request<{ list: AvatarBasicInfo[] }>('/user/avatar_basic_list', NAP_CULTIVATE_TOOL_URL, {
     method: 'GET',
     params: { uid: userInfo.uid, region: userInfo.region }
   });
@@ -53,7 +53,7 @@ export async function batchGetAvatarDetail(
     processedAvatarList,
     10,
     async (batch) => {
-      const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', AVATAR_URL, {
+      const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', NAP_CULTIVATE_TOOL_URL, {
         method: 'POST',
         params: { uid: userInfo.uid, region: userInfo.region },
         body: { avatar_list: batch }

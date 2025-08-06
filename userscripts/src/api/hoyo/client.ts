@@ -15,7 +15,7 @@ import { logger } from '../../utils/logger';
 const DEVICE_INFO_KEY = 'zzz_device_info';
 
 // 基础配置
-export const AVATAR_URL = 'https://act-api-takumi.mihoyo.com/event/nap_cultivate_tool';
+export const NAP_CULTIVATE_TOOL_URL = 'https://act-api-takumi.mihoyo.com/event/nap_cultivate_tool';
 export const GAME_RECORD_URL = 'https://api-takumi-record.mihoyo.com/event/game_record_zzz/api/zzz';
 export const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api';
 
@@ -140,8 +140,8 @@ export async function request<T = unknown>(
 ): Promise<ApiResponse<T>> {
   const { method = 'GET', params = {}, body, headers = {} } = options;
 
-  // 如果是 AVATAR_URL 的请求，先进行初始化
-  if (baseUrl === AVATAR_URL) {
+  // 如果是 NAP_CULTIVATE_TOOL_URL 的请求，先进行初始化
+  if (baseUrl === NAP_CULTIVATE_TOOL_URL) {
     await initializeNapToken();
   }
 
