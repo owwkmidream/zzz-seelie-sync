@@ -14,6 +14,7 @@
     "lint:prod": "cross-env NODE_ENV=production eslint src --ext .js,.jsx,.ts,.tsx",
     "type-check": "tsc -b --noEmit",
     "version": "node -p \"require('./package.json').version\"",
+    "release:patch": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
     "release:major": "node scripts/release.js major"
   },
