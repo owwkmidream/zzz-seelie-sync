@@ -13,14 +13,16 @@ if (process.env.RELEASE) {
   // local & nightly Actions - 使用 git describe
   try {
     const gitDescribe = process.env.GHD_DESCRIBE || execSync('git describe --tags --always --dirty').toString().trim();
+    // 移除 dirty 后缀
+    const cleanGitDescribe = gitDescribe.replace(/-dirty$/, '');
     // 如果有 tag，格式如 v1.0.0-6-g0230769，去掉 v 前缀
-    if (gitDescribe.startsWith('v')) {
-      scriptVersion = gitDescribe.slice(1);
+    if (cleanGitDescribe.startsWith('v')) {
+      scriptVersion = cleanGitDescribe.slice(1);
       // 将 v1.0.0-6-g0230769 转换为 1.0.0.6-g0230769
       scriptVersion = scriptVersion.replace(/^(\d+\.\d+\.\d+)-/, (_, p1) => `${p1}.`);
     } else {
       // 如果没有 tag，使用 commit hash
-      scriptVersion = `${packageVersion}-${gitDescribe}`;
+      scriptVersion = `${packageVersion}-${cleanGitDescribe}`;
     }
   } catch (_error) {
     // 如果 git 命令失败，使用默认版本
