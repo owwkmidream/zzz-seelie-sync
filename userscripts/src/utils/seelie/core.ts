@@ -210,6 +210,30 @@ export class SeelieCore {
   }
 
   /**
+   * 调用组件的 setInventory 方法
+   */
+  setInventory(type: string, item: string, tier: number, value: number): boolean {
+    const proxy = this.getProxy()
+    if (!proxy) {
+      logger.warn('⚠️ 无法获取组件 proxy 对象')
+      return false
+    }
+
+    if (typeof proxy.setInventory !== 'function') {
+      logger.warn('⚠️ setInventory 方法不存在')
+      return false
+    }
+
+    try {
+      (proxy.setInventory as (type: string, item: string, tier: number, value: number) => void)(type, item, tier, value)
+      return true
+    } catch (error) {
+      logger.error('❌ 调用 setInventory 失败:', error)
+      return false
+    }
+  }
+
+  /**
    * 获取组件的 characters 数据
    */
   protected getCharacters(): Record<string, CharacterInfo> {
@@ -231,6 +255,14 @@ export class SeelieCore {
   protected getGoals(): unknown[] {
     const proxy = this.getProxy()
     return (proxy?.goals as unknown[]) || []
+  }
+
+  /**
+   * 获取组件的 items 数据
+   */
+  protected getItems(): unknown[] {
+    const proxy = this.getProxy()
+    return (proxy?.items as unknown[]) || []
   }
 
   /**

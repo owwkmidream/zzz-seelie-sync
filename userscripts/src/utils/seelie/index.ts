@@ -72,6 +72,13 @@ export const syncAllCharacters = async (dataList: CharacterDataInput[]): Promise
   return await seelieDataManager.syncAllCharacters(dataList)
 }
 
+/**
+ * 设置库存的便捷函数
+ */
+export const setInventory = (type: string, item: string, tier: number, value: number): boolean => {
+  return seelieDataManager.setInventory(type, item, tier, value)
+}
+
 // 挂载到全局对象，方便调试
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   const globalWindow = window as unknown as Record<string, unknown>;
@@ -80,6 +87,7 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   globalWindow.setCharacter = setCharacter;
   globalWindow.setTalents = setTalents;
   globalWindow.setWeapon = setWeapon;
+  globalWindow.setInventory = setInventory;
   globalWindow.syncCharacter = syncCharacter;
   globalWindow.syncAllCharacters = syncAllCharacters;
 
