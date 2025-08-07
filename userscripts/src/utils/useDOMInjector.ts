@@ -384,6 +384,8 @@ export class DOMInjectorManager {
     let debounceTimer: NodeJS.Timeout | null = null;
     let isProcessing = false;
     let pendingMutations: MutationRecord[] = [];
+    let lastDebugTime = 0;
+    const debugLogInterval = 3000;
 
     this.domObserver = new MutationObserver(async (mutations) => {
       // 收集待处理的变化
@@ -404,7 +406,12 @@ export class DOMInjectorManager {
         pendingMutations = []; // 清空待处理队列
 
         try {
-          logger.debug(`🔍 检测到 ${currentMutations.length} 个 DOM 变化，通知所有组件`);
+          // 节流处理：3秒内只处理一次
+          const now = Date.now();
+          if (lastDebugTime || now - lastDebugTime >= debugLogInterval) {
+            lastDebugTime = now;
+            logger.debug(`🔍 检测到 ${currentMutations.length} 个 DOM 变化，通知所有组件`);
+          }
           await this.handleGlobalDOMChange(currentMutations);
         } finally {
           isProcessing = false;
