@@ -184,6 +184,43 @@ export interface AvatarDetail {
   plan?: never; // 配装方案，结构复杂，可根据需要详细定义
 }
 
+// 养成材料相关
+export interface AvatarCalcData {
+  user_owns_materials: Record<string, number>;
+  need_get: AvatarCalcNeedGet[];
+}
+
+export interface AvatarCalcNeedGet {
+  id: number;
+  cnt: number;
+  name: string;
+  icon: string;
+  rarity: string;
+  not_opened: boolean;
+}
+
+export interface AvatarCalcRequest {
+  avatar_id: number;
+  avatar_level: number;
+  avatar_current_level: number;
+  avatar_current_promotes: number;
+  skills: AvatarCalcSkill[];
+  weapon_info: AvatarCalcWeaponInfo;
+}
+
+export interface AvatarCalcSkill {
+  skill_type: number;
+  level: number;
+  init_level: number;
+}
+
+export interface AvatarCalcWeaponInfo {
+  weapon_id: number;
+  weapon_level: number;
+  weapon_promotes: number;
+  weapon_init_level: number;
+}
+
 // 枚举定义
 export enum ElementType {
   Physical = 200,
