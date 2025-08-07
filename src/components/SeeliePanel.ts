@@ -232,30 +232,223 @@ export class SeeliePanel {
    */
   private createSyncSection(): HTMLDivElement {
     const section = document.createElement('div');
-    section.className = 'flex justify-center';
+    section.className = 'flex flex-col items-center';
 
-    // 同步全部按钮
-    const syncAllButton = document.createElement('button');
-    syncAllButton.className = 'flex items-center justify-center px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
-    syncAllButton.innerHTML = `
+    // 检查用户信息状态，决定是否禁用同步功能
+    const isUserInfoValid = this.userInfo && !('error' in this.userInfo);
+    const disabledClass = isUserInfoValid ? '' : ' opacity-50 cursor-not-allowed';
+    const disabledBgClass = isUserInfoValid ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-800';
+
+    // 主同步按钮
+    const mainSyncButton = document.createElement('button');
+    mainSyncButton.className = `flex items-center justify-center px-6 py-2 ${disabledBgClass} text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mb-2${disabledClass}`;
+    mainSyncButton.disabled = !isUserInfoValid;
+    mainSyncButton.innerHTML = `
       <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
       </svg>
-      <span class="sync-text">同步全部</span>
+      <span class="sync-text">${isUserInfoValid ? '同步全部' : '请先登录'}</span>
     `;
 
-    // 绑定点击事件
-    syncAllButton.addEventListener('click', () => this.handleSyncAll(syncAllButton));
+    // 展开/收起按钮
+    const expandButton = document.createElement('button');
+    expandButton.className = `flex items-center justify-center px-4 py-1 ${isUserInfoValid ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-700'} text-white text-sm rounded transition-all duration-200${disabledClass}`;
+    expandButton.disabled = !isUserInfoValid;
+    expandButton.innerHTML = `
+      <span class="mr-1 text-xs">更多选项</span>
+      <svg class="w-3 h-3 expand-icon transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+      </svg>
+    `;
 
-    section.appendChild(syncAllButton);
+    // 绑定事件（只有在用户信息有效时才绑定）
+    if (isUserInfoValid) {
+      mainSyncButton.addEventListener('click', () => this.handleSyncAll(mainSyncButton));
+      expandButton.addEventListener('click', () => this.toggleExpanded(expandButton));
+    }
+
+    // 详细选项容器（初始隐藏）
+    const detailsContainer = document.createElement('div');
+    detailsContainer.className = 'w-full mt-2 overflow-hidden transition-all duration-300';
+    detailsContainer.style.maxHeight = '0';
+    detailsContainer.style.opacity = '0';
+
+    // 创建详细同步选项
+    const detailsContent = this.createDetailedSyncOptions();
+    detailsContainer.appendChild(detailsContent);
+
+    section.appendChild(mainSyncButton);
+    section.appendChild(expandButton);
+    section.appendChild(detailsContainer);
 
     return section;
   }
 
   /**
+   * 创建详细同步选项
+   */
+  private createDetailedSyncOptions(): HTMLDivElement {
+    const container = document.createElement('div');
+    container.className = 'grid grid-cols-2 gap-2';
+
+    // 检查用户信息状态
+    const isUserInfoValid = this.userInfo && !('error' in this.userInfo);
+
+    // 同步选项配置
+    const syncOptions = [
+      {
+        text: '同步电量',
+        icon: `<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+        </svg>`,
+        handler: (event: Event) => this.handleSyncResin(event)
+      },
+      {
+        text: '同步角色',
+        icon: `<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+        </svg>`,
+        handler: (event: Event) => this.handleSyncCharacters(event)
+      },
+      {
+        text: '同步材料',
+        icon: `<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+        </svg>`,
+        handler: (event: Event) => this.handleSyncItems(event)
+      },
+      {
+        text: '全部同步',
+        icon: `<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>`,
+        handler: () => this.handleSyncAll()
+      }
+    ];
+
+    // 创建按钮
+    syncOptions.forEach(option => {
+      const button = document.createElement('button');
+      const buttonClass = isUserInfoValid
+        ? 'bg-gray-600 hover:bg-gray-500'
+        : 'bg-gray-700 opacity-50 cursor-not-allowed';
+
+      button.className = `flex items-center justify-center px-3 py-2 ${buttonClass} text-white text-sm font-medium rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`;
+      button.disabled = !isUserInfoValid;
+      button.innerHTML = `${option.icon}<span class="sync-text">${option.text}</span>`;
+
+      // 只有在用户信息有效时才绑定事件
+      if (isUserInfoValid) {
+        button.addEventListener('click', option.handler);
+      }
+
+      container.appendChild(button);
+    });
+
+    return container;
+  }
+
+  /**
+   * 切换展开状态
+   */
+  private toggleExpanded(expandButton: HTMLButtonElement): void {
+    if (this.isLoading) return;
+
+    this.isExpanded = !this.isExpanded;
+    const detailsContainer = this.container?.querySelector('.overflow-hidden') as HTMLDivElement;
+    const expandIcon = expandButton.querySelector('.expand-icon') as SVGElement;
+
+    if (this.isExpanded) {
+      // 展开
+      detailsContainer.style.maxHeight = '200px'; // 足够的高度
+      detailsContainer.style.opacity = '1';
+      expandIcon.style.transform = 'rotate(180deg)';
+    } else {
+      // 收起
+      detailsContainer.style.maxHeight = '0';
+      detailsContainer.style.opacity = '0';
+      expandIcon.style.transform = 'rotate(0deg)';
+    }
+  }
+
+  /**
    * 处理同步全部按钮点击
    */
-  private async handleSyncAll(button: HTMLButtonElement): Promise<void> {
+  private async handleSyncAll(button?: HTMLButtonElement): Promise<void> {
+    if (this.isLoading) return;
+
+    // 如果没有传入按钮，查找主按钮
+    if (!button) {
+      button = this.container?.querySelector('.sync-text')?.closest('button') as HTMLButtonElement;
+      if (!button) return;
+    }
+
+    await this.performSyncOperation(button, '同步中...', async () => {
+      logger.debug('开始同步全部数据...');
+      await this.performSync();
+      logger.debug('✅ 同步完成');
+    });
+  }
+
+  /**
+   * 处理同步电量
+   */
+  private async handleSyncResin(event?: Event): Promise<void> {
+    const button = (event?.target as HTMLElement)?.closest('button') as HTMLButtonElement;
+    if (!button) return;
+
+    await this.performSyncOperation(button, '同步中...', async () => {
+      logger.debug('开始同步电量数据...');
+      const success = await syncResinData();
+      if (!success) {
+        throw new Error('电量同步失败');
+      }
+      logger.debug('✅ 电量同步完成');
+    });
+  }
+
+  /**
+   * 处理同步角色
+   */
+  private async handleSyncCharacters(event?: Event): Promise<void> {
+    const button = (event?.target as HTMLElement)?.closest('button') as HTMLButtonElement;
+    if (!button) return;
+
+    await this.performSyncOperation(button, '同步中...', async () => {
+      logger.debug('开始同步角色数据...');
+      const result = await syncAllCharacters();
+      if (result.success === 0) {
+        throw new Error('角色同步失败');
+      }
+      logger.debug('✅ 角色同步完成');
+    });
+  }
+
+  /**
+   * 处理同步材料
+   */
+  private async handleSyncItems(event?: Event): Promise<void> {
+    const button = (event?.target as HTMLElement)?.closest('button') as HTMLButtonElement;
+    if (!button) return;
+
+    await this.performSyncOperation(button, '同步中...', async () => {
+      logger.debug('开始同步材料数据...');
+      const success = await syncItemsData();
+      if (!success) {
+        throw new Error('材料同步失败');
+      }
+      logger.debug('✅ 材料同步完成');
+    });
+  }
+
+  /**
+   * 通用同步操作处理器
+   */
+  private async performSyncOperation(
+    button: HTMLButtonElement,
+    loadingText: string,
+    syncOperation: () => Promise<void>
+  ): Promise<void> {
     if (this.isLoading) return;
 
     this.isLoading = true;
@@ -263,9 +456,9 @@ export class SeeliePanel {
     const originalText = syncText.textContent;
 
     try {
-      // 禁用按钮并显示加载状态
-      button.disabled = true;
-      syncText.textContent = '同步中...';
+      // 禁用所有按钮并显示加载状态
+      this.setAllButtonsDisabled(true);
+      syncText.textContent = loadingText;
 
       // 添加旋转动画到图标
       const icon = button.querySelector('svg');
@@ -273,15 +466,11 @@ export class SeeliePanel {
         icon.classList.add('animate-spin');
       }
 
-      logger.debug('开始同步全部数据...');
-
-      // 执行实际的同步逻辑
-      await this.performSync();
+      // 执行同步操作
+      await syncOperation();
 
       // 显示成功状态
       this.showSyncResult(button, syncText, originalText, icon, 'success');
-
-      logger.debug('✅ 同步完成');
     } catch (error) {
       logger.error('同步失败:', error);
 
@@ -329,6 +518,18 @@ export class SeeliePanel {
   }
 
   /**
+   * 设置所有按钮的禁用状态
+   */
+  private setAllButtonsDisabled(disabled: boolean): void {
+    if (!this.container) return;
+
+    const buttons = this.container.querySelectorAll('button');
+    buttons.forEach(button => {
+      button.disabled = disabled;
+    });
+  }
+
+  /**
    * 显示同步结果
    */
   private showSyncResult(
@@ -342,17 +543,28 @@ export class SeeliePanel {
 
     // 更新文本和样式
     syncText.textContent = isSuccess ? '同步完成' : '同步失败';
-    const newColorClass = isSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
-    button.className = button.className.replace('bg-gray-700 hover:bg-gray-600', newColorClass);
+    const originalBgClass = button.className.match(/bg-gray-\d+/)?.[0] || 'bg-gray-700';
+    const originalHoverClass = button.className.match(/hover:bg-gray-\d+/)?.[0] || 'hover:bg-gray-600';
+    const newColorClass = isSuccess ? 'bg-green-600' : 'bg-red-600';
+    const newHoverClass = isSuccess ? 'hover:bg-green-700' : 'hover:bg-red-700';
+
+    button.className = button.className
+      .replace(originalBgClass, newColorClass)
+      .replace(originalHoverClass, newHoverClass);
 
     // 2秒后恢复原状态
     setTimeout(() => {
       syncText.textContent = originalText || '同步全部';
-      button.className = button.className.replace(newColorClass, 'bg-gray-700 hover:bg-gray-600');
-      button.disabled = false;
+      button.className = button.className
+        .replace(newColorClass, originalBgClass)
+        .replace(newHoverClass, originalHoverClass);
+
       if (icon) {
         icon.classList.remove('animate-spin');
       }
+
+      // 恢复所有按钮状态
+      this.setAllButtonsDisabled(false);
       this.isLoading = false;
     }, 2000);
   }
