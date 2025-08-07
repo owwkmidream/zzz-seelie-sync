@@ -11,7 +11,7 @@ import { logger } from './utils/logger';
  * 初始化应用
  */
 export function initApp(): void {
-  logger.log('🎯 Vue 3 VNode 遍历脚本已加载 - 目标: https://zzz.seelie.me/*');
+  logger.log('🎯 zzz-seelie-sync 脚本已加载');
 
   // 初始化 VNode 遍历（通过全局 mixin 自动处理）
   // if (import.meta.env.DEV) initVNodeTraversal();
