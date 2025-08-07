@@ -35,7 +35,7 @@ const metaFileName = `${packageName}.meta.js`;
 
 // 下载和更新 URL
 const branchBaseUrl = (branch: string) =>
-  `https://raw.githubusercontent.com/owwkmidream/zzz-seelie-sync/refs/heads/${branch}/dist/`;
+  `https://raw.githubusercontent.com/owwkmidream/zzz-seelie-sync/refs/heads/${branch}/`;
 
 let downloadURL: string | undefined;
 let updateURL: string | undefined;
