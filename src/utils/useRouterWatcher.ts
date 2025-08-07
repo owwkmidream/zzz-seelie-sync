@@ -63,7 +63,7 @@ function findVueRouter(): VueRouter | null {
     if (typeof router.afterEach === 'function' &&
       typeof router.beforeEach === 'function' &&
       typeof router.push === 'function') {
-      logger.debug('✓ 从 __vue_app__.config.globalProperties.$router 找到 Router 实例');
+      logger.info('✓ 从 __vue_app__.config.globalProperties.$router 找到 Router 实例');
       logger.debug('Router 实例:', router);
       return router;
     }
@@ -89,7 +89,7 @@ function findVueRouter(): VueRouter | null {
         if (typeof potentialRouter.afterEach === 'function' &&
           typeof potentialRouter.beforeEach === 'function' &&
           typeof potentialRouter.push === 'function') {
-          logger.debug('✓ 从 provides 找到 Router 实例:', symbol.toString());
+          logger.info('✓ 从 provides 找到 Router 实例:', symbol.toString());
           logger.debug('Router 实例:', value);
           return potentialRouter as unknown as VueRouter;
         }

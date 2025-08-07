@@ -73,7 +73,7 @@ export class SeeliePanel {
     // 插入到目标容器的第一个位置
     targetContainer.insertBefore(this.container, targetContainer.firstChild);
 
-    logger.debug('✅ Seelie 面板创建成功');
+    logger.info('✅ Seelie 面板创建成功');
   }
 
   /**
@@ -510,7 +510,7 @@ export class SeeliePanel {
         throw new Error(errorMessage);
       }
 
-      logger.debug(`✅ 同步完成 - 电量: ${resinSync ? '成功' : '失败'}, 角色: ${characterSync.success}/${characterSync.total}, 养成材料: ${itemsSync ? '成功' : '失败'}`);
+      logger.info(`✅ 同步完成 - 电量: ${resinSync ? '成功' : '失败'}, 角色: ${characterSync.success}/${characterSync.total}, 养成材料: ${itemsSync ? '成功' : '失败'}`);
     } catch (error) {
       logger.error('同步操作失败:', error);
       throw error;

@@ -109,7 +109,7 @@ async function initializeNapToken(): Promise<void> {
     };
 
     logger.debug('✅ nap_token cookie 初始化完成');
-    logger.debug(`👤 用户信息: ${userInfoCache.nickname} (UID: ${userInfoCache.uid}, 等级: ${userInfoCache.level})`);
+    logger.info(`👤 用户信息: ${userInfoCache.nickname} (UID: ${userInfoCache.uid}, 等级: ${userInfoCache.level})`);
 
     NapTokenInitialized = true;
   } catch (error) {

@@ -70,7 +70,7 @@ export async function lazyLoadSeelieData(): Promise<void> {
       runtimeDataCache.statsData = statsData
       runtimeDataCache.loaded = true
 
-      logger.debug('✅ Seelie 数据加载完成')
+      logger.info('✅ Seelie 数据加载完成')
     } catch (error) {
       logger.error('❌ Seelie 数据加载失败:', error)
       // 即使失败也标记为已尝试，避免重复请求
