@@ -24,7 +24,7 @@ interface VueRouter {
   } | RouteLocation;
 }
 
-interface RouteLocation {
+export interface RouteLocation {
   path: string;
   [key: string]: unknown;
 }
