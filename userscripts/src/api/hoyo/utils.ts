@@ -51,13 +51,12 @@ export async function processBatches<T, R>(
     return processor(items);
   }
 
-  const results: R[] = [];
-
+  const batches: T[][] = [];
   for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
-    const batchResults = await processor(batch);
-    results.push(...batchResults);
+    batches.push(items.slice(i, i + batchSize));
   }
 
-  return results;
+  const batchPromises = batches.map(batch => processor(batch));
+  const batchResults = await Promise.all(batchPromises);
+  return batchResults.flat();
 }
