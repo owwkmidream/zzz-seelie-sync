@@ -6,27 +6,24 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vue-tsc -b && vite preview",
-    "lint": "eslint src --ext .vue,.js,.jsx,.ts,.tsx",
-    "lint:fix": "eslint src --ext .vue,.js,.jsx,.ts,.tsx --fix"
+    "preview": "tsc && vite preview",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
+    "lint:prod": "cross-env NODE_ENV=production eslint src --ext .js,.jsx,.ts,.tsx",
+    "type-check": "tsc -b --noEmit"
   },
   "dependencies": {
-    "@trim21/gm-fetch": "^0.3.0",
-    "vue": "^3.5.17"
+    "@trim21/gm-fetch": "^0.3.0"
   },
   "devDependencies": {
-    "@nabla/vite-plugin-eslint": "^2.0.6",
-    "@typescript-eslint/eslint-plugin": "^8.38.0",
-    "@typescript-eslint/parser": "^8.38.0",
-    "@vitejs/plugin-vue": "^6.0.0",
+    "@eslint/js": "^9.32.0",
+    "@types/node": "^22.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "cross-env": "^10.0.0",
     "eslint": "^9.32.0",
-    "eslint-plugin-vue": "^10.4.0",
-    "typescript": "^5.8.3",
-    "unplugin-auto-import": "^19.3.0",
-    "unplugin-vue-components": "^28.8.0",
-    "vite": "^7.0.5",
-    "vite-plugin-checker": "^0.10.2",
-    "vite-plugin-monkey": "^6.0.0",
-    "vue-tsc": "^3.0.3"
+    "typescript": "^5.9.2",
+    "vite": "^7.0.6",
+    "vite-plugin-monkey": "^6.0.1"
   }
 }

@@ -17,7 +17,7 @@ declare module '@trim21/gm-fetch' {
     statusText: string;
     headers: Headers;
     url: string;
-    json(): Promise<any>;
+    json(): Promise<unknown>;
     text(): Promise<string>;
     blob(): Promise<Blob>;
     arrayBuffer(): Promise<ArrayBuffer>;
