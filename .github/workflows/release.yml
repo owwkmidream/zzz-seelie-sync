@@ -82,11 +82,15 @@ jobs:
 
       # 创建 GitHub Release
       - name: Create GitHub Release
+        run: pnpx changeloggithub@0
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
+      # delay
+      - run: sleep 3
+
+      # 上传release assets
+      - name: Upload *.user.js to Release
         uses: softprops/action-gh-release@v2
         with:
           files: ./dist/*.user.js
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
