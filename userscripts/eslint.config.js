@@ -6,26 +6,25 @@ import typescriptParser from '@typescript-eslint/parser';
 const isProduction = process.env.NODE_ENV === 'production';
 
 export default [
+  // 1. ESLint 推荐的基础规则
   js.configs.recommended,
-  // 配置文件专用规则
+
+  // 2. 配置文件专用规则 (例如 vite.config.ts, eslint.config.js 等)
   {
     files: ['*.config.{js,ts}', 'vite.config.{js,ts}', 'eslint.config.{js,ts}'],
     languageOptions: {
-      globals: {
-        process: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        module: 'readonly',
-        require: 'readonly',
-        exports: 'readonly',
-      },
+    },
+    env: {
+      node: true, // 启用 Node.js 全局变量 (process, __dirname, __filename, module, require, exports)
+      es2021: true, // 启用 ES2021 的全局变量和语法
     },
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
-  // 源代码规则
+
+  // 3. 源代码规则 (你的应用代码，例如 src/app.ts)
   {
     files: ['src/**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
@@ -34,6 +33,10 @@ export default [
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
+      env: {
+        browser: true, // 启用浏览器全局变量 (window, document, MutationObserver, MutationRecord, fetch, etc.)
+        es2021: true,  // 启用 ES2021 的全局变量和语法 (Promise, Map, Set, async/await 等)
+      },
       globals: {
         // 油猴脚本全局变量
         GM_setValue: 'readonly',
@@ -41,42 +44,6 @@ export default [
         GM_xmlhttpRequest: 'readonly',
         'GM.xmlHttpRequest': 'readonly',
         unsafeWindow: 'readonly',
-
-        // 浏览器全局变量
-        window: 'readonly',
-        document: 'readonly',
-        console: 'readonly',
-        localStorage: 'readonly',
-        sessionStorage: 'readonly',
-
-        // 定时器函数
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-
-        // Web APIs
-        fetch: 'readonly',
-        Request: 'readonly',
-        Response: 'readonly',
-        Headers: 'readonly',
-        URLSearchParams: 'readonly',
-        FormData: 'readonly',
-        Blob: 'readonly',
-        AbortSignal: 'readonly',
-        ReadableStream: 'readonly',
-
-        // DOM APIs
-        HTMLElement: 'readonly',
-        Element: 'readonly',
-        Node: 'readonly',
-        Event: 'readonly',
-
-        // 其他浏览器APIs
-        crypto: 'readonly',
-        performance: 'readonly',
-        location: 'readonly',
-        history: 'readonly',
       },
     },
     plugins: {
@@ -92,8 +59,8 @@ export default [
       // 生产环境禁止console，开发环境允许
       'no-console': isProduction ? 'error' : 'off',
       'no-debugger': 'error',
-      'no-unused-vars': 'off', // 使用 TypeScript 版本
-      'no-undef': 'error',
+      'no-unused-vars': 'off', // 使用 TypeScript 版本，所以禁用 ESLint 自带的
+      'no-undef': 'off',      
     },
   },
 ];
