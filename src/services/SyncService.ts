@@ -334,7 +334,6 @@ export class SyncService {
       const seelieName = cnName2SeelieItemName[cnName]
       if (!seelieName) {
         failNum++
-        console.error("尝试操作物品出错", seelieName, cnName, cnName2SeelieItemName[cnName])
         continue
       }
 
@@ -351,7 +350,6 @@ export class SyncService {
             successNum++
           } else {
             failNum++
-            console.error("尝试操作物品出错", type, realName, tier, count)
           }
         } else {
           // 处理普通物品
@@ -361,7 +359,6 @@ export class SyncService {
             successNum++
           } else {
             failNum++
-            console.error("尝试操作物品出错", type, seelieName, 0, count)
           }
         }
       } catch {
