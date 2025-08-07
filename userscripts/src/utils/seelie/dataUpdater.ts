@@ -129,17 +129,17 @@ export class SeelieDataUpdater {
   }
 
   /**
-   * 处理统计数据文件
+   * 处理统计数据文件（并行版本）
    */
   private static async processStatsFiles(indexScriptContent: string): Promise<SeelieStatsData> {
-    logger.debug('▶️  开始处理统计数据文件...')
-    const statsData: Partial<SeelieStatsData> = {}
+    logger.debug('▶️  开始并行处理统计数据文件...')
 
-    for (const { name, pattern } of this.STATS_FILE_PATTERNS) {
+    // 并行处理所有统计文件
+    const statsPromises = this.STATS_FILE_PATTERNS.map(async ({ name, pattern }) => {
       const match = indexScriptContent.match(pattern)
       if (!match) {
         logger.warn(`⚠️  未找到 ${name} 文件，跳过...`)
-        continue
+        return { name, data: null }
       }
 
       const fileName = match[0]
@@ -148,20 +148,33 @@ export class SeelieDataUpdater {
 
       try {
         const statsFileContent = await this.fetchContent(statsFileUrl)
-        const parsedData: unknown = this.parseStatsFile(statsFileContent);
-        (statsData as Record<string, unknown>)[name] = parsedData
+        const parsedData: unknown = this.parseStatsFile(statsFileContent)
         logger.debug(`✅ ${name} 处理完成`)
+        return { name, data: parsedData }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         logger.error(`❌ 处理 ${name} 时出错: ${errorMessage}`)
+        return { name, data: null }
       }
-    }
+    })
 
+    // 等待所有统计文件处理完成
+    const results = await Promise.all(statsPromises)
+
+    // 组装结果
+    const statsData: Partial<SeelieStatsData> = {}
+    results.forEach(({ name, data }) => {
+      if (data !== null) {
+        (statsData as Record<string, unknown>)[name] = data
+      }
+    })
+
+    logger.debug(`✅ 统计数据并行处理完成，共处理 ${Object.keys(statsData).length} 个文件`)
     return statsData as SeelieStatsData
   }
 
   /**
-   * 更新 Seelie 数据
+   * 更新 Seelie 数据（优化并行版本）
    */
   static async updateSeelieData(): Promise<{ languageData: SeelieLanguageData; statsData: SeelieStatsData }> {
     try {
@@ -188,15 +201,16 @@ export class SeelieDataUpdater {
       const stringsFileUrl = `${this.SEELIE_BASE_URL}/assets/locale/${stringsFileMatch[0]}`
       logger.debug(`第三步：发现中文语言包 -> ${stringsFileUrl}`)
 
-      // 3. 获取语言包内容
-      const stringsFileContent = await this.fetchContent(stringsFileUrl)
-      logger.debug('✅ 中文语言包内容下载成功。')
+      // 3. 并行获取语言包内容和处理统计数据文件
+      logger.debug('🔄 开始并行处理语言包和统计数据...')
+      const [stringsFileContent, statsData] = await Promise.all([
+        this.fetchContent(stringsFileUrl),
+        this.processStatsFiles(indexScriptContent)
+      ])
 
-      // 4. 处理统计数据文件
-      const statsData = await this.processStatsFiles(indexScriptContent)
-      logger.debug(`✅ 统计数据处理完成，共处理 ${Object.keys(statsData).length} 个文件。`)
+      logger.debug('✅ 语言包和统计数据并行处理完成')
 
-      // 5. 还原语言包数据
+      // 4. 还原语言包数据
       const languageData = this.restoreZzzData(stringsFileContent)
 
       logger.debug('🎉 Seelie 数据更新完成！')

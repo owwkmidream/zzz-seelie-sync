@@ -227,23 +227,35 @@ export class CharacterManager extends SeelieCore {
       { name: '武器数据', fn: () => this.setWeapon(data) }
     ]
 
-    for (const { name, fn } of operations) {
+    const operationPromises = operations.map(async ({ name, fn }) => {
       try {
         const success = await fn()
         if (success) {
-          result.success++
           logger.debug(`✓ ${characterName} - ${name}同步成功`)
+          return { success: true, error: null }
         } else {
-          result.failed++
-          result.errors.push(`${characterName} - ${name}同步失败`)
+          const errorMsg = `${characterName} - ${name}同步失败`
+          return { success: false, error: errorMsg }
         }
       } catch (error) {
-        result.failed++
         const errorMsg = `${characterName} - ${name}同步错误: ${error}`
-        result.errors.push(errorMsg)
         logger.error(`❌ ${errorMsg}`)
+        return { success: false, error: errorMsg }
       }
-    }
+    })
+
+    const results = await Promise.all(operationPromises)
+
+    results.forEach(({ success, error }) => {
+      if (success) {
+        result.success++
+      } else {
+        result.failed++
+        if (error) {
+          result.errors.push(error)
+        }
+      }
+    })
 
     logger.debug(`✅ ${characterName} 同步完成 - 成功: ${result.success}, 失败: ${result.failed}`)
     return result
@@ -263,8 +275,7 @@ export class CharacterManager extends SeelieCore {
 
     logger.debug(`🚀 开始批量同步 ${dataList.length} 个角色`)
 
-    for (let index = 0; index < dataList.length; index++) {
-      const data = dataList[index]
+    const syncPromises = dataList.map(async (data, index) => {
       const character = data.avatar || data
       const characterName = character.name_mi18n || `角色ID:${character.id}`
 
@@ -272,32 +283,40 @@ export class CharacterManager extends SeelieCore {
 
       try {
         const result = await this.syncCharacter(data)
-
-        overallResult.details.push({
+        return {
           character: characterName,
-          result
-        })
-
-        if (result.failed === 0) {
-          overallResult.success++
-        } else {
-          overallResult.failed++
-          overallResult.errors.push(...result.errors)
+          result,
+          success: result.failed === 0
         }
       } catch (error) {
-        overallResult.failed++
         const errorMsg = `${characterName} - 批量同步失败: ${error}`
-        overallResult.errors.push(errorMsg)
-        overallResult.details.push({
-          character: characterName,
-          result: { success: 0, failed: 1, errors: [errorMsg] }
-        })
         logger.error(`❌ ${errorMsg}`)
+        return {
+          character: characterName,
+          result: { success: 0, failed: 1, errors: [errorMsg] },
+          success: false
+        }
       }
-    }
+    })
+
+    const results = await Promise.all(syncPromises)
+
+    results.forEach(({ character, result, success }) => {
+      overallResult.details.push({
+        character,
+        result
+      })
+
+      if (success) {
+        overallResult.success++
+      } else {
+        overallResult.failed++
+        overallResult.errors.push(...result.errors)
+      }
+    })
 
     this.logBatchResult(overallResult)
-    this.showBatchToast(overallResult)
+    // this.showBatchToast(overallResult)
 
     return overallResult
   }
@@ -347,19 +366,19 @@ export class CharacterManager extends SeelieCore {
   /**
    * 显示批量同步 Toast
    */
-  private showBatchToast(result: BatchSyncResult): void {
-    if (result.success > 0) {
-      this.setToast(
-        `成功同步 ${result.success}/${result.total} 个角色`,
-        result.failed === 0 ? 'success' : 'warning'
-      )
-    }
+  // private showBatchToast(result: BatchSyncResult): void {
+  //   if (result.success > 0) {
+  //     this.setToast(
+  //       `成功同步 ${result.success}/${result.total} 个角色`,
+  //       result.failed === 0 ? 'success' : 'warning'
+  //     )
+  //   }
 
-    if (result.failed > 0) {
-      this.setToast(
-        `${result.failed} 个角色同步失败，请查看控制台`,
-        'error'
-      )
-    }
-  }
+  //   if (result.failed > 0) {
+  //     this.setToast(
+  //       `${result.failed} 个角色同步失败，请查看控制台`,
+  //       'error'
+  //     )
+  //   }
+  // }
 }
