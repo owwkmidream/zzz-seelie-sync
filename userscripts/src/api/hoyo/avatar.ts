@@ -42,11 +42,11 @@ export async function batchGetAvatarDetail(
   // 判断数组类型并进行相应处理
   const processedAvatarList: AvatarDetailRequest[] = typeof avatarList[0] === 'number'
     ? (avatarList as number[]).map(id => ({
-        avatar_id: id,
-        is_teaser: false,
-        teaser_need_weapon: false,
-        teaser_sp_skill: false
-      }))
+      avatar_id: id,
+      is_teaser: false,
+      teaser_need_weapon: false,
+      teaser_sp_skill: false
+    }))
     : avatarList as AvatarDetailRequest[];
   // 使用通用分批处理函数
   return processBatches(
