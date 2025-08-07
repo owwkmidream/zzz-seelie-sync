@@ -208,18 +208,26 @@ export class SeeliePanel {
       const result = await syncAll();
 
       // 检查同步结果
-      const { resinSync, characterSync } = result;
-      const totalSuccess = resinSync && characterSync.success > 0;
+      const { resinSync, characterSync, itemsSync } = result;
+      const totalSuccess = resinSync && characterSync.success > 0 && itemsSync;
 
       if (!totalSuccess) {
-        const errorMessages = characterSync.errors || [];
+        const errorMessages: string[] = [];
+
+        if (!resinSync) errorMessages.push('电量同步失败');
+        if (characterSync.success === 0) {
+          const charErrors = characterSync.errors || ['角色同步失败'];
+          errorMessages.push(...charErrors);
+        }
+        if (!itemsSync) errorMessages.push('养成材料同步失败');
+
         const errorMessage = errorMessages.length > 0
           ? errorMessages.join(', ')
           : '同步过程中出现错误';
         throw new Error(errorMessage);
       }
 
-      logger.debug(`✅ 同步完成 - 电量: ${resinSync ? '成功' : '失败'}, 角色: ${characterSync.success}/${characterSync.total}`);
+      logger.debug(`✅ 同步完成 - 电量: ${resinSync ? '成功' : '失败'}, 角色: ${characterSync.success}/${characterSync.total}, 养成材料: ${itemsSync ? '成功' : '失败'}`);
     } catch (error) {
       logger.error('同步操作失败:', error);
       throw error;
