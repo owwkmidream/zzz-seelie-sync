@@ -2,14 +2,26 @@
 
 import type { ResinDataInput, AccountResin, ToastType, CharacterInfo, WeaponInfo } from './types'
 import { RESIN_INTERVAL } from './constants'
+import { logger } from '../logger'
 
 /**
  * Seelie 核心数据管理器
  * 提供对 Vue 应用组件的基础访问和操作
  */
+interface VueComponent {
+  proxy?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface AppElement extends HTMLElement {
+  _vnode?: {
+    component?: VueComponent;
+  };
+}
+
 export class SeelieCore {
-  private appElement: HTMLElement | null = null
-  private rootComponent: any = null
+  private appElement: AppElement | null = null
+  private rootComponent: VueComponent | null = null
 
   constructor() {
     this.init()
@@ -19,20 +31,20 @@ export class SeelieCore {
    * 初始化，获取 #app 元素和根组件
    */
   private init(): void {
-    this.appElement = document.querySelector('#app') as HTMLElement & { _vnode?: any }
+    this.appElement = document.querySelector('#app') as AppElement
 
     if (!this.appElement) {
-      console.warn('⚠️ SeelieCore: 未找到 #app 元素')
+      logger.warn('⚠️ SeelieCore: 未找到 #app 元素')
       return
     }
 
     if (!this.appElement._vnode?.component) {
-      console.warn('⚠️ SeelieCore: #app 元素没有 _vnode.component')
+      logger.warn('⚠️ SeelieCore: #app 元素没有 _vnode.component')
       return
     }
 
     this.rootComponent = this.appElement._vnode.component
-    console.log('✓ SeelieCore 初始化成功')
+    logger.debug('✓ SeelieCore 初始化成功')
   }
 
   /**
@@ -48,25 +60,25 @@ export class SeelieCore {
   /**
    * 获取根组件的 proxy 对象
    */
-  protected getProxy(): any {
+  protected getProxy(): Record<string, unknown> | null {
     if (!this.ensureInitialized()) {
       return null
     }
-    return this.rootComponent.proxy
+    return this.rootComponent?.proxy as Record<string, unknown> | null
   }
 
   /**
    * 获取 accountResin 属性值
    */
-  getAccountResin(): any {
+  getAccountResin(): unknown {
     const proxy = this.getProxy()
     if (!proxy) {
-      console.warn('⚠️ 无法获取组件 proxy 对象')
+      logger.warn('⚠️ 无法获取组件 proxy 对象')
       return null
     }
 
     const accountResin = proxy.accountResin
-    console.log('📖 获取 accountResin:', accountResin)
+    logger.debug('📖 获取 accountResin:', accountResin)
     return accountResin
   }
 
@@ -76,7 +88,7 @@ export class SeelieCore {
   setAccountResin(value: ResinDataInput): boolean {
     const proxy = this.getProxy()
     if (!proxy) {
-      console.warn('⚠️ 无法获取组件 proxy 对象')
+      logger.warn('⚠️ 无法获取组件 proxy 对象')
       return false
     }
 
@@ -86,7 +98,7 @@ export class SeelieCore {
 
       proxy.accountResin = convertedValue
 
-      console.log('✏️ 设置 accountResin:', {
+      logger.debug('✏️ 设置 accountResin:', {
         oldValue,
         inputValue: value,
         convertedValue
@@ -94,7 +106,7 @@ export class SeelieCore {
 
       return true
     } catch (error) {
-      console.error('❌ 设置 accountResin 失败:', error)
+      logger.error('❌ 设置 accountResin 失败:', error)
       return false
     }
   }
@@ -129,7 +141,7 @@ export class SeelieCore {
   setToast(message: string, type: ToastType = ''): boolean {
     const proxy = this.getProxy()
     if (!proxy) {
-      console.warn('⚠️ 无法获取组件 proxy 对象')
+      logger.warn('⚠️ 无法获取组件 proxy 对象')
       return false
     }
 
@@ -137,10 +149,10 @@ export class SeelieCore {
       proxy.toast = message
       proxy.toastType = type
 
-      console.log('🍞 设置 Toast:', { message, type })
+      logger.debug('🍞 设置 Toast:', { message, type })
       return true
     } catch (error) {
-      console.error('❌ 设置 Toast 失败:', error)
+      logger.error('❌ 设置 Toast 失败:', error)
       return false
     }
   }
@@ -148,23 +160,23 @@ export class SeelieCore {
   /**
    * 调用组件的 addGoal 方法
    */
-  protected addGoal(goal: any): boolean {
+  protected addGoal(goal: unknown): boolean {
     const proxy = this.getProxy()
     if (!proxy) {
-      console.warn('⚠️ 无法获取组件 proxy 对象')
+      logger.warn('⚠️ 无法获取组件 proxy 对象')
       return false
     }
 
     if (typeof proxy.addGoal !== 'function') {
-      console.warn('⚠️ addGoal 方法不存在')
+      logger.warn('⚠️ addGoal 方法不存在')
       return false
     }
 
     try {
-      proxy.addGoal(goal)
+      (proxy.addGoal as (goal: unknown) => void)(goal)
       return true
     } catch (error) {
-      console.error('❌ 调用 addGoal 失败:', error)
+      logger.error('❌ 调用 addGoal 失败:', error)
       return false
     }
   }
@@ -172,23 +184,23 @@ export class SeelieCore {
   /**
    * 调用组件的 removeGoal 方法
    */
-  protected removeGoal(goal: any): boolean {
+  protected removeGoal(goal: unknown): boolean {
     const proxy = this.getProxy()
     if (!proxy) {
-      console.warn('⚠️ 无法获取组件 proxy 对象')
+      logger.warn('⚠️ 无法获取组件 proxy 对象')
       return false
     }
 
     if (typeof proxy.removeGoal !== 'function') {
-      console.warn('⚠️ removeGoal 方法不存在')
+      logger.warn('⚠️ removeGoal 方法不存在')
       return false
     }
 
     try {
-      proxy.removeGoal(goal)
+      (proxy.removeGoal as (goal: unknown) => void)(goal)
       return true
     } catch (error) {
-      console.error('❌ 调用 removeGoal 失败:', error)
+      logger.error('❌ 调用 removeGoal 失败:', error)
       return false
     }
   }
@@ -198,7 +210,7 @@ export class SeelieCore {
    */
   protected getCharacters(): Record<string, CharacterInfo> {
     const proxy = this.getProxy()
-    return proxy?.characters || {}
+    return (proxy?.characters as Record<string, CharacterInfo>) || {}
   }
 
   /**
@@ -206,21 +218,21 @@ export class SeelieCore {
    */
   protected getWeapons(): Record<string, WeaponInfo> {
     const proxy = this.getProxy()
-    return proxy?.weapons || {}
+    return (proxy?.weapons as Record<string, WeaponInfo>) || {}
   }
 
   /**
    * 获取组件的 goals 数据
    */
-  protected getGoals(): any[] {
+  protected getGoals(): unknown[] {
     const proxy = this.getProxy()
-    return proxy?.goals || []
+    return (proxy?.goals as unknown[]) || []
   }
 
   /**
    * 获取完整的组件上下文信息（调试用）
    */
-  getContextInfo(): any {
+  getContextInfo(): Record<string, unknown> | null {
     const proxy = this.getProxy()
     if (!proxy) {
       return null
@@ -238,7 +250,7 @@ export class SeelieCore {
    * 重新初始化（当页面路由变化时调用）
    */
   refresh(): void {
-    console.log('🔄 SeelieCore 重新初始化...')
+    logger.debug('🔄 SeelieCore 重新初始化...')
     this.appElement = null
     this.rootComponent = null
     this.init()

@@ -180,7 +180,7 @@ export interface Goal {
     asc: number;
     craft?: number;
   };
-  [key: string]: any; // 用于天赋数据
+  [key: string]: unknown; // 用于天赋数据
 }
 
 /**

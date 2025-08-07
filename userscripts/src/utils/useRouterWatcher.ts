@@ -1,17 +1,46 @@
 // Vue Router 监听 Hook
+import { logger } from "./logger";
+interface VueApp {
+  config?: {
+    globalProperties?: {
+      $router?: VueRouter;
+    };
+  };
+  _context?: {
+    provides?: Record<symbol, unknown>;
+  };
+}
+
+interface AppElementWithVue extends HTMLElement {
+  __vue_app__?: VueApp;
+}
+
+interface VueRouter {
+  afterEach: (callback: (to: RouteLocation, from: RouteLocation) => void) => () => void;
+  beforeEach: (callback: (to: RouteLocation, from: RouteLocation) => void) => () => void;
+  push: (location: string | RouteLocation) => Promise<void>;
+  currentRoute?: {
+    value?: RouteLocation;
+  } | RouteLocation;
+}
+
+interface RouteLocation {
+  path: string;
+  [key: string]: unknown;
+}
 
 /**
  * 查找 Vue Router 实例
  */
-function findVueRouter(): any {
-  const appElement = document.querySelector('#app') as any;
+function findVueRouter(): VueRouter | null {
+  const appElement = document.querySelector('#app') as AppElementWithVue;
 
   if (!appElement?.__vue_app__) {
-    console.error('❌ 未找到 Vue App 实例');
+    logger.error('❌ 未找到 Vue App 实例');
     return null;
   }
 
-  console.log('🔍 查找 Vue Router 实例...');
+  logger.debug('🔍 查找 Vue Router 实例...');
 
   // 首选方法：直接从 __vue_app__.config.globalProperties.$router 获取
   const router = appElement.__vue_app__.config?.globalProperties?.$router;
@@ -19,8 +48,8 @@ function findVueRouter(): any {
     if (typeof router.afterEach === 'function' &&
       typeof router.beforeEach === 'function' &&
       typeof router.push === 'function') {
-      console.log('✓ 从 __vue_app__.config.globalProperties.$router 找到 Router 实例');
-      console.log('Router 实例:', router);
+      logger.debug('✓ 从 __vue_app__.config.globalProperties.$router 找到 Router 实例');
+      logger.debug('Router 实例:', router);
       return router;
     }
   }
@@ -28,7 +57,7 @@ function findVueRouter(): any {
   // 备选方法：从 _context.provides 中查找
   const context = appElement.__vue_app__._context;
   if (context?.provides) {
-    console.log('🔍 尝试从 provides 查找 Router...');
+    logger.debug('🔍 尝试从 provides 查找 Router...');
     const provides = context.provides;
 
     // 获取所有 Symbol 键
@@ -40,35 +69,37 @@ function findVueRouter(): any {
 
       // 检查是否是 Vue Router 实例
       if (value && typeof value === 'object') {
+        const potentialRouter = value as Record<string, unknown>
         // Vue Router 通常有这些方法
-        if (typeof value.afterEach === 'function' &&
-          typeof value.beforeEach === 'function' &&
-          typeof value.push === 'function') {
-          console.log('✓ 从 provides 找到 Router 实例:', symbol.toString());
-          console.log('Router 实例:', value);
-          return value;
+        if (typeof potentialRouter.afterEach === 'function' &&
+          typeof potentialRouter.beforeEach === 'function' &&
+          typeof potentialRouter.push === 'function') {
+          logger.debug('✓ 从 provides 找到 Router 实例:', symbol.toString());
+          logger.debug('Router 实例:', value);
+          return potentialRouter as unknown as VueRouter;
         }
       }
     }
   }
 
-  console.error('❌ 未找到 Vue Router 实例');
+  logger.error('❌ 未找到 Vue Router 实例');
   return null;
 }
 
 /**
  * 获取当前路由信息
  */
-export function getCurrentRoute(): any {
+export function getCurrentRoute(): RouteLocation | null {
   const router = findVueRouter();
   if (!router) {
-    console.error('❌ 未找到 Router 实例');
+    logger.error('❌ 未找到 Router 实例');
     return null;
   }
 
   const currentRoute = router.currentRoute?.value || router.currentRoute;
-  console.log('📍 当前路由:', currentRoute?.path);
-  return currentRoute;
+  const route = currentRoute as RouteLocation | undefined
+  logger.debug('📍 当前路由:', route?.path);
+  return route || null;
 }
 
 /**
@@ -77,7 +108,7 @@ export function getCurrentRoute(): any {
  * @param options 配置选项
  */
 export function useRouterWatcher(
-  callback: (to: any, from: any) => void,
+  callback: (to: RouteLocation, from: RouteLocation | null) => void,
   options: {
     delay?: number;        // 回调延迟时间（ms），默认 100
     immediate?: boolean;   // 是否立即执行一次回调，默认 false
@@ -85,11 +116,11 @@ export function useRouterWatcher(
 ) {
   const { delay = 100, immediate = false } = options;
 
-  console.log('🚦 设置路由监听 Hook...');
+  logger.debug('🚦 设置路由监听 Hook...');
 
   const router = findVueRouter();
   if (!router) {
-    console.error('❌ 无法设置路由监听：未找到 Router 实例');
+    logger.error('❌ 无法设置路由监听：未找到 Router 实例');
     return {
       router: null,
       unwatch: () => { }
@@ -99,13 +130,14 @@ export function useRouterWatcher(
   // 如果需要立即执行
   if (immediate) {
     setTimeout(() => {
-      callback(router.currentRoute?.value || router.currentRoute, null);
+      const currentRoute = router.currentRoute?.value || router.currentRoute;
+      callback(currentRoute as RouteLocation, null);
     }, delay);
   }
 
   // 注册路由变化后的钩子
-  const unwatch = router.afterEach((to: any, from: any) => {
-    console.log('🔄 路由变化检测到:', from?.path, '->', to?.path);
+  const unwatch = router.afterEach((to: RouteLocation, from: RouteLocation) => {
+    logger.debug('🔄 路由变化检测到:', from?.path, '->', to?.path);
 
     // 延迟执行回调
     setTimeout(() => {
@@ -113,7 +145,7 @@ export function useRouterWatcher(
     }, delay);
   });
 
-  console.log('✓ 路由监听 Hook 设置完成');
+  logger.debug('✓ 路由监听 Hook 设置完成');
 
   return {
     router,
@@ -138,7 +170,7 @@ export function useRouterRerun(
 
   return useRouterWatcher(
     () => {
-      console.log('🔄 路由变化，重新执行函数...');
+      logger.debug('🔄 路由变化，重新执行函数...');
       fn();
     },
     { delay, immediate }
@@ -146,8 +178,9 @@ export function useRouterRerun(
 }
 
 // 将函数挂载到全局对象，方便调试
-if (typeof window !== 'undefined') {
-  (window as any).useRouterWatcher = useRouterWatcher;
-  (window as any).useRouterRerun = useRouterRerun;
-  (window as any).getCurrentRoute = getCurrentRoute;
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  const globalWindow = window as unknown as Record<string, unknown>;
+  globalWindow.useRouterWatcher = useRouterWatcher;
+  globalWindow.useRouterRerun = useRouterRerun;
+  globalWindow.getCurrentRoute = getCurrentRoute;
 }

@@ -3,6 +3,7 @@
 
 import GM_fetch from '@trim21/gm-fetch'
 import type { SeelieLanguageData, SeelieStatsData } from './types'
+import { logger } from '../logger'
 
 /**
  * Seelie 数据更新器
@@ -37,7 +38,7 @@ export class SeelieDataUpdater {
    * 从 JS 内容中还原绝区零数据
    */
   private static restoreZzzData(jsContent: string): SeelieLanguageData {
-    console.log('▶️  开始从 JS 内容中还原绝区零数据...')
+    logger.debug('▶️  开始从 JS 内容中还原绝区零数据...')
 
     // 解析所有导出的变量
     const exportMatch = jsContent.match(/\bexport\s*\{([\s\S]*?)\}/)
@@ -58,7 +59,7 @@ export class SeelieDataUpdater {
       const allDataBlocks = scriptRunner()
 
       // 智能搜索正确的数据块
-      console.log(`🔍 正在 ${Object.keys(allDataBlocks).length} 个数据块中搜索绝区零数据...`)
+      logger.debug(`🔍 正在 ${Object.keys(allDataBlocks).length} 个数据块中搜索绝区零数据...`)
       for (const blockName in allDataBlocks) {
         const block = allDataBlocks[blockName]
         if (!block || typeof block !== 'object') continue
@@ -66,7 +67,7 @@ export class SeelieDataUpdater {
         const sources = [block.default, block] // 检查 .default 和对象本身
         for (const source of sources) {
           if (source && typeof source === 'object' && this.UNIQUE_ZZZ_KEYS.some(key => key in source)) {
-            console.log(`🎯 命中！在变量 '${blockName}' 中找到关键词。`)
+            logger.debug(`🎯 命中！在变量 '${blockName}' 中找到关键词。`)
             return source
           }
         }
@@ -131,28 +132,28 @@ export class SeelieDataUpdater {
    * 处理统计数据文件
    */
   private static async processStatsFiles(indexScriptContent: string): Promise<SeelieStatsData> {
-    console.log('▶️  开始处理统计数据文件...')
+    logger.debug('▶️  开始处理统计数据文件...')
     const statsData: Partial<SeelieStatsData> = {}
 
     for (const { name, pattern } of this.STATS_FILE_PATTERNS) {
       const match = indexScriptContent.match(pattern)
       if (!match) {
-        console.warn(`⚠️  未找到 ${name} 文件，跳过...`)
+        logger.warn(`⚠️  未找到 ${name} 文件，跳过...`)
         continue
       }
 
       const fileName = match[0]
       const statsFileUrl = `${this.SEELIE_BASE_URL}/assets/${fileName}`
-      console.log(`📥 下载 ${name} -> ${statsFileUrl}`)
+      logger.debug(`📥 下载 ${name} -> ${statsFileUrl}`)
 
       try {
         const statsFileContent = await this.fetchContent(statsFileUrl)
         const parsedData: unknown = this.parseStatsFile(statsFileContent);
-        (statsData as any)[name] = parsedData
-        console.log(`✅ ${name} 处理完成`)
+        (statsData as Record<string, unknown>)[name] = parsedData
+        logger.debug(`✅ ${name} 处理完成`)
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
-        console.error(`❌ 处理 ${name} 时出错: ${errorMessage}`)
+        logger.error(`❌ 处理 ${name} 时出错: ${errorMessage}`)
       }
     }
 
@@ -164,10 +165,10 @@ export class SeelieDataUpdater {
    */
   static async updateSeelieData(): Promise<{ languageData: SeelieLanguageData; statsData: SeelieStatsData }> {
     try {
-      console.log('🚀 开始更新 Seelie 数据...')
+      logger.debug('🚀 开始更新 Seelie 数据...')
 
       // 1. 获取主页，找到 index-....js
-      console.log('第一步：获取 Seelie.me 主页...')
+      logger.debug('第一步：获取 Seelie.me 主页...')
       const mainPageHtml = await this.fetchContent(this.SEELIE_BASE_URL)
       const indexScriptMatch = mainPageHtml.match(/\/assets\/index-([a-f0-9]+)\.js/)
       if (!indexScriptMatch) {
@@ -175,7 +176,7 @@ export class SeelieDataUpdater {
       }
 
       const indexScriptUrl = `${this.SEELIE_BASE_URL}${indexScriptMatch[0]}`
-      console.log(`第二步：发现主脚本 -> ${indexScriptUrl}`)
+      logger.debug(`第二步：发现主脚本 -> ${indexScriptUrl}`)
 
       // 2. 获取主脚本，找到 strings-zh-....js
       const indexScriptContent = await this.fetchContent(indexScriptUrl)
@@ -185,24 +186,24 @@ export class SeelieDataUpdater {
       }
 
       const stringsFileUrl = `${this.SEELIE_BASE_URL}/assets/locale/${stringsFileMatch[0]}`
-      console.log(`第三步：发现中文语言包 -> ${stringsFileUrl}`)
+      logger.debug(`第三步：发现中文语言包 -> ${stringsFileUrl}`)
 
       // 3. 获取语言包内容
       const stringsFileContent = await this.fetchContent(stringsFileUrl)
-      console.log('✅ 中文语言包内容下载成功。')
+      logger.debug('✅ 中文语言包内容下载成功。')
 
       // 4. 处理统计数据文件
       const statsData = await this.processStatsFiles(indexScriptContent)
-      console.log(`✅ 统计数据处理完成，共处理 ${Object.keys(statsData).length} 个文件。`)
+      logger.debug(`✅ 统计数据处理完成，共处理 ${Object.keys(statsData).length} 个文件。`)
 
       // 5. 还原语言包数据
       const languageData = this.restoreZzzData(stringsFileContent)
 
-      console.log('🎉 Seelie 数据更新完成！')
+      logger.debug('🎉 Seelie 数据更新完成！')
       return { languageData, statsData }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error(`❌ Seelie 数据更新失败: ${errorMessage}`)
+      logger.error(`❌ Seelie 数据更新失败: ${errorMessage}`)
       throw error
     }
   }
@@ -215,9 +216,9 @@ export class SeelieDataUpdater {
       localStorage.setItem('seelie_language_data', JSON.stringify(languageData))
       localStorage.setItem('seelie_stats_data', JSON.stringify(statsData))
       localStorage.setItem('seelie_data_timestamp', Date.now().toString())
-      console.log('✅ 数据已缓存到 localStorage')
+      logger.debug('✅ 数据已缓存到 localStorage')
     } catch (error) {
-      console.error('❌ 缓存数据失败:', error)
+      logger.error('❌ 缓存数据失败:', error)
     }
   }
 
@@ -240,7 +241,7 @@ export class SeelieDataUpdater {
         timestamp: parseInt(timestampStr)
       }
     } catch (error) {
-      console.error('❌ 获取缓存数据失败:', error)
+      logger.error('❌ 获取缓存数据失败:', error)
       return null
     }
   }
@@ -250,7 +251,7 @@ export class SeelieDataUpdater {
    */
   static async getLatestData(): Promise<{ languageData: SeelieLanguageData; statsData: SeelieStatsData }> {
     try {
-      console.log('🔄 请求最新 Seelie 数据...')
+      logger.debug('🔄 请求最新 Seelie 数据...')
       const { languageData, statsData } = await this.updateSeelieData()
 
       // 请求成功，缓存数据
@@ -258,12 +259,12 @@ export class SeelieDataUpdater {
 
       return { languageData, statsData }
     } catch (error) {
-      console.warn('⚠️ 网络请求失败，尝试使用缓存数据:', error)
+      logger.warn('⚠️ 网络请求失败，尝试使用缓存数据:', error)
 
       // 网络请求失败，尝试使用缓存
       const cachedData = this.getCachedData()
       if (cachedData) {
-        console.log('✅ 使用缓存的 Seelie 数据')
+        logger.debug('✅ 使用缓存的 Seelie 数据')
         return {
           languageData: cachedData.languageData,
           statsData: cachedData.statsData

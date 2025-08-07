@@ -16,7 +16,7 @@ export interface DeviceInfo {
   timestamp: number; // 添加时间戳，用于判断是否需要更新
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   retcode: number;
   message: string;
   data: T;
@@ -84,6 +84,28 @@ export interface DeviceFpRequest {
   ext_fields: string;
 }
 
+// 用户游戏角色信息
+export interface GameRole {
+  game_biz: string;
+  region: string;
+  game_uid: string;
+  nickname: string;
+  level: number;
+  is_chosen: boolean;
+  region_name: string;
+  is_official: boolean;
+}
+
+export interface UserGameRolesResponse {
+  list: GameRole[];
+}
+
+// 登录账户响应
+export interface LoginAccountResponse {
+  // 这个接口主要是设置cookie，通常返回空数据或简单状态
+  [key: string]: never;
+}
+
 export interface Property {
   property_name: string;
   property_id: number;
@@ -111,8 +133,9 @@ export interface Rank {
   desc: string;
   pos: number;
   is_unlocked: boolean;
-}export
-  interface Equipment {
+}
+
+export interface Equipment {
   id: number;
   level: number;
   name: string;
@@ -158,7 +181,7 @@ export interface AvatarDetail {
   ranks: Rank[];
   equip: Equipment[];
   weapon: Weapon;
-  plan?: any; // 配装方案，结构复杂，可根据需要详细定义
+  plan?: never; // 配装方案，结构复杂，可根据需要详细定义
 }
 
 // 枚举定义
@@ -168,8 +191,9 @@ export enum ElementType {
   Ice = 202,
   Electric = 203,
   Ether = 205
-} export
-  enum AvatarProfession {
+}
+
+export enum AvatarProfession {
   Attack = 1,
   Stun = 2,
   Anomaly = 3,

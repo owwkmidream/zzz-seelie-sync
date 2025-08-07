@@ -7,6 +7,7 @@ import {
   getWeaponStats,
   getWeaponStatsCommon
 } from './constants'
+import { logger } from '../logger'
 
 /**
  * 计算角色突破等级
@@ -16,13 +17,13 @@ export async function calculateCharacterAsc(character: CharacterDataInput['avata
     const characterStats = await getCharacterStats()
     const stats = characterStats.find(s => s.id === character.id)
     if (!stats) {
-      console.warn(`⚠️ 未找到角色 ${character.name_mi18n} 的统计数据`)
+      logger.warn(`⚠️ 未找到角色 ${character.name_mi18n} 的统计数据`)
       return ASCENSIONS.findIndex(level => level >= character.level)
     }
 
     const hpProperty = character.properties.find(p => p.property_id === 1)
     if (!hpProperty) {
-      console.warn(`⚠️ 角色 ${character.name_mi18n} 缺少生命值属性`)
+      logger.warn(`⚠️ 角色 ${character.name_mi18n} 缺少生命值属性`)
       return ASCENSIONS.findIndex(level => level >= character.level)
     }
 
@@ -41,10 +42,10 @@ export async function calculateCharacterAsc(character: CharacterDataInput['avata
       }
     }
 
-    console.log(`HP error: ${character.name_mi18n}, base: ${baseHP}, growth: ${growthHP}, core: ${coreHP}, fixed: ${calculatedBaseHP}, target: ${actualHP}`)
+    logger.debug(`HP error: ${character.name_mi18n}, base: ${baseHP}, growth: ${growthHP}, core: ${coreHP}, fixed: ${calculatedBaseHP}, target: ${actualHP}`)
     return ASCENSIONS.findIndex(level => level >= character.level)
   } catch (error) {
-    console.error('❌ 计算角色突破等级失败:', error)
+    logger.error('❌ 计算角色突破等级失败:', error)
     return ASCENSIONS.findIndex(level => level >= character.level)
   }
 }
@@ -60,7 +61,7 @@ export async function calculateWeaponAsc(weapon: WeaponData): Promise<number> {
     const levelRate = weaponStatsCommon.rate[weapon.level - 1] || 0
     const atkProperty = weapon.main_properties.find(p => p.property_id === 12101)
     if (!atkProperty) {
-      console.warn(`⚠️ 武器 ${weapon.name} 缺少攻击力属性`)
+      logger.warn(`⚠️ 武器 ${weapon.name} 缺少攻击力属性`)
       return ASCENSIONS.findIndex(level => level >= weapon.level)
     }
 
@@ -78,10 +79,10 @@ export async function calculateWeaponAsc(weapon: WeaponData): Promise<number> {
       }
     }
 
-    console.log(`ATK error: ${weapon.name}, base: ${baseATK}, growth: ${growthATK}, fixed: ${calculatedBaseATK}, target: ${actualATK}`)
+    logger.debug(`ATK error: ${weapon.name}, base: ${baseATK}, growth: ${growthATK}, fixed: ${calculatedBaseATK}, target: ${actualATK}`)
     return ASCENSIONS.findIndex(level => level >= weapon.level)
   } catch (error) {
-    console.error('❌ 计算武器突破等级失败:', error)
+    logger.error('❌ 计算武器突破等级失败:', error)
     return ASCENSIONS.findIndex(level => level >= weapon.level)
   }
 }

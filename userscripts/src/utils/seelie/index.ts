@@ -73,23 +73,24 @@ export const syncAllCharacters = async (dataList: CharacterDataInput[]): Promise
 }
 
 // 挂载到全局对象，方便调试
-if (typeof window !== 'undefined') {
-  (window as any).setResinData = setResinData;
-  (window as any).setToast = setToast;
-  (window as any).setCharacter = setCharacter;
-  (window as any).setTalents = setTalents;
-  (window as any).setWeapon = setWeapon;
-  (window as any).syncCharacter = syncCharacter;
-  (window as any).syncAllCharacters = syncAllCharacters;
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  const globalWindow = window as unknown as Record<string, unknown>;
+  globalWindow.setResinData = setResinData;
+  globalWindow.setToast = setToast;
+  globalWindow.setCharacter = setCharacter;
+  globalWindow.setTalents = setTalents;
+  globalWindow.setWeapon = setWeapon;
+  globalWindow.syncCharacter = syncCharacter;
+  globalWindow.syncAllCharacters = syncAllCharacters;
 
   // 挂载 constants 中的调试函数
-  (window as any).getLanguageData = getLanguageData;
-  (window as any).getStatsData = getStatsData;
-  (window as any).getCharacterStats = getCharacterStats;
-  (window as any).getWeaponStats = getWeaponStats;
-  (window as any).getWeaponStatsCommon = getWeaponStatsCommon;
-  (window as any).clearRuntimeDataCache = clearRuntimeDataCache;
-  (window as any).isDataLoaded = isDataLoaded;
+  globalWindow.getLanguageData = getLanguageData;
+  globalWindow.getStatsData = getStatsData;
+  globalWindow.getCharacterStats = getCharacterStats;
+  globalWindow.getWeaponStats = getWeaponStats;
+  globalWindow.getWeaponStatsCommon = getWeaponStatsCommon;
+  globalWindow.clearRuntimeDataCache = clearRuntimeDataCache;
+  globalWindow.isDataLoaded = isDataLoaded;
 }
 
 // 导出类型

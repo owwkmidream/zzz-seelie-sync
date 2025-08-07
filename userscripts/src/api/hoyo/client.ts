@@ -5,8 +5,11 @@ import type {
   ApiResponse,
   UserInfo,
   DeviceInfo,
-  DeviceFpRequest
+  DeviceFpRequest,
+  UserGameRolesResponse,
+  LoginAccountResponse
 } from './types';
+import { logger } from '../../utils/logger';
 
 // 设备信息存储key
 const DEVICE_INFO_KEY = 'zzz_device_info';
@@ -45,7 +48,7 @@ async function initializeNapToken(): Promise<void> {
     return;
   }
 
-  console.log('🔄 初始化 nap_token cookie...');
+  logger.debug('🔄 初始化 nap_token cookie...');
 
   try {
     // 第一步：获取用户游戏角色信息
@@ -57,7 +60,7 @@ async function initializeNapToken(): Promise<void> {
       throw new Error(`获取用户角色失败: HTTP ${rolesResponse.status}`);
     }
 
-    const rolesData = await rolesResponse.json();
+    const rolesData = await rolesResponse.json() as ApiResponse<UserGameRolesResponse>;
 
     if (rolesData.retcode !== 0) {
       throw new Error(`获取用户角色失败: ${rolesData.message}`);
@@ -69,7 +72,7 @@ async function initializeNapToken(): Promise<void> {
 
     // 获取第一个角色信息
     const roleInfo = rolesData.data.list[0];
-    console.log(`🎮 找到角色: ${roleInfo.nickname} (UID: ${roleInfo.game_uid}, 等级: ${roleInfo.level})`);
+    logger.debug(`🎮 找到角色: ${roleInfo.nickname} (UID: ${roleInfo.game_uid}, 等级: ${roleInfo.level})`);
 
     // 第二步：使用角色信息设置 nap_token
     const tokenResponse = await GM_fetch('https://api-takumi.mihoyo.com/common/badge/v1/login/account', {
@@ -88,7 +91,7 @@ async function initializeNapToken(): Promise<void> {
       throw new Error(`设置 nap_token 失败: HTTP ${tokenResponse.status}`);
     }
 
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.json() as ApiResponse<LoginAccountResponse>;
 
     if (tokenData.retcode !== 0) {
       throw new Error(`设置 nap_token 失败: ${tokenData.message}`);
@@ -103,12 +106,12 @@ async function initializeNapToken(): Promise<void> {
       accountId: roleInfo.game_uid // 使用 game_uid 作为 accountId
     };
 
-    console.log('✅ nap_token cookie 初始化完成');
-    console.log(`👤 用户信息: ${userInfoCache.nickname} (UID: ${userInfoCache.uid}, 等级: ${userInfoCache.level})`);
+    logger.debug('✅ nap_token cookie 初始化完成');
+    logger.debug(`👤 用户信息: ${userInfoCache.nickname} (UID: ${userInfoCache.uid}, 等级: ${userInfoCache.level})`);
 
     NapTokenInitialized = true;
   } catch (error) {
-    console.error('❌ 初始化 nap_token 失败:', error);
+    logger.error('❌ 初始化 nap_token 失败:', error);
     // 即使初始化失败也标记为已尝试，避免重复请求
     // NapTokenInitialized = true;
     throw error;
@@ -125,13 +128,13 @@ export async function ensureUserInfo(): Promise<void> {
 }
 
 // 通用请求函数
-export async function request<T = any>(
+export async function request<T = unknown>(
   endpoint: string,
   baseUrl: string,
   options: {
     method?: 'GET' | 'POST';
     params?: Record<string, string | number>;
-    body?: any;
+    body?: unknown;
     headers?: Record<string, string>;
   } = {}
 ): Promise<ApiResponse<T>> {
@@ -162,7 +165,7 @@ export async function request<T = any>(
   if (finalHeaders['x-rpc-device_fp'] === '0000000000000') {
     throw new Error('❌ 设备指纹有误，请检查');
   }
-  console.log(`🌐 请求 ${method} ${url}`);
+  logger.debug(`🌐 请求 ${method} ${url}`);
 
   try {
     const response = await GM_fetch(url, {
@@ -175,17 +178,17 @@ export async function request<T = any>(
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data: ApiResponse<T> = await response.json();
+    const data = await response.json() as ApiResponse<T>;
 
     if (data.retcode !== 0) {
       throw new Error(`API Error ${data.retcode}: ${data.message}`);
     }
 
-    console.log(`✅ 请求成功:`, data.message);
+    logger.debug(`✅ 请求成功:`, data.message);
     return data;
 
   } catch (error) {
-    console.error(`❌ 请求失败:`, error);
+    logger.error(`❌ 请求失败:`, error);
     throw error;
   }
 }
@@ -211,7 +214,7 @@ export async function getDeviceFingerprint(deviceId: string): Promise<string> {
     'Content-Type': 'application/json'
   };
 
-  console.log(`🔐 获取设备指纹，设备ID: ${deviceId}`);
+  logger.debug(`🔐 获取设备指纹，设备ID: ${deviceId}`);
 
   try {
     const response = await GM_fetch(`${DEVICE_FP_URL}/getFp`, {
@@ -224,17 +227,17 @@ export async function getDeviceFingerprint(deviceId: string): Promise<string> {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data: ApiResponse<{ device_fp: string }> = await response.json();
+    const data = await response.json() as ApiResponse<{ device_fp: string }>;
 
     if (data.retcode !== 0) {
       throw new Error(`设备指纹获取失败 ${data.retcode}: ${data.message}`);
     }
 
-    console.log(`✅ 设备指纹获取成功: ${data.data.device_fp}`);
+    logger.debug(`✅ 设备指纹获取成功: ${data.data.device_fp}`);
     return data.data.device_fp;
 
   } catch (error) {
-    console.error(`❌ 设备指纹获取失败:`, error);
+    logger.error(`❌ 设备指纹获取失败:`, error);
     throw error;
   }
 }
@@ -293,7 +296,7 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
     if (stored) {
       try {
         const deviceInfo: DeviceInfo = JSON.parse(stored);
-        console.log('📱 从localStorage获取设备信息:', deviceInfo);
+        logger.debug('📱 从localStorage获取设备信息:', deviceInfo);
 
         // 检查设备指纹是否有效
         if (deviceInfo.deviceFp && deviceInfo.deviceFp !== '0000000000000') {
@@ -301,13 +304,13 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
           return deviceInfo;
         }
       } catch (error) {
-        console.warn('⚠️ 解析设备信息失败，将重新生成:', error);
+        logger.warn('⚠️ 解析设备信息失败，将重新生成:', error);
       }
     }
 
     // 生成新的设备信息
     const newDeviceId = generateUUID();
-    console.log('🔄 生成新设备ID:', newDeviceId);
+    logger.debug('🔄 生成新设备ID:', newDeviceId);
 
     try {
       // 异步获取真实设备指纹
@@ -321,12 +324,12 @@ async function getDeviceInfo(): Promise<DeviceInfo> {
 
       // 保存到localStorage
       localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(deviceInfo));
-      console.log('📱 生成新设备信息:', deviceInfo);
+      logger.debug('📱 生成新设备信息:', deviceInfo);
 
       deviceInfoCache = deviceInfo;
       return deviceInfo;
     } catch (error) {
-      console.error('❌ 获取设备指纹失败:', error);
+      logger.error('❌ 获取设备指纹失败:', error);
 
       // 如果获取失败，使用临时设备信息
       const fallbackInfo: DeviceInfo = {
@@ -351,7 +354,7 @@ export function getUserInfo(): UserInfo | null {
 export function clearUserInfo(): void {
   userInfoCache = null;
   NapTokenInitialized = false;
-  console.log('🗑️ 已清除用户信息缓存');
+  logger.debug('🗑️ 已清除用户信息缓存');
 }
 
 export async function initializeUserInfo(): Promise<UserInfo | null> {
@@ -364,7 +367,7 @@ export function clearDeviceInfo(): void {
   deviceInfoCache = null;
   deviceInfoPromise = null;
   NapTokenInitialized = false;
-  console.log('🗑️ 已清除localStorage设备信息和缓存');
+  logger.debug('🗑️ 已清除localStorage设备信息和缓存');
 }
 
 export async function getCurrentDeviceInfo(): Promise<DeviceInfo> {
@@ -373,7 +376,7 @@ export async function getCurrentDeviceInfo(): Promise<DeviceInfo> {
 
 export async function refreshDeviceFingerprint(): Promise<void> {
   const deviceInfo = await getDeviceInfo();
-  console.log('🔄 开始刷新设备指纹...');
+  logger.debug('🔄 开始刷新设备指纹...');
 
   try {
     const newFp = await getDeviceFingerprint(deviceInfo.deviceId);
@@ -385,14 +388,14 @@ export async function refreshDeviceFingerprint(): Promise<void> {
 
     localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(updatedInfo));
     deviceInfoCache = updatedInfo;
-    console.log('✅ 设备指纹刷新完成:', updatedInfo);
+    logger.debug('✅ 设备指纹刷新完成:', updatedInfo);
   } catch (error) {
-    console.error('❌ 刷新设备指纹失败:', error);
+    logger.error('❌ 刷新设备指纹失败:', error);
     throw error;
   }
 }
 
 export function resetNapTokenlInitialization(): void {
   NapTokenInitialized = false;
-  console.log('🔄 已重置 AVATAR_URL 初始化状态');
+  logger.debug('🔄 已重置 NapToken 初始化状态');
 }

@@ -39,13 +39,13 @@ export {
 } from './utils';
 
 // 将主要函数挂载到全局对象，方便调试
-if (typeof window !== 'undefined') {
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   // 导入各个模块的函数
   import('./avatar').then(avatarModule => {
     import('./game-note').then(gameNoteModule => {
       import('./client').then(clientModule => {
         import('./utils').then(utilsModule => {
-          (window as any).ZZZApi = {
+          (window as unknown as Record<string, unknown>).ZZZApi = {
             // 角色相关
             ...avatarModule,
             // 游戏便笺相关

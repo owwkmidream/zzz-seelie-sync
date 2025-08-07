@@ -7,6 +7,7 @@ import type {
   SeelieStatsData
 } from './types'
 import { SeelieDataUpdater } from './dataUpdater'
+import { logger } from '../logger'
 
 /**
  * 突破等级数组
@@ -62,16 +63,16 @@ async function lazyLoadSeelieData(): Promise<void> {
   // 开始加载数据
   runtimeDataCache.loading = (async () => {
     try {
-      console.log('🔄 懒加载 Seelie 数据...')
+      logger.debug('🔄 懒加载 Seelie 数据...')
       const { languageData, statsData } = await SeelieDataUpdater.getLatestData()
 
       runtimeDataCache.languageData = languageData
       runtimeDataCache.statsData = statsData
       runtimeDataCache.loaded = true
 
-      console.log('✅ Seelie 数据加载完成')
+      logger.debug('✅ Seelie 数据加载完成')
     } catch (error) {
-      console.error('❌ Seelie 数据加载失败:', error)
+      logger.error('❌ Seelie 数据加载失败:', error)
       // 即使失败也标记为已尝试，避免重复请求
       // runtimeDataCache.loaded = true
       throw error
@@ -106,11 +107,11 @@ export async function getCharacterStats(): Promise<CharacterStats[]> {
   try {
     const statsData = await getStatsData()
     if (statsData?.charactersStats && Array.isArray(statsData.charactersStats)) {
-      console.log('✅ 使用动态角色统计数据')
+      logger.debug('✅ 使用动态角色统计数据')
       return statsData.charactersStats
     }
   } catch (error) {
-    console.warn('⚠️ 获取角色统计数据失败:', error)
+    logger.warn('⚠️ 获取角色统计数据失败:', error)
   }
 
   throw new Error('无法获取角色统计数据')
@@ -123,11 +124,11 @@ export async function getWeaponStats(): Promise<{ [id: number]: number }> {
   try {
     const statsData = await getStatsData()
     if (statsData?.weaponsStats && typeof statsData.weaponsStats === 'object') {
-      console.log('✅ 使用动态武器统计数据')
+      logger.debug('✅ 使用动态武器统计数据')
       return statsData.weaponsStats
     }
   } catch (error) {
-    console.warn('⚠️ 获取武器统计数据失败:', error)
+    logger.warn('⚠️ 获取武器统计数据失败:', error)
   }
 
   throw new Error('无法获取武器统计数据')
@@ -140,11 +141,11 @@ export async function getWeaponStatsCommon(): Promise<WeaponStatsCommon> {
   try {
     const statsData = await getStatsData()
     if (statsData?.weaponsStatsCommon && typeof statsData.weaponsStatsCommon === 'object') {
-      console.log('✅ 使用动态武器通用统计数据')
+      logger.debug('✅ 使用动态武器通用统计数据')
       return statsData.weaponsStatsCommon
     }
   } catch (error) {
-    console.warn('⚠️ 获取武器通用统计数据失败:', error)
+    logger.warn('⚠️ 获取武器通用统计数据失败:', error)
   }
 
   throw new Error('无法获取武器通用统计数据')
@@ -155,7 +156,7 @@ export async function getWeaponStatsCommon(): Promise<WeaponStatsCommon> {
  */
 export function clearRuntimeDataCache(): void {
   runtimeDataCache = {}
-  console.log('🗑️ 已清除运行时数据缓存')
+  logger.debug('🗑️ 已清除运行时数据缓存')
 }
 
 /**
