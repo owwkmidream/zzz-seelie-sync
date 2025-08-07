@@ -18,6 +18,8 @@ const DEVICE_INFO_KEY = 'zzz_device_info';
 export const NAP_CULTIVATE_TOOL_URL = 'https://act-api-takumi.mihoyo.com/event/nap_cultivate_tool';
 export const GAME_RECORD_URL = 'https://api-takumi-record.mihoyo.com/event/game_record_zzz/api/zzz';
 export const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api';
+const GAME_ROLE_URL = 'https://api-takumi.mihoyo.com/binding/api/getUserGameRolesByCookie?game_biz=nap_cn'
+const NAP_TOEKN_URL = 'https://api-takumi.mihoyo.com/common/badge/v1/login/account'
 
 // 初始化请求标记
 let NapTokenInitialized = false;
@@ -52,7 +54,7 @@ async function initializeNapToken(): Promise<void> {
 
   try {
     // 第一步：获取用户游戏角色信息
-    const rolesResponse = await GM_fetch('https://api-takumi.mihoyo.com/binding/api/getUserGameRolesByCookie?game_biz=nap_cn', {
+    const rolesResponse = await GM_fetch(GAME_ROLE_URL, {
       method: 'GET'
     });
 
@@ -75,7 +77,7 @@ async function initializeNapToken(): Promise<void> {
     logger.debug(`🎮 找到角色: ${roleInfo.nickname} (UID: ${roleInfo.game_uid}, 等级: ${roleInfo.level})`);
 
     // 第二步：使用角色信息设置 nap_token
-    const tokenResponse = await GM_fetch('https://api-takumi.mihoyo.com/common/badge/v1/login/account', {
+    const tokenResponse = await GM_fetch(NAP_TOEKN_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
