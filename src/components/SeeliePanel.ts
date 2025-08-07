@@ -5,12 +5,22 @@
 
 import { logger } from '@logger';
 import { initializeUserInfo, type UserInfo } from '@/api/hoyo';
-import { syncAll } from '@/services/SyncService';
+import { syncAll, syncResinData, syncAllCharacters, syncItemsData } from '@/services/SyncService';
+
+// 扩展用户信息类型以支持错误状态
+type UserInfoWithError = UserInfo | {
+  error: 'login_required' | 'no_character' | 'network_error' | 'unknown';
+  message: string;
+};
+
+// URL
+const MYS_URL = 'https://www.miyoushe.com/zzz/';
 
 export class SeeliePanel {
   private container: HTMLDivElement | null = null;
-  private userInfo: UserInfo | null = null;
+  private userInfo: UserInfoWithError | null = null;
   private isLoading = false;
+  private isExpanded = false; // 控制二级界面展开状态
 
   // 组件相关的选择器常量
   public static readonly TARGET_SELECTOR = 'div.flex.flex-col.items-center.justify-center.w-full.mt-3';
@@ -76,6 +86,18 @@ export class SeeliePanel {
     } catch (error) {
       logger.error('加载用户信息失败:', error);
       this.userInfo = null;
+
+      // 分析错误类型，设置相应的错误信息
+      const errorMessage = String(error);
+      if (errorMessage.includes('获取用户角色失败') || errorMessage.includes('HTTP 401') || errorMessage.includes('HTTP 403')) {
+        this.userInfo = { error: 'login_required', message: '请先登录米游社账号' };
+      } else if (errorMessage.includes('未找到绝区零游戏角色')) {
+        this.userInfo = { error: 'no_character', message: '未找到绝区零游戏角色' };
+      } else if (errorMessage.includes('网络') || errorMessage.includes('timeout') || errorMessage.includes('fetch')) {
+        this.userInfo = { error: 'network_error', message: '网络连接失败，请重试' };
+      } else {
+        this.userInfo = { error: 'unknown', message: '用户信息加载失败' };
+      }
     }
   }
 
@@ -104,13 +126,14 @@ export class SeeliePanel {
    */
   private createUserInfoSection(): HTMLDivElement {
     const section = document.createElement('div');
-    section.className = 'flex items-center justify-center mb-3';
+    section.className = 'flex flex-col items-center justify-center mb-3';
 
     // 用户信息文本
     const infoText = document.createElement('div');
     infoText.className = 'flex flex-col items-center text-center';
 
-    if (this.userInfo) {
+    if (this.userInfo && !('error' in this.userInfo)) {
+      // 正常用户信息显示
       const nickname = document.createElement('div');
       nickname.className = 'text-sm font-medium text-white';
       nickname.textContent = this.userInfo.nickname;
@@ -121,7 +144,78 @@ export class SeeliePanel {
 
       infoText.appendChild(nickname);
       infoText.appendChild(uid);
+    } else if (this.userInfo && 'error' in this.userInfo) {
+      // 错误状态显示
+      const errorInfo = this.userInfo;
+
+      // 错误图标和消息
+      const errorContainer = document.createElement('div');
+      errorContainer.className = 'flex flex-col items-center';
+
+      const errorIcon = document.createElement('div');
+      errorIcon.className = 'text-red-400 mb-2';
+      errorIcon.innerHTML = `
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+        </svg>
+      `;
+
+      const errorMessage = document.createElement('div');
+      errorMessage.className = 'text-sm text-red-400 mb-2';
+      errorMessage.textContent = errorInfo.message;
+
+      errorContainer.appendChild(errorIcon);
+      errorContainer.appendChild(errorMessage);
+
+      // 根据错误类型显示不同的操作建议
+      if (errorInfo.error === 'login_required') {
+        const loginHint = document.createElement('div');
+        loginHint.className = 'text-xs text-gray-400 mb-2 text-center';
+        loginHint.textContent = '请在新标签页中登录米游社后刷新页面';
+
+        const loginButton = document.createElement('button');
+        loginButton.className = 'px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-all duration-200';
+        loginButton.textContent = '前往米游社登录';
+        loginButton.addEventListener('click', () => {
+          window.open(MYS_URL, '_blank');
+        });
+
+        errorContainer.appendChild(loginHint);
+        errorContainer.appendChild(loginButton);
+      } else if (errorInfo.error === 'no_character') {
+        const characterHint = document.createElement('div');
+        characterHint.className = 'text-xs text-gray-400 mb-2 text-center';
+        characterHint.textContent = '请先在米游社绑定绝区零游戏角色';
+
+        const bindButton = document.createElement('button');
+        bindButton.className = 'px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded transition-all duration-200';
+        bindButton.textContent = '前往绑定角色';
+        bindButton.addEventListener('click', () => {
+          window.open(MYS_URL, '_blank');
+        });
+
+        errorContainer.appendChild(characterHint);
+        errorContainer.appendChild(bindButton);
+      } else if (errorInfo.error === 'network_error') {
+        const retryButton = document.createElement('button');
+        retryButton.className = 'px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-all duration-200';
+        retryButton.textContent = '重试';
+        retryButton.addEventListener('click', () => this.refreshUserInfo());
+
+        errorContainer.appendChild(retryButton);
+      } else {
+        // 未知错误，提供重试选项
+        const retryButton = document.createElement('button');
+        retryButton.className = 'px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-all duration-200';
+        retryButton.textContent = '重试';
+        retryButton.addEventListener('click', () => this.refreshUserInfo());
+
+        errorContainer.appendChild(retryButton);
+      }
+
+      infoText.appendChild(errorContainer);
     } else {
+      // 默认错误状态
       const errorText = document.createElement('div');
       errorText.className = 'text-sm text-red-400';
       errorText.textContent = '用户信息加载失败';
