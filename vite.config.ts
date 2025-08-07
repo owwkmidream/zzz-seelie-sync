@@ -125,6 +125,7 @@ export default defineConfig({
     }),
   ],
   build: {
+    emptyOutDir: process.env.CI || process.env.KEEP_DIST ? false : true,
     cssMinify: minify,
     minify,
   }
