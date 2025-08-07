@@ -79,6 +79,28 @@ export const setInventory = (type: string, item: string, tier: number, value: nu
   return seelieDataManager.setInventory(type, item, tier, value)
 }
 
+/**
+ * 使用贪心算法找到最小集合覆盖的角色ID列表
+ * 目标是用最少的角色覆盖所有属性组合（属性、风格、模拟材料、周本）
+ */
+export const findMinimumSetCoverIds = (): {id: number, style: string}[] => {
+  return seelieDataManager.findMinimumSetCoverIds()
+}
+
+/**
+ * 返回每个职业对应一个武器
+ */
+export const findMinimumSetWeapons = (): Record<string, number> => {
+  return seelieDataManager.findMinimumSetWeapons()
+}
+
+/**
+ * 获取items数据
+ */
+export const getItems = (): unknown => {
+  return seelieDataManager.getItems()
+}
+
 // 挂载到全局对象，方便调试
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   const globalWindow = window as unknown as Record<string, unknown>;
@@ -90,6 +112,8 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   globalWindow.setInventory = setInventory;
   globalWindow.syncCharacter = syncCharacter;
   globalWindow.syncAllCharacters = syncAllCharacters;
+  globalWindow.findMinimumSetCoverIds = findMinimumSetCoverIds;
+  globalWindow.findMinimumSetWeapons = findMinimumSetWeapons;
 
   // 挂载 constants 中的调试函数
   globalWindow.getLanguageData = getLanguageData;

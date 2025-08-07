@@ -12,8 +12,15 @@ import {
   type CharacterDataInput,
   type ResinDataInput,
   type SyncResult,
-  type BatchSyncResult
+  type BatchSyncResult,
+  findMinimumSetCoverIds,
+  findMinimumSetWeapons,
+  getItems,
+  setInventory
 } from '@/utils/seelie'
+import { batchGetAvatarItemCalc } from '../api/hoyo/items'
+import { ItemsData } from '../utils/seelie/types'
+import { getLanguageData } from '../utils/seelie/constants'
 
 /**
  * 同步服务类
@@ -164,7 +171,116 @@ export class SyncService {
     }
   }
 
+  /** 
+   * 同步养成材料信息
+   */
+  async syncItemsData(): Promise<boolean> {
+    try {
+      logger.debug('🔋 开始同步养成材料...')
 
+      // 计算最小集合
+      const minSetChar = findMinimumSetCoverIds();
+      const minSetWeapon = findMinimumSetWeapons();
+
+      // 获取养成材料数据
+      const itemsData = await batchGetAvatarItemCalc(
+        minSetChar.map(item => (
+          {
+            avatar_id: item.id,
+            weapon_id: minSetWeapon[item.style]
+          }
+        )));
+
+      if (!itemsData) {
+        logger.error('❌ 获取养成材料失败')
+        setToast('获取养成材料失败', 'error')
+        return false
+      }
+
+      // 展开数据并去重
+      const userOwnItems: Record<string, number> = {} // id-value
+      const userNeedGets: Record<string, string> = {} // id-name
+
+      for (const item of itemsData) {
+        // ownItems
+        for (const [k, v] of Object.entries(item.user_owns_materials)) {
+          userOwnItems[k] = v;
+        }
+        // needGet
+        for (const obj of item.need_get) {
+          const id = obj.id.toString();
+          // 确保只处理对象自身的属性，而不是原型链上的
+          if (!Object.prototype.hasOwnProperty.call(userNeedGets, id)) {
+            userNeedGets[id] = obj.name;
+          }
+        }
+      }
+
+      // 构建name-value
+      const userOwnItemsName2Value: Record<string, number> = {}
+      for (const [k, v] of Object.entries(userOwnItems)) {
+        userOwnItemsName2Value[userNeedGets[k]] = v;
+      }
+
+      // 处理到seelie格式
+      const seelieItems = getItems() as ItemsData;
+      const i18n_cn_json = await getLanguageData();
+      const cnName2SeelieItemName: Record<string, string> = {} // cn2seelie-id
+      // 翻转
+      for (const key in i18n_cn_json) {
+        // 确保只处理对象自身的属性，而不是原型链上的
+        if (Object.prototype.hasOwnProperty.call(i18n_cn_json, key)) {
+          const value = i18n_cn_json[key];
+          // 是字符串
+          if (typeof value === 'string') {
+            cnName2SeelieItemName[value] = key;
+          }
+
+          // 是数组
+          if (typeof value === 'object' && Array.isArray(value)) {
+            value.forEach((v, i) => {
+              cnName2SeelieItemName[v] = `${key}+${i}` // 形如chip_physical+0格式
+            })
+          }
+        }
+      }
+      
+      let failNum = 0, successNum = 0;
+      // 设置到 Seelie
+      for (const [cnName, num] of Object.entries(userOwnItemsName2Value)) {
+        // 还要做处理
+        const seelieName = cnName2SeelieItemName[cnName];
+        // 如果结尾有+数字，需要特殊处理
+        const seelieNameParts = seelieName.split('+');
+        if (seelieNameParts.length > 1) { // 物理芯片之类的
+          const realName = seelieNameParts[0];
+          const tier = Number(seelieNameParts[1]);
+          const type = seelieItems[realName].type;
+          
+          setInventory(type, realName, tier, num) ? successNum++ : failNum++;
+        } else {
+          const type = seelieItems[seelieName].type;
+
+          setInventory(type, seelieName, 0, num) ? successNum++ : failNum++;
+        }
+      }
+      const success = successNum !== 0;
+
+      if (success) {
+        logger.debug('✅ 库存数据同步成功')
+        setToast(`库存同步成功: 同步${successNum} / ${successNum + failNum}个`, failNum === 0 ? 'success' : 'warning')
+      } else {
+        logger.warn('❌ 库存数据设置失败')
+        setToast('库存数据设置失败', 'warning')
+      }
+
+      return success
+    } catch (error) {
+      logger.error('❌ 库存数据同步失败:', error)
+      setToast('库存数据同步失败', 'error')
+      return false
+    }
+  }
 
   /**
    * 执行完整同步（电量 + 所有角色）
