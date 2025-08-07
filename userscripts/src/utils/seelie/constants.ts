@@ -48,7 +48,7 @@ let runtimeDataCache: {
  * 懒加载 Seelie 数据
  * 脚本生命周期内只请求一次，优先网络请求，失败时使用缓存
  */
-async function lazyLoadSeelieData(): Promise<void> {
+export async function lazyLoadSeelieData(): Promise<void> {
   // 如果已经加载过，直接返回
   if (runtimeDataCache.loaded) {
     return

@@ -1,7 +1,7 @@
 // Seelie 核心功能类
 
 import type { ResinDataInput, AccountResin, ToastType, CharacterInfo, WeaponInfo } from './types'
-import { RESIN_INTERVAL } from './constants'
+import { lazyLoadSeelieData, RESIN_INTERVAL } from './constants'
 import { logger } from '../logger'
 
 /**
@@ -44,6 +44,10 @@ export class SeelieCore {
     }
 
     this.rootComponent = this.appElement._vnode.component
+
+    // 新增 初始化stats数据
+    lazyLoadSeelieData();
+    logger.debug('⚠️ SeelieCore: 已尝试初始化stats数据')
     logger.debug('✓ SeelieCore 初始化成功')
   }
 
