@@ -206,7 +206,7 @@ export function initVNodeTraversal(): void {
         };
 
         if (vueInstance.$ && vueInstance.$.vnode) {
-          logger.debug('🔄 组件挂载，触发防抖遍历:', vueInstance.$.type?.name || 'Anonymous');
+          // logger.debug('🔄 组件挂载，触发防抖遍历:', vueInstance.$.type?.name || 'Anonymous');
 
           // 使用 nextTick 确保组件完全挂载后再遍历
           if (vueInstance.$nextTick) {
