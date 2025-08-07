@@ -5,6 +5,7 @@
 
 import { logger } from '@logger';
 import { initializeUserInfo, type UserInfo } from '@/api/hoyo';
+import { syncAll } from '@/services/SyncService';
 
 export class SeeliePanel {
   private container: HTMLDivElement | null = null;
@@ -200,16 +201,29 @@ export class SeeliePanel {
    * 执行同步操作
    */
   private async performSync(): Promise<void> {
-    // TODO: 实现实际的同步逻辑
-    // 这里应该调用相应的 API 来同步数据
+    try {
+      logger.debug('开始执行完整同步...');
 
-    // 临时模拟异步操作，实际应该调用同步 API
-    await new Promise<void>((resolve) => {
-      // 简单的异步延迟，避免界面闪烁
-      setTimeout(resolve, 1000);
-    });
+      // 调用 SyncService 的 syncAll 方法
+      const result = await syncAll();
 
-    logger.debug('同步操作完成');
+      // 检查同步结果
+      const { resinSync, characterSync } = result;
+      const totalSuccess = resinSync && characterSync.success > 0;
+
+      if (!totalSuccess) {
+        const errorMessages = characterSync.errors || [];
+        const errorMessage = errorMessages.length > 0
+          ? errorMessages.join(', ')
+          : '同步过程中出现错误';
+        throw new Error(errorMessage);
+      }
+
+      logger.debug(`✅ 同步完成 - 电量: ${resinSync ? '成功' : '失败'}, 角色: ${characterSync.success}/${characterSync.total}`);
+    } catch (error) {
+      logger.error('同步操作失败:', error);
+      throw error;
+    }
   }
 
   /**
