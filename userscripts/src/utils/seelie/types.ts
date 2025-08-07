@@ -228,3 +228,15 @@ export interface SeelieData {
   languageData: SeelieLanguageData;
   statsData: SeelieStatsData;
 }
+
+/**
+ * Seelie items数据结构
+ */
+export interface ItemData {
+  dim_hash: string | string[];
+  type: string;
+}
+
+export interface ItemsData {
+  [item: string]: ItemData
+}
