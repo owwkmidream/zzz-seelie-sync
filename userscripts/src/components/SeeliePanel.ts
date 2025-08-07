@@ -11,23 +11,23 @@ export class SeeliePanel {
   private userInfo: UserInfo | null = null;
   private isLoading = false;
 
+  // 组件相关的选择器常量
+  public static readonly TARGET_SELECTOR = 'div.flex.flex-col.items-center.justify-center.w-full.mt-3';
+  public static readonly PANEL_SELECTOR = '[data-seelie-panel="true"]';
+
   constructor() {
-    this.init();
+    // 移除自动初始化，由外部控制
   }
 
   /**
-   * 初始化面板
+   * 初始化面板 - 由外部调用
    */
-  private async init(): Promise<void> {
+  public async init(): Promise<void> {
     try {
-      // 等待页面加载完成
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => this.createPanel());
-      } else {
-        this.createPanel();
-      }
+      await this.createPanel();
     } catch (error) {
       logger.error('初始化 Seelie 面板失败:', error);
+      throw error;
     }
   }
 
@@ -35,34 +35,34 @@ export class SeeliePanel {
    * 创建面板
    */
   private async createPanel(): Promise<void> {
-    try {
-      // 查找目标容器
-      const targetContainer = document.querySelector('div.flex.flex-col.items-center.justify-center.w-full.mt-3');
-      if (!targetContainer) {
-        logger.warn('未找到目标容器，稍后重试...');
-        setTimeout(() => this.createPanel(), 1000);
-        return;
-      }
-
-      // 检查是否已经创建过面板
-      if (this.container && targetContainer.contains(this.container)) {
-        logger.debug('面板已存在，跳过创建');
-        return;
-      }
-
-      // 获取用户信息
-      await this.loadUserInfo();
-
-      // 创建面板元素
-      this.container = this.createPanelElement();
-
-      // 插入到目标容器的第一个位置
-      targetContainer.insertBefore(this.container, targetContainer.firstChild);
-
-      logger.debug('✅ Seelie 面板创建成功');
-    } catch (error) {
-      logger.error('创建 Seelie 面板失败:', error);
+    const targetContainer = document.querySelector(SeeliePanel.TARGET_SELECTOR);
+    if (!targetContainer) {
+      throw new Error('目标容器未找到');
     }
+
+    // 清理目标容器中可能存在的旧面板
+    const existingPanel = targetContainer.querySelector(SeeliePanel.PANEL_SELECTOR);
+    if (existingPanel) {
+      existingPanel.remove();
+      logger.debug('清理了目标容器中的旧面板');
+    }
+
+    // 检查是否已经创建过面板
+    if (this.container && targetContainer.contains(this.container)) {
+      logger.debug('面板已存在，跳过创建');
+      return;
+    }
+
+    // 获取用户信息
+    await this.loadUserInfo();
+
+    // 创建面板元素
+    this.container = this.createPanelElement();
+
+    // 插入到目标容器的第一个位置
+    targetContainer.insertBefore(this.container, targetContainer.firstChild);
+
+    logger.debug('✅ Seelie 面板创建成功');
   }
 
   /**
@@ -180,71 +180,111 @@ export class SeeliePanel {
 
       logger.debug('开始同步全部数据...');
 
-      // 模拟同步过程（1秒）
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 执行实际的同步逻辑
+      await this.performSync();
 
       // 显示成功状态
-      syncText.textContent = '同步完成';
-      button.className = button.className.replace('bg-gray-700 hover:bg-gray-600', 'bg-green-600 hover:bg-green-700');
-
-      // 2秒后恢复原状态
-      setTimeout(() => {
-        syncText.textContent = originalText;
-        button.className = button.className.replace('bg-green-600 hover:bg-green-700', 'bg-gray-700 hover:bg-gray-600');
-        button.disabled = false;
-        if (icon) {
-          icon.classList.remove('animate-spin');
-        }
-        this.isLoading = false;
-      }, 2000);
+      this.showSyncResult(button, syncText, originalText, icon, 'success');
 
       logger.debug('✅ 同步完成');
     } catch (error) {
       logger.error('同步失败:', error);
 
       // 显示错误状态
-      syncText.textContent = '同步失败';
-      button.className = button.className.replace('bg-gray-700 hover:bg-gray-600', 'bg-red-600 hover:bg-red-700');
-
-      // 2秒后恢复原状态
-      setTimeout(() => {
-        syncText.textContent = originalText;
-        button.className = button.className.replace('bg-red-600 hover:bg-red-700', 'bg-gray-700 hover:bg-gray-600');
-        button.disabled = false;
-        const icon = button.querySelector('svg');
-        if (icon) {
-          icon.classList.remove('animate-spin');
-        }
-        this.isLoading = false;
-      }, 2000);
+      const icon = button.querySelector('svg');
+      this.showSyncResult(button, syncText, originalText, icon, 'error');
     }
   }
 
+  /**
+   * 执行同步操作
+   */
+  private async performSync(): Promise<void> {
+    // TODO: 实现实际的同步逻辑
+    // 这里应该调用相应的 API 来同步数据
 
+    // 临时模拟异步操作，实际应该调用同步 API
+    await new Promise<void>((resolve) => {
+      // 简单的异步延迟，避免界面闪烁
+      setTimeout(resolve, 1000);
+    });
+
+    logger.debug('同步操作完成');
+  }
+
+  /**
+   * 显示同步结果
+   */
+  private showSyncResult(
+    button: HTMLButtonElement,
+    syncText: HTMLSpanElement,
+    originalText: string | null,
+    icon: SVGElement | null,
+    type: 'success' | 'error'
+  ): void {
+    const isSuccess = type === 'success';
+
+    // 更新文本和样式
+    syncText.textContent = isSuccess ? '同步完成' : '同步失败';
+    const newColorClass = isSuccess ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700';
+    button.className = button.className.replace('bg-gray-700 hover:bg-gray-600', newColorClass);
+
+    // 2秒后恢复原状态
+    setTimeout(() => {
+      syncText.textContent = originalText || '同步全部';
+      button.className = button.className.replace(newColorClass, 'bg-gray-700 hover:bg-gray-600');
+      button.disabled = false;
+      if (icon) {
+        icon.classList.remove('animate-spin');
+      }
+      this.isLoading = false;
+    }, 2000);
+  }
 
   /**
    * 销毁面板
    */
   public destroy(): void {
+    // 清理当前实例的容器
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
       this.container = null;
-      logger.debug('Seelie 面板已销毁');
     }
+
+    // 额外清理：移除页面上所有可能存在的面板（防止重复创建）
+    const allPanels = document.querySelectorAll(SeeliePanel.PANEL_SELECTOR);
+    allPanels.forEach(panel => {
+      if (panel.parentNode) {
+        panel.parentNode.removeChild(panel);
+      }
+    });
+
+    logger.debug('Seelie 面板已销毁');
+  }
+
+  /**
+   * 刷新组件（实现接口要求）
+   */
+  public async refresh(): Promise<void> {
+    await this.refreshUserInfo();
   }
 
   /**
    * 刷新用户信息
    */
   public async refreshUserInfo(): Promise<void> {
-    await this.loadUserInfo();
-    if (this.container) {
-      // 重新创建面板
-      const parent = this.container.parentNode;
-      if (parent) {
-        this.destroy();
-        await this.createPanel();
+    try {
+      await this.loadUserInfo();
+      if (this.container) {
+        // 重新创建面板
+        const parent = this.container.parentNode;
+        if (parent) {
+          this.destroy();
+          await this.createPanel();
+        }
       }
+    } catch (error) {
+      logger.error('刷新用户信息失败:', error);
     }
   }
 }
