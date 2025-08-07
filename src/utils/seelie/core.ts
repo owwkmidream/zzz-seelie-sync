@@ -38,17 +38,68 @@ export class SeelieCore {
       return
     }
 
-    if (!this.appElement._vnode?.component) {
-      logger.warn('⚠️ SeelieCore: #app 元素没有 _vnode.component')
+    // 如果已经有 _vnode.component，直接初始化
+    if (this.appElement._vnode?.component) {
+      this.completeInit()
       return
     }
 
+    // 使用 MutationObserver 等待 _vnode.component 出现
+    this.waitForVNodeComponent()
+  }
+
+  /**
+   * 等待 _vnode.component 出现
+   */
+  private waitForVNodeComponent(): void {
+    const timeoutValue = 3000;
+    if (!this.appElement) return
+
+    logger.debug('🔍 SeelieCore: 等待 _vnode.component 出现...', this.appElement?._vnode?.component)
+
+    const observer = new MutationObserver(() => {
+      logger.debug('🔍 SeelieCore: 等待 _vnode.component 出现...', this.appElement?._vnode?.component)
+      if (this.appElement?._vnode?.component) {
+        clean();
+        this.completeInit()
+      }
+    })
+
+    // 监听 #app 元素的属性变化和子节点变化
+    observer.observe(this.appElement, {
+      attributes: true,
+      childList: false,
+      subtree: false
+    });
+
+    // 设置超时保护，避免无限等待
+    const timeoutTimer = setTimeout(() => {
+      if (!this.rootComponent) {
+        clean();
+        logger.warn(`⚠️ SeelieCore: 等待 _vnode.component 超时 ${timeoutValue / 1000}秒`)
+      }
+    }, timeoutValue)
+
+    const clean = () => {
+      observer.disconnect();
+      clearTimeout(timeoutTimer);
+    }
+  }
+
+  /**
+   * 完成初始化
+   */
+  private completeInit(): void {
+    if (!this.appElement?._vnode?.component) {
+      logger.warn('⚠️ SeelieCore: 完成初始化时 _vnode.component 不存在')
+      return
+    }
     this.rootComponent = this.appElement._vnode.component
 
-    // 新增 初始化stats数据
-    lazyLoadSeelieData();
-    logger.debug('⚠️ SeelieCore: 已尝试初始化stats数据')
-    logger.debug('✓ SeelieCore 初始化成功')
+    // 初始化 stats 数据
+    lazyLoadSeelieData()
+    logger.debug('✅ SeelieCore: 已尝试初始化 stats 数据')
+    logger.log('✅ SeelieCore 初始化成功')
   }
 
   /**
