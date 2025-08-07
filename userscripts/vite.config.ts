@@ -1,8 +1,15 @@
 import { defineConfig } from 'vite';
 import monkey, { cdn } from 'vite-plugin-monkey';
+import { resolve } from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+      '@logger': resolve(__dirname, 'src/utils/logger.ts')
+    }
+  },
   plugins: [
     // 油猴脚本配置
     monkey({

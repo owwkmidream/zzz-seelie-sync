@@ -21,7 +21,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@logger": ["src/utils/logger.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }
