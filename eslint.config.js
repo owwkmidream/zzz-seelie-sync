@@ -14,14 +14,31 @@ export default [
   {
     files: ['*.config.{js,ts}', 'vite.config.{js,ts}', 'eslint.config.{js,ts}'],
     languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
       globals: {
         ...globals.node,
         ...globals.es2021,
       },
     },
+    plugins: {
+      '@typescript-eslint': typescript,
+    },
     rules: {
       'no-console': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        }
+      ],
+      'no-unused-vars': 'off',
     },
   },
 

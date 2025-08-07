@@ -22,7 +22,7 @@ if (process.env.RELEASE) {
       // 如果没有 tag，使用 commit hash
       scriptVersion = `${packageVersion}-${gitDescribe}`;
     }
-  } catch (error) {
+  } catch (_error) {
     // 如果 git 命令失败，使用默认版本
     scriptVersion = `${packageVersion}-dev`;
   }
