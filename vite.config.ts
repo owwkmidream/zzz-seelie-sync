@@ -30,14 +30,31 @@ if (process.env.RELEASE) {
   }
 }
 
-// 构建文件名
+// minify最小化
 const isDev = process.env.NODE_ENV === 'development';
-const fileName = `${packageName}.user.js`;
-const metaFileName = `${packageName}.meta.js`;
+const minify = (() => {
+  // via argv
+  if (process.argv.includes('--minify')) return true
+  if (process.argv.includes('--no-minify')) return false
+
+  // env.MINIFY
+  if (process.env.MINIFY === 'false') return false
+  if (process.env.MINIFY === 'true') return true
+
+  // GreasyFork: default no minify
+  if (process.env.RELEASE) return false
+
+  return false
+})()
+
+// 构建文件名
+const miniSuffix = minify ? '.mini' : ''
+const fileName = `${packageName}${miniSuffix}.user.js`
+const metaFileName = `${packageName}${miniSuffix}.meta.js`
 
 // 下载和更新 URL
 const branchBaseUrl = (branch: string) =>
-  `https://raw.githubusercontent.com/owwkmidream/zzz-seelie-sync/refs/heads/${branch}/`;
+  `https://fastgh.lainbo.com/https://raw.githubusercontent.com/owwkmidream/zzz-seelie-sync/refs/heads/${branch}/`;
 
 let downloadURL: string | undefined;
 let updateURL: string | undefined;
@@ -100,9 +117,15 @@ export default defineConfig({
         metaFileName: process.env.CI ? metaFileName : undefined,
         autoGrant: true, // 自动检测并添加 @grant
         externalGlobals: {
-          '@trim21/gm-fetch': cdn.jsdelivr('GM_fetch')
+          ...(minify ? {} : {
+            '@trim21/gm-fetch': cdn.jsdelivrFastly('GM_fetch')
+          })
         },
       },
     }),
   ],
+  build: {
+    cssMinify: minify,
+    minify,
+  }
 });
