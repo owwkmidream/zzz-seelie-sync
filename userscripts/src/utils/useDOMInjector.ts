@@ -408,7 +408,7 @@ export class DOMInjectorManager {
         try {
           // 节流处理：3秒内只处理一次
           const now = Date.now();
-          if (lastDebugTime || now - lastDebugTime >= debugLogInterval) {
+          if (now - lastDebugTime >= debugLogInterval) {
             lastDebugTime = now;
             logger.debug(`🔍 检测到 ${currentMutations.length} 个 DOM 变化，通知所有组件`);
           }
