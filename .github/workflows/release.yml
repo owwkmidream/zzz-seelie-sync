@@ -47,14 +47,21 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
-      - name: Build
+      - name: Build minify
         run: pnpm run build
         env:
           CI: true
+          MINIFY: 'true'
+          
+      - name: Build no minify
+        run: pnpm run build
+        env:
+          CI: true
+          MINIFY: 'false'
 
       # 部署到 release 分支 - 第一步：创建空文件确保触发 webhook
       - name: Create empty file for webhook trigger
-        run: mkdir -p dist-release-branch && touch ./dist-release-branch/placeholder.user.js
+        run: mkdir -p dist-release-branch && touch ./dist-release-branch/zzz-seelie-sync.user.js
 
       - name: Deploy placeholder to release branch
         uses: peaceiris/actions-gh-pages@v4
@@ -63,8 +70,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist-release-branch
           force_orphan: true
-          user_name: "github-actions[bot]"
-          user_email: "github-actions[bot]@users.noreply.github.com"
 
       # 部署到 release 分支 - 第二步：部署实际文件
       - name: Copy README to dist
@@ -77,8 +82,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           force_orphan: false
-          user_name: "github-actions[bot]"
-          user_email: "github-actions[bot]@users.noreply.github.com"
 
       # 创建 GitHub Release
       - name: Create GitHub Release

@@ -74,10 +74,17 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
-      - name: Build
+      - name: Build minify
         run: pnpm run build
         env:
           CI: true
+          MINIFY: 'true'
+          
+      - name: Build mo minify
+        run: pnpm run build
+        env:
+          CI: true
+          MINIFY: 'false'
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -87,12 +94,9 @@ jobs:
 
       # 只在 main 分支推送时部署到 release-nightly
       - name: Deploy to release-nightly branch
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: peaceiris/actions-gh-pages@v4
         with:
           publish_branch: release-nightly
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
           force_orphan: true
-          user_name: "github-actions[bot]"
-          user_email: "github-actions[bot]@users.noreply.github.com"
