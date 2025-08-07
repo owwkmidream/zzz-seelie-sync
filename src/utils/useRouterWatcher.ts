@@ -1,5 +1,6 @@
 // Vue Router 监听 Hook
 import { logger } from "./logger";
+
 interface VueApp {
   config?: {
     globalProperties?: {
@@ -29,6 +30,20 @@ export interface RouteLocation {
   [key: string]: unknown;
 }
 
+// 待注册的 Hook 队列
+interface PendingHook {
+  callback: (to: RouteLocation, from: RouteLocation | null) => void;
+  options: {
+    delay?: number;
+    immediate?: boolean;
+  };
+  unwatchRef: { current: (() => void) | null };
+}
+
+let pendingHooks: PendingHook[] = [];
+let routerObserver: MutationObserver | null = null;
+let isObserving = false;
+
 /**
  * 查找 Vue Router 实例
  */
@@ -36,7 +51,7 @@ function findVueRouter(): VueRouter | null {
   const appElement = document.querySelector('#app') as AppElementWithVue;
 
   if (!appElement?.__vue_app__) {
-    logger.error('❌ 未找到 Vue App 实例');
+    logger.debug('🔍 未找到 Vue App 实例，可能还在加载中...');
     return null;
   }
 
@@ -82,8 +97,127 @@ function findVueRouter(): VueRouter | null {
     }
   }
 
-  logger.error('❌ 未找到 Vue Router 实例');
+  logger.debug('🔍 未找到 Vue Router 实例，可能还在初始化中...');
   return null;
+}
+
+/**
+ * 停止 MutationObserver
+ */
+function stopRouterObserver(): void {
+  if (routerObserver) {
+    routerObserver.disconnect();
+    routerObserver = null;
+  }
+  isObserving = false;
+}
+
+/**
+ * 启动 MutationObserver 监听 Vue App 的加载
+ */
+function startRouterObserver(): void {
+  const timeout = 3000;
+  if (isObserving || routerObserver) {
+    return;
+  }
+
+  logger.debug('👀 启动 Vue Router 观察器...');
+  isObserving = true;
+
+  routerObserver = new MutationObserver(() => {
+    const router = findVueRouter();
+    if (router) {
+      logger.info('✓ Vue Router 已加载，处理待注册的 Hook...');
+
+      // 停止观察
+      stopRouterObserver();
+
+      // 处理所有待注册的 Hook
+      processPendingHooks(router);
+    }
+  });
+
+  // 观察整个 document 的变化
+  routerObserver.observe(document.querySelector('#app') as Element, {
+    childList: false,
+    subtree: false,
+    attributes: true,
+  });
+
+  // 设置超时，避免无限等待
+  setTimeout(() => {
+    if (isObserving) {
+      logger.warn('⚠️ Vue Router 观察器超时，停止观察');
+      stopRouterObserver();
+
+      // 处理待注册的 Hook，即使没有找到 router
+      processPendingHooks(null);
+    }
+  }, timeout); // 10秒超时
+}
+
+/**
+ * 处理待注册的 Hook
+ */
+function processPendingHooks(router: VueRouter | null): void {
+  logger.debug(`🔄 处理 ${pendingHooks.length} 个待注册的 Hook...`);
+
+  const hooks = [...pendingHooks];
+  pendingHooks = []; // 清空队列
+
+  hooks.forEach(({ callback, options, unwatchRef }) => {
+    if (router) {
+      // 注册 Hook
+      const { unwatch } = registerRouterHook(router, callback, options);
+      unwatchRef.current = unwatch;
+    } else {
+      // Router 未找到，设置空的 unwatch 函数
+      logger.warn('⚠️ Vue Router 未找到，Hook 注册失败');
+      unwatchRef.current = () => { };
+    }
+  });
+}
+
+/**
+ * 注册路由 Hook
+ */
+function registerRouterHook(
+  router: VueRouter,
+  callback: (to: RouteLocation, from: RouteLocation | null) => void,
+  options: { delay?: number; immediate?: boolean }
+): {
+  router: VueRouter;
+  unwatch: () => void;
+  getCurrentRoute: () => RouteLocation | undefined;
+} {
+  const { delay = 100, immediate = false } = options;
+
+  // 如果需要立即执行
+  if (immediate) {
+    setTimeout(() => {
+      const currentRoute = router.currentRoute?.value || router.currentRoute;
+      callback(currentRoute as RouteLocation, null);
+    }, delay);
+  }
+
+  // 注册路由变化后的钩子
+  const unwatch = router.afterEach((to: RouteLocation, from: RouteLocation) => {
+    logger.debug('🔄 路由变化检测到:', from?.path, '->', to?.path);
+
+    // 延迟执行回调
+    setTimeout(() => {
+      callback(to, from);
+    }, delay);
+  });
+
+  return {
+    router,
+    unwatch,
+    getCurrentRoute: () => {
+      const currentRoute = router.currentRoute?.value || router.currentRoute;
+      return currentRoute as RouteLocation | undefined;
+    }
+  };
 }
 
 /**
@@ -114,43 +248,49 @@ export function useRouterWatcher(
     immediate?: boolean;   // 是否立即执行一次回调，默认 false
   } = {}
 ) {
-  const { delay = 100, immediate = false } = options;
-
   logger.debug('🚦 设置路由监听 Hook...');
 
   const router = findVueRouter();
-  if (!router) {
-    logger.error('❌ 无法设置路由监听：未找到 Router 实例');
-    return {
-      router: null,
-      unwatch: () => { }
-    };
+
+  if (router) {
+    // Router 已找到，直接注册
+    logger.debug('✓ Vue Router 已存在，直接注册 Hook');
+    const result = registerRouterHook(router, callback, options);
+    return result;
   }
 
-  // 如果需要立即执行
-  if (immediate) {
-    setTimeout(() => {
-      const currentRoute = router.currentRoute?.value || router.currentRoute;
-      callback(currentRoute as RouteLocation, null);
-    }, delay);
-  }
+  // Router 未找到，创建延迟注册机制
+  logger.debug('⏳ Vue Router 未找到，设置延迟注册...');
 
-  // 注册路由变化后的钩子
-  const unwatch = router.afterEach((to: RouteLocation, from: RouteLocation) => {
-    logger.debug('🔄 路由变化检测到:', from?.path, '->', to?.path);
+  // 创建 unwatch 引用，用于后续更新
+  const unwatchRef = { current: null as (() => void) | null };
 
-    // 延迟执行回调
-    setTimeout(() => {
-      callback(to, from);
-    }, delay);
+  // 添加到待注册队列
+  pendingHooks.push({
+    callback,
+    options,
+    unwatchRef
   });
 
-  logger.debug('✓ 路由监听 Hook 设置完成');
+  // 启动观察器（如果还没启动）
+  startRouterObserver();
 
+  // 返回同步结果，unwatch 会在 router 找到后更新
   return {
-    router,
-    unwatch,
-    getCurrentRoute: () => router.currentRoute?.value || router.currentRoute
+    router: null,
+    unwatch: () => {
+      if (unwatchRef.current) {
+        unwatchRef.current();
+      }
+    },
+    getCurrentRoute: () => {
+      const currentRouter = findVueRouter();
+      if (currentRouter) {
+        const currentRoute = currentRouter.currentRoute?.value || currentRouter.currentRoute;
+        return currentRoute as RouteLocation | undefined;
+      }
+      return undefined;
+    }
   };
 }
 
