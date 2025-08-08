@@ -175,42 +175,74 @@ export async function request<T = unknown>(
     url += `?${searchParams.toString()}`;
   }
 
-  // 异步获取并合并请求头
-  const zzzHeaders = await getZZZHeaderWithDevice();
-  const finalHeaders = {
-    ...zzzHeaders,
-    ...headers
+  // 设备指纹相关错误码，需要刷新设备指纹并重试
+  const deviceFpErrorCodes = [1034, 5003, 10035, 10041, 10053];
+
+  // 执行请求的内部函数
+  const executeRequest = async (isRetry = false): Promise<ApiResponse<T>> => {
+    // 异步获取并合并请求头
+    const zzzHeaders = await getZZZHeaderWithDevice();
+    const finalHeaders = {
+      ...zzzHeaders,
+      ...headers
+    };
+
+    if (finalHeaders['x-rpc-device_fp'] === '0000000000000') {
+      throw new Error('❌ 设备指纹有误，请检查');
+    }
+
+    logger.debug(`🌐 请求 ${method} ${url}${isRetry ? ' (重试)' : ''}`);
+
+    try {
+      const response = await GM_fetch(url, {
+        method,
+        headers: finalHeaders,
+        body: body ? JSON.stringify(body) : undefined
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json() as ApiResponse<T>;
+
+      if (data.retcode !== 0) {
+        // 检查是否为设备指纹相关错误码
+        if (deviceFpErrorCodes.includes(data.retcode) && !isRetry) {
+          logger.warn(`⚠️ 检测到设备指纹错误码 ${data.retcode}: ${data.message}，正在刷新设备指纹...`);
+
+          try {
+            // 刷新设备指纹
+            await getDeviceFingerprint();
+            logger.debug('✅ 设备指纹刷新完成，准备重试请求');
+
+            // 重试请求
+            return await executeRequest(true);
+          } catch (fpError) {
+            logger.error('❌ 设备指纹刷新失败:', fpError);
+            throw new Error(`设备指纹刷新失败，原始错误: API Error ${data.retcode}: ${data.message}`);
+          }
+        }
+
+        throw new Error(`API Error ${data.retcode}: ${data.message}`);
+      }
+
+      logger.debug(`✅ 请求成功:`, data.message);
+      return data;
+
+    } catch (error) {
+      // 如果是我们抛出的 API Error，直接重新抛出
+      if (error instanceof Error && error.message.includes('API Error')) {
+        throw error;
+      }
+
+      logger.error(`❌ 请求失败:`, error);
+      throw error;
+    }
   };
 
-  if (finalHeaders['x-rpc-device_fp'] === '0000000000000') {
-    throw new Error('❌ 设备指纹有误，请检查');
-  }
-  logger.debug(`🌐 请求 ${method} ${url}`);
-
-  try {
-    const response = await GM_fetch(url, {
-      method,
-      headers: finalHeaders,
-      body: body ? JSON.stringify(body) : undefined
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json() as ApiResponse<T>;
-
-    if (data.retcode !== 0) {
-      throw new Error(`API Error ${data.retcode}: ${data.message}`);
-    }
-
-    logger.debug(`✅ 请求成功:`, data.message);
-    return data;
-
-  } catch (error) {
-    logger.error(`❌ 请求失败:`, error);
-    throw error;
-  }
+  // 执行请求
+  return await executeRequest();
 }
 
 /**
