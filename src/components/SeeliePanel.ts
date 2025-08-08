@@ -4,8 +4,9 @@
  */
 
 import { logger } from '@logger';
-import { initializeUserInfo, type UserInfo } from '@/api/hoyo';
+import { initializeUserInfo, refreshDeviceInfo, type UserInfo } from '@/api/hoyo';
 import { syncAll, syncResinData, syncAllCharacters, syncItemsData } from '@/services/SyncService';
+import { setToast } from '@/utils/seelie';
 
 // 扩展用户信息类型以支持错误状态
 type UserInfoWithError = UserInfo | {
@@ -318,11 +319,11 @@ export class SeeliePanel {
         handler: (event: Event) => this.handleSyncItems(event)
       },
       {
-        text: '全部同步',
+        text: '重置设备',
         icon: `<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15M12 3v9m0 0l-3-3m3 3l3-3"></path>
         </svg>`,
-        handler: () => this.handleSyncAll()
+        handler: (event: Event) => this.handleResetDeviceInfo(event)
       }
     ];
 
@@ -438,6 +439,26 @@ export class SeeliePanel {
         throw new Error('材料同步失败');
       }
       logger.debug('✅ 材料同步完成');
+    });
+  }
+
+  /**
+   * 处理重置设备信息
+   */
+  private async handleResetDeviceInfo(event?: Event): Promise<void> {
+    const button = (event?.target as HTMLElement)?.closest('button') as HTMLButtonElement;
+    if (!button) return;
+
+    await this.performSyncOperation(button, '重置中...', async () => {
+      logger.debug('开始重置设备信息...');
+      try {
+        await refreshDeviceInfo();
+        logger.debug('✅ 设备信息重置完成');
+        setToast('设备信息已重置', 'success');
+      } catch (error) {
+        logger.error('设备信息重置失败:', error);
+        setToast('设备信息重置失败', 'error');
+      }
     });
   }
 
