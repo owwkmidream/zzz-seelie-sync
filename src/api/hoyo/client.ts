@@ -218,6 +218,16 @@ export async function request<T = unknown>(
  * 使用缓存中的设备信息进行请求，并将获取到的指纹更新到缓存中
  */
 export async function getDeviceFingerprint(): Promise<void> {
+  // 尝试获取米游社deviceId
+  const mysCookies = await GM.cookie.list({ url: 'https://do-not-exist.mihoyo.com/' });
+  if (mysCookies.length !== 0) {
+    for (const ck of mysCookies) {
+      if (ck.name === '_MHYUUID') {
+        logger.debug('🔐 从米游社获取到UUID', ck.value);
+        deviceInfoCache.deviceId = ck.value;
+      }
+    }
+  }
 
   if (!deviceInfoCache) {
     throw new Error('设备信息缓存未初始化');
