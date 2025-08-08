@@ -7,7 +7,8 @@ import type {
   DeviceInfo,
   DeviceFpRequest,
   UserGameRolesResponse,
-  LoginAccountResponse
+  LoginAccountResponse,
+  DeviceFpRes
 } from './types';
 import { logger } from '../../utils/logger';
 

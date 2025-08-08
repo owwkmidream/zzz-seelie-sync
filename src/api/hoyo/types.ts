@@ -16,6 +16,13 @@ export interface DeviceInfo {
   timestamp: number; // 添加时间戳，用于判断是否需要更新
 }
 
+// 设备信息接口
+export interface DeviceFpRes {
+  code: number;
+  msg: string;
+  device_fp: string; // 添加时间戳，用于判断是否需要更新
+}
+
 export interface ApiResponse<T = unknown> {
   retcode: number;
   message: string;
@@ -82,6 +89,7 @@ export interface DeviceFpRequest {
   device_fp: string;
   app_name: string;
   ext_fields: string;
+  bbs_device_id: string;
 }
 
 // 用户游戏角色信息
