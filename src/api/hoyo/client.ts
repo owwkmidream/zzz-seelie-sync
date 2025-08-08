@@ -18,7 +18,7 @@ const DEVICE_INFO_KEY = 'zzz_device_info';
 // 基础配置
 export const NAP_CULTIVATE_TOOL_URL = 'https://act-api-takumi.mihoyo.com/event/nap_cultivate_tool';
 export const GAME_RECORD_URL = 'https://api-takumi-record.mihoyo.com/event/game_record_zzz/api/zzz';
-export const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api';
+export const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api/getFp';
 const GAME_ROLE_URL = 'https://api-takumi.mihoyo.com/binding/api/getUserGameRolesByCookie?game_biz=nap_cn'
 const NAP_TOEKN_URL = 'https://api-takumi.mihoyo.com/common/badge/v1/login/account'
 
@@ -29,15 +29,29 @@ let NapTokenInitialized = false;
 let userInfoCache: UserInfo | null = null;
 
 // 设备信息缓存，避免重复获取
-let deviceInfoCache: DeviceInfo | null = null;
+let deviceInfoCache: DeviceInfo = {
+  deviceId: generateUUID(),
+  deviceFp: '0000000000000',
+  timestamp: Date.now()
+};
 let deviceInfoPromise: Promise<DeviceInfo> | null = null;
 
-// 异步获取通用请求头
-async function getDefaultHeaders(): Promise<Record<string, string>> {
+const appVer = "2.85.1";
+// UA请求头
+const defaultHeaders = {
+  'Accept': 'application/json',
+  'User-Agent': `Mozilla/5.0 (Linux; Android 13; Pixel 5 Build/TQ3A.230901.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/118.0.0.0 Mobile Safari/537.36 miHoYoBBS/${appVer}`
+};
+
+// 异步获取device请求头
+async function getZZZHeaderWithDevice(): Promise<Record<string, string>> {
   const deviceInfo = await getDeviceInfo();
 
   return {
-    'content-type': 'application/json',
+    ...defaultHeaders,
+    'Referer': 'https://act.mihoyo.com/',
+    'x-rpc-app_version': appVer,
+    'x-rpc-client_type': "5",
     'x-rpc-device_fp': deviceInfo.deviceFp,
     'x-rpc-device_id': deviceInfo.deviceId,
   };
@@ -56,7 +70,8 @@ async function initializeNapToken(): Promise<void> {
   try {
     // 第一步：获取用户游戏角色信息
     const rolesResponse = await GM_fetch(GAME_ROLE_URL, {
-      method: 'GET'
+      method: 'GET',
+      headers: defaultHeaders,
     });
 
     if (!rolesResponse.ok) {
@@ -81,7 +96,8 @@ async function initializeNapToken(): Promise<void> {
     const tokenResponse = await GM_fetch(NAP_TOEKN_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...defaultHeaders
       },
       body: JSON.stringify({
         region: roleInfo.region,
@@ -159,9 +175,9 @@ export async function request<T = unknown>(
   }
 
   // 异步获取并合并请求头
-  const defaultHeaders = await getDefaultHeaders();
+  const zzzHeaders = await getZZZHeaderWithDevice();
   const finalHeaders = {
-    ...defaultHeaders,
+    ...zzzHeaders,
     ...headers
   };
 
