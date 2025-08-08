@@ -350,55 +350,62 @@ async function getDeviceInfo(refresh?: boolean): Promise<DeviceInfo> {
     const stored = localStorage.getItem(DEVICE_INFO_KEY);
     if (stored) {
       try {
-        const deviceInfo: DeviceInfo = JSON.parse(stored);
-        logger.debug('📱 从localStorage获取设备信息:', deviceInfo);
+        const storedDeviceInfo: DeviceInfo = JSON.parse(stored);
+        logger.debug('📱 从localStorage获取设备信息:', storedDeviceInfo);
 
-        // 检查设备指纹是否有效
-        if (deviceInfo.deviceFp && deviceInfo.deviceFp !== '0000000000000') {
-          deviceInfoCache = deviceInfo;
-          return deviceInfo;
-        }
+        // 更新缓存
+        deviceInfoCache = storedDeviceInfo;
       } catch (error) {
         logger.warn('⚠️ 解析设备信息失败，将重新生成:', error);
       }
     }
 
-    // 生成新的设备信息
-    const newDeviceId = generateUUID();
-    logger.debug('🔄 生成新设备ID:', newDeviceId);
+    // 检查是否需要刷新设备指纹
+    let needRefresh = false;
 
-    try {
-      // 异步获取真实设备指纹
-      const realFp = await getDeviceFingerprint(newDeviceId);
+    if (refresh === true) {
+      // 强制刷新
+      needRefresh = true;
+      logger.debug('📱 强制刷新设备指纹');
+    } else if (refresh === false) {
+      // 强制不刷新
+      needRefresh = false;
+      logger.debug('📱 跳过设备指纹刷新');
+    } else {
+      // 自动判断是否需要刷新（根据时间戳）
+      const now = Date.now();
+      const threeDaysInMs = 3 * 24 * 60 * 60 * 1000; // 3天的毫秒数
 
-      const deviceInfo: DeviceInfo = {
-        deviceId: newDeviceId,
-        deviceFp: realFp,
-        timestamp: Date.now()
-      };
-
-      // 保存到localStorage
-      localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(deviceInfo));
-      logger.debug('📱 生成新设备信息:', deviceInfo);
-
-      deviceInfoCache = deviceInfo;
-      return deviceInfo;
-    } catch (error) {
-      logger.error('❌ 获取设备指纹失败:', error);
-
-      // 如果获取失败，使用临时设备信息
-      const fallbackInfo: DeviceInfo = {
-        deviceId: newDeviceId,
-        deviceFp: '0000000000000',
-        timestamp: Date.now()
-      };
-
-      deviceInfoCache = fallbackInfo;
-      return fallbackInfo;
+      if (deviceInfoCache.deviceFp === '0000000000000') {
+        // 如果设备指纹是初始值，需要获取真实指纹
+        needRefresh = true;
+        logger.debug('📱 设备指纹为初始值，需要获取真实指纹');
+      } else if (now - deviceInfoCache.timestamp > threeDaysInMs) {
+        // 如果超过3天，需要刷新
+        needRefresh = true;
+        logger.debug('📱 设备信息超过3天，需要刷新');
+      } else {
+        logger.debug('📱 设备信息仍在有效期内');
+      }
     }
+
+    // 如果需要刷新设备指纹
+    if (needRefresh) {
+      try {
+        await getDeviceFingerprint();
+        logger.debug('✅ 设备指纹刷新完成');
+      } catch (error) {
+        logger.error('❌ 设备指纹刷新失败:', error);
+        throw error;
+      }
+    }
+
+    return deviceInfoCache;
   })();
 
-  return deviceInfoPromise;
+  const result = await deviceInfoPromise;
+  deviceInfoPromise = null; // 清除 Promise 缓存
+  return result;
 }
 
 // 设备和用户信息管理函数
@@ -417,37 +424,17 @@ export async function initializeUserInfo(): Promise<UserInfo | null> {
   return userInfoCache;
 }
 
-export function clearDeviceInfo(): void {
-  localStorage.removeItem(DEVICE_INFO_KEY);
-  deviceInfoCache = null;
-  deviceInfoPromise = null;
-  NapTokenInitialized = false;
-  logger.debug('🗑️ 已清除localStorage设备信息和缓存');
-}
-
 export async function getCurrentDeviceInfo(): Promise<DeviceInfo> {
   return await getDeviceInfo();
 }
 
-export async function refreshDeviceFingerprint(): Promise<void> {
-  const deviceInfo = await getDeviceInfo();
-  logger.debug('🔄 开始刷新设备指纹...');
+export async function refreshDeviceInfo(): Promise<void> {
+  logger.debug('🔄 开始刷新设备信息...');
 
-  try {
-    const newFp = await getDeviceFingerprint(deviceInfo.deviceId);
-    const updatedInfo: DeviceInfo = {
-      ...deviceInfo,
-      deviceFp: newFp,
-      timestamp: Date.now()
-    };
+  // 强制刷新设备信息
+  const newDeviceInfo = await getDeviceInfo(true);
 
-    localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(updatedInfo));
-    deviceInfoCache = updatedInfo;
-    logger.debug('✅ 设备指纹刷新完成:', updatedInfo);
-  } catch (error) {
-    logger.error('❌ 刷新设备指纹失败:', error);
-    throw error;
-  }
+  logger.debug('✅ 设备信息刷新完成:', newDeviceInfo);
 }
 
 export function resetNapTokenlInitialization(): void {

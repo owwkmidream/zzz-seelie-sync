@@ -13,9 +13,8 @@ export {
   getUserInfo,
   clearUserInfo,
   initializeUserInfo,
-  clearDeviceInfo,
   getCurrentDeviceInfo,
-  refreshDeviceFingerprint,
+  refreshDeviceInfo,
   resetNapTokenlInitialization,
 } from './client';
 
@@ -54,9 +53,8 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
             getDeviceFingerprint: clientModule.getDeviceFingerprint,
             generateUUID: clientModule.generateUUID,
             generateHexString: clientModule.generateHexString,
-            clearDeviceInfo: clientModule.clearDeviceInfo,
             getCurrentDeviceInfo: clientModule.getCurrentDeviceInfo,
-            refreshDeviceFingerprint: clientModule.refreshDeviceFingerprint,
+            refreshDeviceInfo: clientModule.refreshDeviceInfo,
             resetNapTokenlInitialization: clientModule.resetNapTokenlInitialization,
             getUserInfo: clientModule.getUserInfo,
             clearUserInfo: clientModule.clearUserInfo,
