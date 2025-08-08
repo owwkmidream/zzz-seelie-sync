@@ -100,9 +100,9 @@ export default defineConfig({
         downloadURL,
         updateURL,
         license: 'MIT',
-        match: ['https://zzz.seelie.me/*'],
+        match: ['https://zzz.seelie.me/*', 'https://do-not-exist.mihoyo.com/'],
         // GM API 权限
-        grant: ['GM.xmlHttpRequest'],
+        grant: ['GM.xmlHttpRequest', 'GM.cookie'],
         // 允许跨域请求到米哈游API
         connect: [
           'act-api-takumi.mihoyo.com',

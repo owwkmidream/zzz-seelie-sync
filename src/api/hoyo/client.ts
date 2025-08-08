@@ -11,6 +11,7 @@ import type {
   DeviceFpRes
 } from './types';
 import { logger } from '../../utils/logger';
+import { GM } from '$';
 
 // 设备信息存储key
 const DEVICE_INFO_KEY = 'zzz_device_info';
