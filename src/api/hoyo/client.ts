@@ -213,32 +213,35 @@ export async function request<T = unknown>(
 }
 
 /**
- * 获取设备指纹
- * @param deviceId 设备ID
- * @returns 设备指纹信息
+ * 获取设备指纹并更新缓存
+ * 使用缓存中的设备信息进行请求，并将获取到的指纹更新到缓存中
  */
-export async function getDeviceFingerprint(deviceId: string): Promise<string> {
+export async function getDeviceFingerprint(): Promise<void> {
 
+  if (!deviceInfoCache) {
+    throw new Error('设备信息缓存未初始化');
+  }
+  const productName = generateProductName();
   const requestBody: DeviceFpRequest = {
-    device_id: deviceId,
+    device_id: generateSeedId(),
     seed_id: generateUUID(),
     seed_time: Date.now().toString(),
     platform: '2',
-    device_fp: generateHexString(13),
+    device_fp: deviceInfoCache.deviceFp,
     app_name: 'bbs_cn',
-    ext_fields: `{"proxyStatus":0,"isRoot":0,"romCapacity":"512","deviceName":"Pixel5","productName":"${generateHexString(6).toUpperCase()}","romRemain":"512","hostname":"db1ba5f7c000000","screenSize":"1080x2400","isTablet":0,"aaid":"","model":"Pixel5","brand":"google","hardware":"windows_x86_64","deviceType":"redfin","devId":"REL","serialNumber":"unknown","sdCapacity":125943,"buildTime":"1704316741000","buildUser":"cloudtest","simState":0,"ramRemain":"124603","appUpdateTimeDiff":1716369357492,"deviceInfo":"google\\/${generateHexString(6).toUpperCase()}\\/redfin:13\\/TQ3A.230901.001\\/2311.40000.5.0:user\\/release-keys","vaid":"","buildType":"user","sdkVersion":"33","ui_mode":"UI_MODE_TYPE_NORMAL","isMockLocation":0,"cpuType":"arm64-v8a","isAirMode":0,"ringMode":2,"chargeStatus":3,"manufacturer":"Google","emulatorStatus":0,"appMemory":"512","osVersion":"13","vendor":"unknown","accelerometer":"","sdRemain":123276,"buildTags":"release-keys","packageName":"com.mihoyo.hyperion","networkType":"WiFi","oaid":"","debugStatus":1,"ramCapacity":"125943","magnetometer":"","display":"TQ3A.230901.001","appInstallTimeDiff":1706444666737,"packageVersion":"2.20.2","gyroscope":"","batteryStatus":85,"hasKeyboard":10,"board":"windows"}`
+    ext_fields: `{"proxyStatus":0,"isRoot":0,"romCapacity":"512","deviceName":"Pixel5","productName":"${productName}","romRemain":"512","hostname":"db1ba5f7c000000","screenSize":"1080x2400","isTablet":0,"aaid":"","model":"Pixel5","brand":"google","hardware":"windows_x86_64","deviceType":"redfin","devId":"REL","serialNumber":"unknown","sdCapacity":125943,"buildTime":"1704316741000","buildUser":"cloudtest","simState":0,"ramRemain":"124603","appUpdateTimeDiff":1716369357492,"deviceInfo":"google\\/${productName}\\/redfin:13\\/TQ3A.230901.001\\/2311.40000.5.0:user\\/release-keys","vaid":"","buildType":"user","sdkVersion":"33","ui_mode":"UI_MODE_TYPE_NORMAL","isMockLocation":0,"cpuType":"arm64-v8a","isAirMode":0,"ringMode":2,"chargeStatus":3,"manufacturer":"Google","emulatorStatus":0,"appMemory":"512","osVersion":"13","vendor":"unknown","accelerometer":"","sdRemain":123276,"buildTags":"release-keys","packageName":"com.mihoyo.hyperion","networkType":"WiFi","oaid":"","debugStatus":1,"ramCapacity":"125943","magnetometer":"","display":"TQ3A.230901.001","appInstallTimeDiff":1706444666737,"packageVersion":"2.20.2","gyroscope":"","batteryStatus":85,"hasKeyboard":10,"board":"windows"}`,
+    bbs_device_id: deviceInfoCache.deviceId
   };
 
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
-  logger.debug(`🔐 获取设备指纹，设备ID: ${deviceId}`);
+  logger.debug(`🔐 获取设备指纹，设备ID: ${deviceInfoCache.deviceId}`);
 
   try {
-    const response = await GM_fetch(`${DEVICE_FP_URL}/getFp`, {
+    const response = await GM_fetch(`${DEVICE_FP_URL}`, {
       method: 'POST',
-      headers,
+      headers: {
+        ...defaultHeaders,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(requestBody)
     });
 
@@ -246,14 +249,20 @@ export async function getDeviceFingerprint(deviceId: string): Promise<string> {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const data = await response.json() as ApiResponse<{ device_fp: string }>;
+    const data = await response.json() as ApiResponse<DeviceFpRes>;
 
-    if (data.retcode !== 0) {
+    if (data.retcode !== 0 || data.data.code !== 200) {
       throw new Error(`设备指纹获取失败 ${data.retcode}: ${data.message}`);
     }
 
-    logger.debug(`✅ 设备指纹获取成功: ${data.data.device_fp}`);
-    return data.data.device_fp;
+    // 更新缓存中的设备指纹
+    deviceInfoCache.deviceFp = data.data.device_fp;
+    deviceInfoCache.timestamp = Date.now();
+
+    // 保存到localStorage
+    localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(deviceInfoCache));
+
+    logger.debug(`✅ 设备指纹获取成功并更新缓存: ${data.data.device_fp}`);
 
   } catch (error) {
     logger.error(`❌ 设备指纹获取失败:`, error);
@@ -262,8 +271,20 @@ export async function getDeviceFingerprint(deviceId: string): Promise<string> {
 }
 
 /**
+ * 生成产品名称 (6位大写字母数字组合)
+ * @returns 产品名称字符串
+ */
+function generateProductName(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
+}
 
- * 生成 UUID v4 字符串
+/**
+ * 生成 UUID v4 字符串 (带连字符格式)
  * @returns UUID v4 格式的字符串
  */
 export function generateUUID(): string {
@@ -281,28 +302,43 @@ export function generateUUID(): string {
 }
 
 /**
- * 生成指定长度的十六进制字符串
+ * 生成 Seed ID (16位十六进制字符串，对齐 C# 版本)
+ * @returns 16位十六进制字符串
+ */
+function generateSeedId(): string {
+  return generateHexString(16);
+}
+
+/**
+ * 生成指定长度的十六进制字符串 (对齐 C# 版本的随机生成逻辑)
  * @param length 字符串长度
  * @returns 十六进制字符串
  */
 export function generateHexString(length: number): string {
-  const chars = '0123456789abcdef';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
+  const bytes = new Uint8Array(Math.ceil(length / 2));
+
+  // 使用 crypto.getRandomValues() 如果可用
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    // 回退方案：使用 Math.random()
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
   }
-  return result;
+
+  // 转换为十六进制字符串
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+
+  // 如果需要奇数长度，截取到指定长度
+  return hex.substring(0, length);
 }
 
 /**
  * 获取或生成设备信息（异步）
+ * @param refresh 可选参数，是否强制刷新设备指纹。如果未定义，则根据时间戳自动判断是否需要刷新
  */
-async function getDeviceInfo(): Promise<DeviceInfo> {
-  // 如果已有缓存，直接返回
-  if (deviceInfoCache) {
-    return deviceInfoCache;
-  }
-
+async function getDeviceInfo(refresh?: boolean): Promise<DeviceInfo> {
   // 如果正在获取中，等待现有的 Promise
   if (deviceInfoPromise) {
     return deviceInfoPromise;
