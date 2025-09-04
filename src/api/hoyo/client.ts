@@ -194,11 +194,12 @@ export async function request<T = unknown>(
     logger.debug(`🌐 请求 ${method} ${url}${isRetry ? ' (重试)' : ''}`);
 
     try {
-      const response = await GM_fetch(url, {
+      const payload = [url, {
         method,
         headers: finalHeaders,
         body: body ? JSON.stringify(body) : undefined
-      });
+      }] as const;
+      const response = await GM_fetch(...payload);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -224,10 +225,13 @@ export async function request<T = unknown>(
           }
         }
 
+        // 打印请求和响应
+
+        logger.error('❌ 请求失败\n请求:', payload, '\n响应：', response, data);
         throw new Error(`API Error ${data.retcode}: ${data.message}`);
       }
 
-      logger.debug(`✅ 请求成功:`, data.message);
+      logger.debug(`✅ 请求成功: ${payload[0]}, ${data.retcode}: ${data.message}`);
       return data;
 
     } catch (error) {
