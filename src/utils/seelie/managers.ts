@@ -427,6 +427,11 @@ export class CharacterManager extends SeelieCore {
           continue
         }
 
+        // 如果角色尚未发布，跳过
+        if (new Date(char.release) > new Date()) {
+          continue;
+        }
+
         const characterAttributes = new Set([
           char.attribute,
           char.style,
@@ -496,7 +501,7 @@ export class CharacterManager extends SeelieCore {
     const result: Record<string, number> = {}; // 用于存储 style -> id 的映射
 
     for (const weapon of weaponsArray) {
-      if (weapon.tier === 5 && !result[weapon.style]) {
+      if (weapon.tier === 5 && !result[weapon.style] && new Date() >= new Date(weapon.release)) {
         result[weapon.style] = weapon.id;
       }
     }

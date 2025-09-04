@@ -145,6 +145,7 @@ export interface WeaponInfo {
   style: string;
   dim_hash: string;
   craftable?: boolean;
+  release: string;
 }
 
 /**
