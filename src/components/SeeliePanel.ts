@@ -623,7 +623,6 @@ export class SeeliePanel {
    */
   public async refreshUserInfo(): Promise<void> {
     try {
-      await this.loadUserInfo();
       if (this.container) {
         // 重新创建面板
         const parent = this.container.parentNode;
