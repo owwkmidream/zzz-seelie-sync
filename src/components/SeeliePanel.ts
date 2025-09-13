@@ -15,7 +15,7 @@ type UserInfoWithError = UserInfo | {
 };
 
 // URL
-const MYS_URL = 'https://www.miyoushe.com/zzz/';
+const MYS_URL = 'https://act.mihoyo.com/zzz/gt/character-builder-h#/';
 
 export class SeeliePanel {
   private container: HTMLDivElement | null = null;
@@ -90,7 +90,7 @@ export class SeeliePanel {
 
       // 分析错误类型，设置相应的错误信息
       const errorMessage = String(error);
-      if (errorMessage.includes('获取用户角色失败') || errorMessage.includes('HTTP 401') || errorMessage.includes('HTTP 403')) {
+      if (errorMessage.includes('获取用户角色失败')|| errorMessage.includes('未登录') || errorMessage.includes('HTTP 401') || errorMessage.includes('HTTP 403')) {
         this.userInfo = { error: 'login_required', message: '请先登录米游社账号' };
       } else if (errorMessage.includes('未找到绝区零游戏角色')) {
         this.userInfo = { error: 'no_character', message: '未找到绝区零游戏角色' };
