@@ -86,6 +86,7 @@ export default defineConfig({
     monkey({
       entry: 'src/main.ts',
       server: {
+        prefix: false, // 保持 dev/build 脚本名称一致，避免自动添加 "server:" 前缀
         mountGmApi: true, // 挂载 GM API
       },
       userscript: {

@@ -10,9 +10,10 @@ import { SeelieDataUpdater } from './dataUpdater'
 import { logger } from '../logger'
 
 /**
- * 突破等级数组
+ * 突破等级上限数组（索引即突破等级）
+ * 0: 1-9, 1: 10-19, 2: 20-29, 3: 30-39, 4: 40-49, 5: 50-60
  */
-export const ASCENSIONS: number[] = [1, 10, 20, 30, 40, 50, 60]
+export const ASCENSIONS: number[] = [9, 19, 29, 39, 49, 60]
 
 /**
  * 技能类型映射
@@ -43,6 +44,25 @@ let runtimeDataCache: {
   loaded?: boolean
   loading?: Promise<void>
 } = {}
+
+const DEFAULT_WEAPON_STATS_COMMON: WeaponStatsCommon = {
+  ascRate: [],
+  rate: []
+}
+
+const missingStatsWarned = {
+  charactersStats: false,
+  weaponsStats: false,
+  weaponsStatsCommon: false
+}
+
+function warnMissingStatsOnce(type: keyof typeof missingStatsWarned, message: string): void {
+  if (missingStatsWarned[type]) {
+    return
+  }
+  missingStatsWarned[type] = true
+  logger.warn(message)
+}
 
 /**
  * 懒加载 Seelie 数据
@@ -114,7 +134,8 @@ export async function getCharacterStats(): Promise<CharacterStats[]> {
     logger.warn('⚠️ 获取角色统计数据失败:', error)
   }
 
-  throw new Error('无法获取角色统计数据')
+  warnMissingStatsOnce('charactersStats', '⚠️ 角色统计数据缺失，回退为空数组')
+  return []
 }
 
 /**
@@ -131,7 +152,8 @@ export async function getWeaponStats(): Promise<{ [id: number]: number }> {
     logger.warn('⚠️ 获取武器统计数据失败:', error)
   }
 
-  throw new Error('无法获取武器统计数据')
+  warnMissingStatsOnce('weaponsStats', '⚠️ 武器统计数据缺失，回退为空对象')
+  return {}
 }
 
 /**
@@ -140,7 +162,12 @@ export async function getWeaponStats(): Promise<{ [id: number]: number }> {
 export async function getWeaponStatsCommon(): Promise<WeaponStatsCommon> {
   try {
     const statsData = await getStatsData()
-    if (statsData?.weaponsStatsCommon && typeof statsData.weaponsStatsCommon === 'object') {
+    if (
+      statsData?.weaponsStatsCommon
+      && typeof statsData.weaponsStatsCommon === 'object'
+      && Array.isArray(statsData.weaponsStatsCommon.ascRate)
+      && Array.isArray(statsData.weaponsStatsCommon.rate)
+    ) {
       logger.debug('✅ 使用动态武器通用统计数据')
       return statsData.weaponsStatsCommon
     }
@@ -148,7 +175,8 @@ export async function getWeaponStatsCommon(): Promise<WeaponStatsCommon> {
     logger.warn('⚠️ 获取武器通用统计数据失败:', error)
   }
 
-  throw new Error('无法获取武器通用统计数据')
+  warnMissingStatsOnce('weaponsStatsCommon', '⚠️ 武器通用统计数据缺失，回退为空配置')
+  return DEFAULT_WEAPON_STATS_COMMON
 }
 
 /**
@@ -156,6 +184,9 @@ export async function getWeaponStatsCommon(): Promise<WeaponStatsCommon> {
  */
 export function clearRuntimeDataCache(): void {
   runtimeDataCache = {}
+  missingStatsWarned.charactersStats = false
+  missingStatsWarned.weaponsStats = false
+  missingStatsWarned.weaponsStatsCommon = false
   logger.debug('🗑️ 已清除运行时数据缓存')
 }
 
