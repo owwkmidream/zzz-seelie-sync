@@ -22,6 +22,7 @@ interface AppElement extends HTMLElement {
 export class SeelieCore {
   private appElement: AppElement | null = null
   private rootComponent: VueComponent | null = null
+  private lastToast: { message: string; type: ToastType; timestamp: number } | null = null
 
   constructor() {
     this.init()
@@ -201,8 +202,20 @@ export class SeelieCore {
     }
 
     try {
+      const now = Date.now()
+      if (
+        this.lastToast
+        && this.lastToast.message === message
+        && this.lastToast.type === type
+        && now - this.lastToast.timestamp < 1500
+      ) {
+        logger.debug('🍞 跳过重复 Toast:', { message, type })
+        return true
+      }
+
       proxy.toast = message
       proxy.toastType = type
+      this.lastToast = { message, type, timestamp: now }
 
       logger.debug('🍞 设置 Toast:', { message, type })
       return true

@@ -25,11 +25,11 @@ function registerSeeliePanel(): void {
  * 注册所有组件
  */
 export function registerAllComponents(): void {
-  logger.debug('🎯 开始注册所有组件');
+  logger.info('🎯 开始注册所有组件');
 
   registerSeeliePanel();
 
-  logger.debug('✅ 所有组件注册完成');
+  logger.info('✅ 所有组件注册完成');
 }
 
 /**

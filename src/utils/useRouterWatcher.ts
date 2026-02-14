@@ -44,6 +44,8 @@ interface PendingHook {
 let pendingHooks: PendingHook[] = [];
 let routerObserver: MutationObserver | null = null;
 let isObserving = false;
+let missingVueAppLogged = false;
+let missingRouterLogged = false;
 
 function isVueRouter(value: unknown): value is VueRouter {
   if (!value || typeof value !== 'object') return false;
@@ -62,9 +64,13 @@ function findVueRouter(): VueRouter | null {
   const appElement = document.querySelector('#app') as AppElementWithVue;
 
   if (!appElement?.__vue_app__) {
-    logger.debug('🔍 未找到 Vue App 实例，可能还在加载中...');
+    if (!missingVueAppLogged) {
+      logger.debug('🔍 未找到 Vue App 实例，可能还在加载中...');
+      missingVueAppLogged = true;
+    }
     return null;
   }
+  missingVueAppLogged = false;
 
   logger.debug('🔍 查找 Vue Router 实例...');
 
@@ -76,6 +82,7 @@ function findVueRouter(): VueRouter | null {
       typeof router.push === 'function') {
       logger.info('✓ 从 __vue_app__.config.globalProperties.$router 找到 Router 实例');
       logger.debug('Router 实例:', router);
+      missingRouterLogged = false;
       return router;
     }
   }
@@ -97,12 +104,16 @@ function findVueRouter(): VueRouter | null {
       if (isVueRouter(value)) {
         logger.info('✓ 从 provides 找到 Router 实例:', symbol.toString());
         logger.debug('Router 实例:', value);
+        missingRouterLogged = false;
         return value;
       }
     }
   }
 
-  logger.debug('🔍 未找到 Vue Router 实例，可能还在初始化中...');
+  if (!missingRouterLogged) {
+    logger.debug('🔍 未找到 Vue Router 实例，可能还在初始化中...');
+    missingRouterLogged = true;
+  }
   return null;
 }
 
@@ -231,7 +242,7 @@ function registerRouterHook(
 export function getCurrentRoute(): RouteLocation | null {
   const router = findVueRouter();
   if (!router) {
-    logger.error('❌ 未找到 Router 实例');
+    logger.warn('⚠️ 未找到 Router 实例，无法获取当前路由');
     return null;
   }
 

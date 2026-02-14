@@ -10,7 +10,7 @@ import { logger } from './utils/logger';
  * 初始化应用
  */
 export function initApp(): void {
-  logger.log('🎯 zzz-seelie-sync 脚本已加载');
+  logger.info('🎯 zzz-seelie-sync 脚本已加载');
 
   // 初始化 DOM 注入管理器
   initDOMInjector();
@@ -33,7 +33,7 @@ function initDOMInjector(): void {
     // 初始化管理器
     domInjector.init();
 
-    logger.debug('✅ DOM 注入管理器初始化完成');
+    logger.info('✅ DOM 注入管理器初始化完成');
 
   } catch (error) {
     logger.error('❌ 初始化 DOM 注入管理器失败:', error);

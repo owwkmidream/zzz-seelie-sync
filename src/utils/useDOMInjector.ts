@@ -97,7 +97,7 @@ class ComponentInjector<T extends InjectableComponent = InjectableComponent> {
 
     // 检查条件
     if (!this.checkCondition()) {
-      logger.debug(`🚫 [${this.config.id}] 条件检查失败，跳过创建`);
+      logger.debug(`🚫 [${this.config.id}] 条件不满足，跳过创建`);
       return;
     }
 
@@ -117,7 +117,7 @@ class ComponentInjector<T extends InjectableComponent = InjectableComponent> {
    */
   private async createComponent(): Promise<void> {
     if (this.isCreating) {
-      logger.debug(`⚠️ [${this.config.id}] 组件已在创建中，跳过重复创建`);
+      logger.debug(`⏳ [${this.config.id}] 组件已在创建中，跳过重复创建`);
       return;
     }
 

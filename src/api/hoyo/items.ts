@@ -4,6 +4,7 @@ import { ASCENSIONS } from "../../utils/seelie/constants";
 import { NAP_CULTIVATE_TOOL_URL, request } from "./client";
 import { AvatarCalcData, AvatarCalcRequest, SkillType } from "./types";
 import { resolveUserInfo } from "./utils";
+import { logger } from "../../utils/logger";
 
 /**
  * 养成材料计算API
@@ -17,6 +18,7 @@ export async function getAvatarItemCalc(
   region?: string,
 ): Promise<AvatarCalcData> {
   const userInfo = await resolveUserInfo(uid, region);
+  logger.debug(`🧮 开始计算养成材料: avatar=${avatar_id}, weapon=${weapon_id}`);
 
   // 构建body
   const body: AvatarCalcRequest = {
@@ -43,6 +45,7 @@ export async function getAvatarItemCalc(
     body: body
   });
 
+  logger.debug(`✅ 养成材料计算完成: avatar=${avatar_id}, weapon=${weapon_id}`);
   return response.data;
 }
 
@@ -57,10 +60,17 @@ export async function batchGetAvatarItemCalc(
   uid?: string | number,
   region?: string,
 ): Promise<AvatarCalcData[]> {
+  if (calcAvatars.length === 0) {
+    logger.warn('⚠️ 批量养成材料计算参数为空，返回空列表');
+    return [];
+  }
+  logger.debug(`📦 开始批量养成材料计算: ${calcAvatars.length} 个角色`);
 
   const promises = calcAvatars.map(item =>
     getAvatarItemCalc(item.avatar_id, item.weapon_id, uid, region)
   );
 
-  return await Promise.all(promises);
+  const result = await Promise.all(promises);
+  logger.debug(`✅ 批量养成材料计算完成: ${result.length} 个结果`);
+  return result;
 }

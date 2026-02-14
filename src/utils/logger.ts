@@ -29,6 +29,7 @@ class Logger {
   private showLocation: boolean
   private colors: Required<NonNullable<LoggerOptions['colors']>>
   private fileColorMap: Map<string, string> = new Map()
+  private onceKeys: Set<string> = new Set()
 
   constructor(options: LoggerOptions = {}) {
     this.prefix = options.prefix || '[zzz-seelie-sync]'
@@ -192,6 +193,17 @@ class Logger {
   }
 
   /**
+   * 仅输出一次的警告日志
+   */
+  warnOnce(key: string, ...args: unknown[]): void {
+    if (this.onceKeys.has(key)) {
+      return
+    }
+    this.onceKeys.add(key)
+    this.warn(...args)
+  }
+
+  /**
    * 错误日志输出
    */
   error(...args: unknown[]): void {
@@ -274,6 +286,7 @@ class Logger {
     })
     // 共享文件颜色映射，保持颜色一致性
     childLogger.fileColorMap = this.fileColorMap
+    childLogger.onceKeys = this.onceKeys
     return childLogger
   }
 }

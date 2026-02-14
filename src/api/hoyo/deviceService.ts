@@ -58,7 +58,7 @@ export async function getDeviceFingerprint(): Promise<void> {
 
   const requestBody = buildDeviceFpRequest(deviceInfoCache.deviceId, deviceInfoCache.deviceFp);
 
-  logger.debug(`🔐 获取设备指纹，设备ID: ${deviceInfoCache.deviceId}`);
+  logger.info(`🔐 开始获取设备指纹，设备ID: ${deviceInfoCache.deviceId}`);
 
   try {
     const response = await GM_fetch(`${DEVICE_FP_URL}`, {
@@ -87,7 +87,7 @@ export async function getDeviceFingerprint(): Promise<void> {
     // 保存到 localStorage
     localStorage.setItem(DEVICE_INFO_KEY, JSON.stringify(deviceInfoCache));
 
-    logger.debug(`✅ 设备指纹获取成功并更新缓存: ${data.data.device_fp}`);
+    logger.info('✅ 设备指纹获取成功并更新缓存');
   } catch (error) {
     logger.error('❌ 设备指纹获取失败:', error);
     throw error;
@@ -126,7 +126,7 @@ async function getDeviceInfo(refresh?: boolean): Promise<DeviceInfo> {
     if (refresh === true) {
       // 强制刷新
       needRefresh = true;
-      logger.debug('📱 强制刷新设备指纹');
+      logger.info('📱 强制刷新设备指纹');
     } else if (refresh === false) {
       // 强制不刷新
       needRefresh = false;
@@ -153,7 +153,7 @@ async function getDeviceInfo(refresh?: boolean): Promise<DeviceInfo> {
     if (needRefresh) {
       try {
         await getDeviceFingerprint();
-        logger.debug('✅ 设备指纹刷新完成');
+        logger.info('✅ 设备指纹刷新完成');
       } catch (error) {
         logger.error('❌ 设备指纹刷新失败:', error);
         throw error;
@@ -173,10 +173,11 @@ export async function getCurrentDeviceInfo(): Promise<DeviceInfo> {
 }
 
 export async function refreshDeviceInfo(): Promise<void> {
-  logger.debug('🔄 开始刷新设备信息...');
+  logger.info('🔄 开始刷新设备信息...');
 
   // 强制刷新设备信息
   const newDeviceInfo = await getDeviceInfo(true);
 
-  logger.debug('✅ 设备信息刷新完成:', newDeviceInfo);
+  logger.info('✅ 设备信息刷新完成');
+  logger.debug('设备信息详情:', newDeviceInfo);
 }

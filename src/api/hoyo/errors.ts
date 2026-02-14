@@ -58,3 +58,35 @@ export class InvalidDeviceFingerprintError extends Error {
     this.name = 'InvalidDeviceFingerprintError';
   }
 }
+
+export function getHoyoErrorSummary(error: unknown): string {
+  if (error instanceof DeviceFingerprintRefreshError) {
+    return `设备指纹刷新失败（${error.retcode}）：${error.apiMessage}`;
+  }
+  if (error instanceof InvalidDeviceFingerprintError) {
+    return '设备指纹无效';
+  }
+  if (error instanceof HttpRequestError) {
+    return `网络请求失败（HTTP ${error.status} ${error.statusText}）`;
+  }
+  if (error instanceof ApiResponseError) {
+    return `接口返回错误（${error.retcode}）：${error.apiMessage}`;
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return String(error);
+}
+
+export function getHoyoErrorSuggestion(error: unknown): string {
+  if (error instanceof DeviceFingerprintRefreshError || error instanceof InvalidDeviceFingerprintError) {
+    return '请重置设备信息后重试';
+  }
+  if (error instanceof HttpRequestError) {
+    return '请检查网络后重试';
+  }
+  if (error instanceof ApiResponseError) {
+    return '请稍后重试，必要时刷新登录';
+  }
+  return '请稍后重试';
+}

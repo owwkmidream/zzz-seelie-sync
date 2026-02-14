@@ -9,12 +9,19 @@ import { syncService } from '@/services/SyncService';
 import { setToast } from '@/utils/seelie';
 import { mapUserInfoError, type UserInfoWithError } from './seeliePanelUserInfo';
 import { SYNC_OPTION_CONFIGS, type SyncActionType } from './seeliePanelSyncOptions';
-import { assertFullSyncSuccess } from './seeliePanelSyncResult';
+import { buildFullSyncFeedback } from './seeliePanelSyncResult';
 import { createUserInfoSection } from './seeliePanelUserInfoView';
 import { createSyncSectionView } from './seeliePanelSyncView';
 
 // URL
 const MYS_URL = 'https://act.mihoyo.com/zzz/gt/character-builder-h#/';
+
+type SyncOperationStatus = 'success' | 'warning' | 'error';
+
+interface SyncOperationResult {
+  status: SyncOperationStatus;
+  message: string;
+}
 
 export class SeeliePanel {
   private container: HTMLDivElement | null = null;
@@ -85,6 +92,7 @@ export class SeeliePanel {
       logger.debug('用户信息加载成功:', this.userInfo);
     } catch (error) {
       logger.error('加载用户信息失败:', error);
+      setToast('用户信息加载失败，部分同步能力可能不可用', 'warning');
       this.userInfo = mapUserInfoError(error);
     }
   }
@@ -171,11 +179,7 @@ export class SeeliePanel {
       if (!button) return;
     }
 
-    await this.performSyncOperation(button, '同步中...', async () => {
-      logger.debug('开始同步全部数据...');
-      await this.performSync();
-      logger.debug('✅ 同步完成');
-    });
+    await this.performSyncOperation(button, '同步中...', async () => this.performSync());
   }
 
   /**
@@ -188,9 +192,10 @@ export class SeeliePanel {
       '同步电量数据',
       async () => {
         const success = await syncService.syncResinData();
-        if (!success) {
-          throw new Error('电量同步失败');
-        }
+        return {
+          status: success ? 'success' : 'error',
+          message: success ? '电量同步完成' : '电量同步失败'
+        };
       }
     );
   }
@@ -206,8 +211,23 @@ export class SeeliePanel {
       async () => {
         const result = await syncService.syncAllCharacters();
         if (result.success === 0) {
-          throw new Error('角色同步失败');
+          return {
+            status: 'error',
+            message: '角色同步失败'
+          };
         }
+
+        if (result.failed > 0) {
+          return {
+            status: 'warning',
+            message: `角色同步部分完成：成功 ${result.success}，失败 ${result.failed}`
+          };
+        }
+
+        return {
+          status: 'success',
+          message: `角色同步完成：成功 ${result.success}`
+        };
       }
     );
   }
@@ -221,10 +241,25 @@ export class SeeliePanel {
       '同步中...',
       '同步材料数据',
       async () => {
-        const success = await syncService.syncItemsData();
-        if (!success) {
-          throw new Error('材料同步失败');
+        const result = await syncService.syncItemsData();
+        if (!result.success) {
+          return {
+            status: 'error',
+            message: '养成材料同步失败'
+          };
         }
+
+        if (result.partial) {
+          return {
+            status: 'warning',
+            message: `养成材料同步部分完成：成功 ${result.successNum}，失败 ${result.failNum}`
+          };
+        }
+
+        return {
+          status: 'success',
+          message: `养成材料同步完成：成功 ${result.successNum}，失败 ${result.failNum}`
+        };
       }
     );
   }
@@ -238,13 +273,21 @@ export class SeeliePanel {
       '重置中...',
       '重置设备信息',
       async () => {
-      try {
-        await refreshDeviceInfo();
-        setToast('设备信息已重置', 'success');
-      } catch (error) {
-        setToast('设备信息重置失败', 'error');
-        throw error;
-      }
+        try {
+          await refreshDeviceInfo();
+          setToast('设备信息已重置', 'success');
+          return {
+            status: 'success',
+            message: '设备信息重置完成'
+          };
+        } catch (error) {
+          setToast('设备信息重置失败', 'error');
+          logger.error('设备信息重置失败:', error);
+          return {
+            status: 'error',
+            message: '设备信息重置失败'
+          };
+        }
       }
     );
   }
@@ -255,7 +298,7 @@ export class SeeliePanel {
   private async performSyncOperation(
     button: HTMLButtonElement,
     loadingText: string,
-    syncOperation: () => Promise<void>
+    syncOperation: () => Promise<SyncOperationResult>
   ): Promise<void> {
     if (this.isLoading) return;
 
@@ -269,21 +312,29 @@ export class SeeliePanel {
       syncText.textContent = loadingText;
 
       // 添加旋转动画到图标
-      const icon = button.querySelector('svg');
+      const icon = button.querySelector('svg') as SVGElement | null;
       if (icon) {
         icon.classList.add('animate-spin');
       }
 
       // 执行同步操作
-      await syncOperation();
+      const operationResult = await syncOperation();
 
-      // 显示成功状态
-      this.showSyncResult(button, syncText, originalText, icon, 'success');
+      if (operationResult.status === 'success') {
+        logger.info(operationResult.message);
+      } else if (operationResult.status === 'warning') {
+        logger.warn(operationResult.message);
+      } else {
+        logger.warn(operationResult.message);
+      }
+
+      // 显示状态
+      this.showSyncResult(button, syncText, originalText, icon, operationResult.status);
     } catch (error) {
       logger.error('同步失败:', error);
 
       // 显示错误状态
-      const icon = button.querySelector('svg');
+      const icon = button.querySelector('svg') as SVGElement | null;
       this.showSyncResult(button, syncText, originalText, icon, 'error');
     }
   }
@@ -302,34 +353,62 @@ export class SeeliePanel {
     event: Event | undefined,
     loadingText: string,
     actionName: string,
-    syncAction: () => Promise<void>
+    syncAction: () => Promise<SyncOperationResult>
   ): Promise<void> {
     const button = this.getButtonFromEvent(event);
     if (!button) return;
 
     await this.performSyncOperation(button, loadingText, async () => {
-      logger.debug(`开始${actionName}...`);
-      await syncAction();
-      logger.debug(`✅ ${actionName}完成`);
+      const result = await syncAction();
+      if (result.status === 'warning') {
+        logger.warn(`${actionName}部分完成`);
+      }
+      return result;
     });
   }
 
   /**
    * 执行同步操作
    */
-  private async performSync(): Promise<void> {
+  private async performSync(): Promise<SyncOperationResult> {
     try {
-      logger.debug('开始执行完整同步...');
+      logger.info('开始执行完整同步...');
 
       // 调用 SyncService 的 syncAll 方法
       const result = await syncService.syncAll();
-      assertFullSyncSuccess(result);
+      const feedback = buildFullSyncFeedback(result);
+      const logPayload = {
+        summary: feedback.summary,
+        detail: feedback.details
+      };
 
-      const { resinSync, characterSync, itemsSync } = result;
-      logger.info(`✅ 同步完成 - 电量: ${resinSync ? '成功' : '失败'}, 角色: ${characterSync.success}/${characterSync.total}, 养成材料: ${itemsSync ? '成功' : '失败'}`);
+      if (feedback.status === 'success') {
+        logger.info('完整同步成功', logPayload);
+        return {
+          status: 'success',
+          message: feedback.summary
+        };
+      }
+
+      if (feedback.status === 'partial') {
+        logger.warn('完整同步部分完成', logPayload);
+        return {
+          status: 'warning',
+          message: feedback.summary
+        };
+      }
+
+      logger.error('完整同步失败', logPayload);
+      return {
+        status: 'error',
+        message: feedback.summary
+      };
     } catch (error) {
       logger.error('同步操作失败:', error);
-      throw error;
+      return {
+        status: 'error',
+        message: '同步失败，请稍后重试'
+      };
     }
   }
 
@@ -353,27 +432,35 @@ export class SeeliePanel {
     syncText: HTMLSpanElement,
     originalText: string | null,
     icon: SVGElement | null,
-    type: 'success' | 'error'
+    type: SyncOperationStatus
   ): void {
-    const isSuccess = type === 'success';
-
     // 更新文本和样式
-    syncText.textContent = isSuccess ? '同步完成' : '同步失败';
-    const originalBgClass = button.className.match(/bg-gray-\d+/)?.[0] || 'bg-gray-700';
-    const originalHoverClass = button.className.match(/hover:bg-gray-\d+/)?.[0] || 'hover:bg-gray-600';
-    const newColorClass = isSuccess ? 'bg-green-600' : 'bg-red-600';
-    const newHoverClass = isSuccess ? 'hover:bg-green-700' : 'hover:bg-red-700';
+    const textMap: Record<SyncOperationStatus, string> = {
+      success: '同步完成',
+      warning: '部分完成',
+      error: '同步失败'
+    };
+    const colorMap: Record<SyncOperationStatus, { bg: string; hover: string }> = {
+      success: { bg: 'bg-green-600', hover: 'hover:bg-green-700' },
+      warning: { bg: 'bg-amber-500', hover: 'hover:bg-amber-600' },
+      error: { bg: 'bg-red-600', hover: 'hover:bg-red-700' }
+    };
+    const originalBgClass = button.className.match(/bg-[a-z]+-\d+/)?.[0] || 'bg-gray-700';
+    const originalHoverClass = button.className.match(/hover:bg-[a-z]+-\d+/)?.[0] || 'hover:bg-gray-600';
+    const nextStyle = colorMap[type];
+
+    syncText.textContent = textMap[type];
 
     button.className = button.className
-      .replace(originalBgClass, newColorClass)
-      .replace(originalHoverClass, newHoverClass);
+      .replace(originalBgClass, nextStyle.bg)
+      .replace(originalHoverClass, nextStyle.hover);
 
     // 2秒后恢复原状态
     setTimeout(() => {
       syncText.textContent = originalText || '同步全部';
       button.className = button.className
-        .replace(newColorClass, originalBgClass)
-        .replace(newHoverClass, originalHoverClass);
+        .replace(nextStyle.bg, originalBgClass)
+        .replace(nextStyle.hover, originalHoverClass);
 
       if (icon) {
         icon.classList.remove('animate-spin');

@@ -7,6 +7,7 @@ import type {
 import type { CharacterDataInput } from '@/utils/seelie';
 import { request, NAP_CULTIVATE_TOOL_URL } from './client';
 import { resolveUserInfo, processBatches } from './utils';
+import { logger } from '@/utils/logger';
 
 /**
  * 获取角色基础列表
@@ -24,7 +25,14 @@ export async function getAvatarBasicList(
     params: { uid: userInfo.uid, region: userInfo.region }
   });
 
-  return response.data.list.filter(avatar => avatar.unlocked === true);
+  const unlocked = response.data.list.filter(avatar => avatar.unlocked === true);
+  if (unlocked.length === 0) {
+    logger.warn('⚠️ 角色基础列表为空（unlocked=0）');
+  } else {
+    logger.debug(`✅ 获取角色基础列表成功: ${unlocked.length} 个角色`);
+  }
+
+  return unlocked;
 }
 
 /**
@@ -38,6 +46,11 @@ export async function batchGetAvatarDetail(
   uid: string | number | undefined,
   region?: string
 ): Promise<CharacterDataInput[]> {
+  if (avatarList.length === 0) {
+    logger.warn('⚠️ 批量角色详情请求为空，返回空列表');
+    return [];
+  }
+
   const userInfo = await resolveUserInfo(uid, region);
   // 判断数组类型并进行相应处理
   const processedAvatarList: AvatarDetailRequest[] = typeof avatarList[0] === 'number'
@@ -49,10 +62,11 @@ export async function batchGetAvatarDetail(
     }))
     : avatarList as AvatarDetailRequest[];
   // 使用通用分批处理函数
-  return processBatches(
+  const details = await processBatches(
     processedAvatarList,
     10,
     async (batch) => {
+      logger.debug(`📦 拉取角色详情批次: ${batch.length} 个`);
       const response = await request<{ list: CharacterDataInput[] }>('/user/batch_avatar_detail_v2', NAP_CULTIVATE_TOOL_URL, {
         method: 'POST',
         params: { uid: userInfo.uid, region: userInfo.region },
@@ -61,6 +75,9 @@ export async function batchGetAvatarDetail(
       return response.data.list;
     }
   );
+
+  logger.debug(`✅ 批量角色详情获取完成: ${details.length} 个`);
+  return details;
 }
 
 /**
@@ -96,8 +113,10 @@ export async function getAvatarDetail(
   const details = await batchGetAvatarDetail(avatarList, uid, region);
 
   if (details.length === 0) {
+    logger.warn(`⚠️ 未找到角色 ${avatarId} 的详细信息`);
     throw new Error(`未找到角色 ${avatarId} 的详细信息`);
   }
 
+  logger.debug(`✅ 获取单角色详情成功: ${avatarId}`);
   return details[0];
 }

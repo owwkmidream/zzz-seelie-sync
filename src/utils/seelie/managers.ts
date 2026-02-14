@@ -257,7 +257,11 @@ export class CharacterManager extends SeelieCore {
       }
     })
 
-    logger.debug(`✅ ${characterName} 同步完成 - 成功: ${result.success}, 失败: ${result.failed}`)
+    if (result.failed > 0) {
+      logger.warn(`⚠️ ${characterName} 同步完成 - 成功: ${result.success}, 失败: ${result.failed}`)
+    } else {
+      logger.debug(`✅ ${characterName} 同步完成 - 成功: ${result.success}`)
+    }
     return result
   }
 
@@ -352,14 +356,20 @@ export class CharacterManager extends SeelieCore {
    * 记录批量同步结果
    */
   private logBatchResult(result: BatchSyncResult): void {
-    logger.debug(`🎯 批量同步完成:`)
-    logger.debug(`   总计: ${result.total} 个角色`)
-    logger.debug(`   成功: ${result.success} 个角色`)
-    logger.debug(`   失败: ${result.failed} 个角色`)
+    if (result.failed > 0) {
+      logger.warn(`⚠️ 批量同步完成:`)
+      logger.warn(`   总计: ${result.total} 个角色`)
+      logger.warn(`   成功: ${result.success} 个角色`)
+      logger.warn(`   失败: ${result.failed} 个角色`)
+    } else {
+      logger.debug(`🎯 批量同步完成:`)
+      logger.debug(`   总计: ${result.total} 个角色`)
+      logger.debug(`   成功: ${result.success} 个角色`)
+    }
 
     if (result.errors.length > 0) {
-      logger.debug(`   错误详情:`)
-      result.errors.forEach(error => logger.debug(`     - ${error}`))
+      logger.warn(`   错误详情:`)
+      result.errors.forEach(error => logger.warn(`     - ${error}`))
     }
   }
 

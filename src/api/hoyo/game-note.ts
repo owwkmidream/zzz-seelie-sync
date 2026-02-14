@@ -3,6 +3,7 @@
 import type { GameNoteData, EnergyInfo } from './types';
 import { request, GAME_RECORD_URL } from './client';
 import { resolveUserInfo } from './utils';
+import { logger } from '@/utils/logger';
 
 /**
  * 获取绝区零游戏便笺信息（体力等）
@@ -14,6 +15,7 @@ export async function getGameNote(
   server?: string
 ): Promise<GameNoteData> {
   const userInfo = await resolveUserInfo(roleId, server);
+  logger.debug(`📘 获取游戏便笺: uid=${userInfo.uid}, region=${userInfo.region}`);
 
   const response = await request<GameNoteData>('/note', GAME_RECORD_URL, {
     method: 'GET',
@@ -23,6 +25,7 @@ export async function getGameNote(
     }
   });
 
+  logger.debug('✅ 游戏便笺获取成功');
   return response.data;
 }
 
@@ -36,5 +39,6 @@ export async function getEnergyInfo(
   server?: string
 ): Promise<EnergyInfo> {
   const gameNote = await getGameNote(roleId, server);
+  logger.debug(`⚡ 当前电量: ${gameNote.energy.progress.current}/${gameNote.energy.progress.max}`);
   return gameNote.energy;
 }

@@ -42,7 +42,7 @@ export async function calculateCharacterAsc(character: CharacterDataInput['avata
       }
     }
 
-    logger.debug(`HP error: ${character.name_mi18n}, base: ${baseHP}, growth: ${growthHP}, core: ${coreHP}, fixed: ${calculatedBaseHP}, target: ${actualHP}`)
+    logger.warn(`HP error: ${character.name_mi18n}, base: ${baseHP}, growth: ${growthHP}, core: ${coreHP}, fixed: ${calculatedBaseHP}, target: ${actualHP}`)
     return ASCENSIONS.findIndex(level => level >= character.level)
   } catch (error) {
     logger.error('❌ 计算角色突破等级失败:', error)
@@ -79,7 +79,7 @@ export async function calculateWeaponAsc(weapon: WeaponData): Promise<number> {
       }
     }
 
-    logger.debug(`ATK error: ${weapon.name}, base: ${baseATK}, growth: ${growthATK}, fixed: ${calculatedBaseATK}, target: ${actualATK}`)
+    logger.warn(`ATK error: ${weapon.name}, base: ${baseATK}, growth: ${growthATK}, fixed: ${calculatedBaseATK}, target: ${actualATK}`)
     return ASCENSIONS.findIndex(level => level >= weapon.level)
   } catch (error) {
     logger.error('❌ 计算武器突破等级失败:', error)

@@ -74,6 +74,7 @@ export function createUserInfoErrorView(
   }
 
   if (errorInfo.error === 'network_error') {
+    errorContainer.appendChild(createHint('请检查网络或代理设置后重试，必要时刷新登录状态'));
     errorContainer.appendChild(
       createActionButton(
         'px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-all duration-200',
@@ -84,6 +85,7 @@ export function createUserInfoErrorView(
     return errorContainer;
   }
 
+  errorContainer.appendChild(createHint('请先重试；若持续失败，请刷新页面并重新登录米游社。'));
   errorContainer.appendChild(
     createActionButton(
       'px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded transition-all duration-200',

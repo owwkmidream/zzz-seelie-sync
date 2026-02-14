@@ -57,6 +57,7 @@ export async function request<T = unknown>(
 
   // 设备指纹相关错误码，需要刷新设备指纹并重试
   const deviceFpErrorCodes = [1034, 5003, 10035, 10041, 10053];
+  const requestLabel = `${method} ${endpoint}`;
 
   // 执行请求的内部函数
   const executeRequest = async (isRetry = false): Promise<ApiResponse<T>> => {
@@ -71,7 +72,11 @@ export async function request<T = unknown>(
       throw new InvalidDeviceFingerprintError();
     }
 
-    logger.debug(`🌐 请求 ${method} ${url}${isRetry ? ' (重试)' : ''}`);
+    logger.debug(`🌐 发起请求 ${requestLabel}${isRetry ? ' (重试)' : ''}`, {
+      endpoint,
+      baseUrl,
+      isRetry
+    });
 
     try {
       const payload = [url, {
@@ -90,26 +95,37 @@ export async function request<T = unknown>(
       if (data.retcode !== 0) {
         // 检查是否为设备指纹相关错误码
         if (deviceFpErrorCodes.includes(data.retcode) && !isRetry) {
-          logger.warn(`⚠️ 检测到设备指纹错误码 ${data.retcode}: ${data.message}，正在刷新设备指纹...`);
+          logger.warn(`⚠️ 设备指纹错误，准备刷新并重试 ${requestLabel}`, {
+            retcode: data.retcode,
+            message: data.message
+          });
 
           try {
             // 刷新设备指纹
             await getDeviceFingerprint();
-            logger.debug('✅ 设备指纹刷新完成，准备重试请求');
+            logger.info(`✅ 设备指纹刷新完成，重试 ${requestLabel}`);
 
             // 重试请求
             return await executeRequest(true);
           } catch (fpError) {
-            logger.error('❌ 设备指纹刷新失败:', fpError);
+            logger.error(`❌ 设备指纹刷新失败，无法重试 ${requestLabel}`, fpError);
             throw new DeviceFingerprintRefreshError(data.retcode, data.message, fpError);
           }
         }
 
-        logger.error('❌ 请求失败\n请求:', payload, '\n响应：', response, data);
+        logger.error(`❌ 请求失败 ${requestLabel}`, {
+          retcode: data.retcode,
+          message: data.message,
+          status: response.status
+        });
         throw new ApiResponseError(data.retcode, data.message);
       }
 
-      logger.debug(`✅ 请求成功: ${payload[0]}, ${data.retcode}: ${data.message}`);
+      logger.debug(`✅ 请求成功 ${requestLabel}`, {
+        retcode: data.retcode,
+        message: data.message,
+        retried: isRetry
+      });
       return data;
     } catch (error) {
       if (
@@ -121,7 +137,7 @@ export async function request<T = unknown>(
         throw error;
       }
 
-      logger.error('❌ 请求失败:', error);
+      logger.error(`❌ 请求异常 ${requestLabel}`, error);
       throw error;
     }
   };

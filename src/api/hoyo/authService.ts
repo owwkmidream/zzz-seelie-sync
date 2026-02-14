@@ -27,7 +27,7 @@ async function initializeNapToken(): Promise<void> {
     return;
   }
 
-  logger.debug('🔄 初始化 nap_token cookie...');
+  logger.info('🔄 开始初始化 nap_token 与用户信息...');
 
   try {
     // 第一步：获取用户游戏角色信息
@@ -47,12 +47,13 @@ async function initializeNapToken(): Promise<void> {
     }
 
     if (!rolesData.data?.list || rolesData.data.list.length === 0) {
+      logger.warn('⚠️ 未获取到任何角色信息，无法初始化用户态');
       throw new Error('未找到绝区零游戏角色');
     }
 
     // 获取第一个角色信息
     const roleInfo = rolesData.data.list[0];
-    logger.debug(`🎮 找到角色: ${roleInfo.nickname} (UID: ${roleInfo.game_uid}, 等级: ${roleInfo.level})`);
+    logger.info(`🎮 选取角色: ${roleInfo.nickname} (UID: ${roleInfo.game_uid}, 等级: ${roleInfo.level})`);
 
     // 第二步：使用角色信息设置 nap_token
     const tokenResponse = await GM_fetch(NAP_TOKEN_URL, {
@@ -87,8 +88,8 @@ async function initializeNapToken(): Promise<void> {
       accountId: roleInfo.game_uid // 使用 game_uid 作为 accountId
     };
 
-    logger.debug('✅ nap_token cookie 初始化完成');
-    logger.info(`👤 用户信息: ${userInfoCache.nickname} (UID: ${userInfoCache.uid}, 等级: ${userInfoCache.level})`);
+    logger.info('✅ nap_token 初始化完成');
+    logger.info(`👤 用户信息: ${userInfoCache.nickname} (UID: ${userInfoCache.uid}, 等级: ${userInfoCache.level}, 区服: ${userInfoCache.region})`);
 
     napTokenInitialized = true;
   } catch (error) {
@@ -114,7 +115,7 @@ export function getUserInfo(): UserInfo | null {
 export function clearUserInfo(): void {
   userInfoCache = null;
   napTokenInitialized = false;
-  logger.debug('🗑️ 已清除用户信息缓存');
+  logger.info('🗑️ 已清除用户信息缓存');
 }
 
 export async function initializeUserInfo(): Promise<UserInfo | null> {
@@ -124,5 +125,5 @@ export async function initializeUserInfo(): Promise<UserInfo | null> {
 
 export function resetNapTokenlInitialization(): void {
   napTokenInitialized = false;
-  logger.debug('🔄 已重置 NapToken 初始化状态');
+  logger.info('🔄 已重置 NapToken 初始化状态');
 }
