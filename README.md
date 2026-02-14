@@ -138,7 +138,6 @@ userscripts/
 │   │   └── SeeliePanel.ts  # Seelie 面板组件
 │   ├── utils/              # 工具函数
 │   │   ├── logger.ts       # 日志工具
-│   │   ├── vnodeTraverser.ts # VNode 遍历
 │   │   ├── useRouterWatcher.ts # 路由监听
 │   │   └── seelie/         # Seelie 相关工具
 │   ├── app.ts              # 应用主逻辑

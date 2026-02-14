@@ -31,6 +31,7 @@
 | R4-1 | 拆分 `api/hoyo/client.ts`（auth/request/device） | SOLID/KISS | 中-高 | ✅ 已完成 | `client` 仅保留 request 编排，auth/device 已模块化 |
 | R4-2 | 设备指纹 payload 结构化与注释化 | KISS/DRY | 中 | ✅ 已完成 | payload 已结构化构建并序列化 |
 | R4-3 | 错误模型统一（HTTP/API/业务） | SOLID/DRY | 中 | ✅ 已完成 | request/auth/device 均使用统一错误类型 |
+| R5-1 | 删除孤立模块与重复转发 API | YAGNI/DRY | 低 | ✅ 已完成 | 删除未引用文件并收敛服务层冗余转发 |
 
 ## 2. 分阶段任务明细
 
@@ -131,6 +132,22 @@
 
 - 区分网络错误、HTTP 错误、API 业务错误
 - 提供统一错误码/消息给上层
+
+## Phase R5 - 冗余/死代码清理（低风险）
+
+### R5-1 删除孤立模块与重复转发 API（已完成）
+
+- 动机：
+- `src/utils/vnodeTraverser.ts` 已不在入口图中，属于不可达模块
+- `SyncService` 存在仅转发到实例方法的重复导出函数
+- 已执行：
+- 删除 `src/utils/vnodeTraverser.ts`
+- `SeeliePanel` 改为直接调用 `syncService` 实例方法
+- `SyncService` 删除外部便捷转发导出，仅保留实例导出与 DEV 调试挂载
+- 同步更新 README 结构树中已删除文件项
+- 完成标准：
+- 依赖图不存在孤立源码文件
+- 同步流程行为不变，类型检查与 lint 通过
 
 ## 3. 每步执行记录
 
@@ -371,3 +388,12 @@
 - `pnpm run type-check` 通过
 - `pnpm run lint` 通过
 - 看板任务 `R0-R4` 全部完成
+
+### 2026-02-14 - Step 26
+
+- 启动并完成 `R5-1`：冗余/死代码清理
+- 删除孤立模块 `src/utils/vnodeTraverser.ts`（依赖图不可达）
+- `SeeliePanel` 改为直接依赖 `syncService`，移除对 `SyncService` 冗余转发导出的依赖
+- `SyncService` 删除仅转发的便捷函数导出，保留实例导出与 DEV 调试 API
+- 新增 `docs/refactor-before-after.md`：沉淀重构前后对比与原则映射
+- 静态校验：`pnpm run type-check`、`pnpm run lint` 通过
