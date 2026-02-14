@@ -1,4 +1,5 @@
 // 米哈游绝区零API统一导出
+import { exposeDevGlobals } from '@/utils/devGlobals';
 
 // 类型导出
 export type * from './types';
@@ -44,24 +45,26 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     import('./game-note').then(gameNoteModule => {
       import('./client').then(clientModule => {
         import('./utils').then(utilsModule => {
-          (window as unknown as Record<string, unknown>).ZZZApi = {
-            // 角色相关
-            ...avatarModule,
-            // 游戏便笺相关
-            ...gameNoteModule,
-            // 客户端相关
-            getDeviceFingerprint: clientModule.getDeviceFingerprint,
-            generateUUID: clientModule.generateUUID,
-            generateHexString: clientModule.generateHexString,
-            getCurrentDeviceInfo: clientModule.getCurrentDeviceInfo,
-            refreshDeviceInfo: clientModule.refreshDeviceInfo,
-            resetNapTokenlInitialization: clientModule.resetNapTokenlInitialization,
-            getUserInfo: clientModule.getUserInfo,
-            clearUserInfo: clientModule.clearUserInfo,
-            initializeUserInfo: clientModule.initializeUserInfo,
-            // 工具函数
-            ...utilsModule
-          };
+          exposeDevGlobals({
+            ZZZApi: {
+              // 角色相关
+              ...avatarModule,
+              // 游戏便笺相关
+              ...gameNoteModule,
+              // 客户端相关
+              getDeviceFingerprint: clientModule.getDeviceFingerprint,
+              generateUUID: clientModule.generateUUID,
+              generateHexString: clientModule.generateHexString,
+              getCurrentDeviceInfo: clientModule.getCurrentDeviceInfo,
+              refreshDeviceInfo: clientModule.refreshDeviceInfo,
+              resetNapTokenlInitialization: clientModule.resetNapTokenlInitialization,
+              getUserInfo: clientModule.getUserInfo,
+              clearUserInfo: clientModule.clearUserInfo,
+              initializeUserInfo: clientModule.initializeUserInfo,
+              // 工具函数
+              ...utilsModule
+            }
+          });
         });
       });
     });
