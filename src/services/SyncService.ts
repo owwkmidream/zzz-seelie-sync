@@ -323,45 +323,15 @@ export class SyncService {
 // 创建全局实例
 export const syncService = new SyncService()
 
-// 导出便捷函数
-/**
- * 同步电量数据
- */
-export const syncResinData = (): Promise<boolean> => {
-  return syncService.syncResinData()
-}
-
-/**
- * 同步单个角色数据
- */
-export const syncSingleCharacter = (avatarId: number): Promise<SyncResult> => {
-  return syncService.syncSingleCharacter(avatarId)
-}
-
-/**
- * 同步所有角色数据
- */
-export const syncAllCharacters = (): Promise<BatchSyncResult> => {
-  return syncService.syncAllCharacters()
-}
-
-/**
- * 同步养成材料数据
- */
-export const syncItemsData = (): Promise<boolean> => {
-  return syncService.syncItemsData()
-}
-
-/**
- * 执行完整同步（电量 + 所有角色 + 养成材料）
- */
-export const syncAll = (): Promise<{
+const syncResinData = (): Promise<boolean> => syncService.syncResinData()
+const syncSingleCharacter = (avatarId: number): Promise<SyncResult> => syncService.syncSingleCharacter(avatarId)
+const syncAllCharacters = (): Promise<BatchSyncResult> => syncService.syncAllCharacters()
+const syncItemsData = (): Promise<boolean> => syncService.syncItemsData()
+const syncAll = (): Promise<{
   resinSync: boolean
   characterSync: BatchSyncResult
   itemsSync: boolean
-}> => {
-  return syncService.syncAll()
-}
+}> => syncService.syncAll()
 
 // 挂载到全局对象，方便调试
 exposeDevGlobals({

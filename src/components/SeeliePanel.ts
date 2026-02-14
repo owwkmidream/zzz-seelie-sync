@@ -5,7 +5,7 @@
 
 import { logger } from '@logger';
 import { initializeUserInfo, refreshDeviceInfo } from '@/api/hoyo';
-import { syncAll, syncResinData, syncAllCharacters, syncItemsData } from '@/services/SyncService';
+import { syncService } from '@/services/SyncService';
 import { setToast } from '@/utils/seelie';
 import { mapUserInfoError, type UserInfoWithError } from './seeliePanelUserInfo';
 import { SYNC_OPTION_CONFIGS, type SyncActionType } from './seeliePanelSyncOptions';
@@ -187,10 +187,10 @@ export class SeeliePanel {
       '同步中...',
       '同步电量数据',
       async () => {
-      const success = await syncResinData();
-      if (!success) {
-        throw new Error('电量同步失败');
-      }
+        const success = await syncService.syncResinData();
+        if (!success) {
+          throw new Error('电量同步失败');
+        }
       }
     );
   }
@@ -204,10 +204,10 @@ export class SeeliePanel {
       '同步中...',
       '同步角色数据',
       async () => {
-      const result = await syncAllCharacters();
-      if (result.success === 0) {
-        throw new Error('角色同步失败');
-      }
+        const result = await syncService.syncAllCharacters();
+        if (result.success === 0) {
+          throw new Error('角色同步失败');
+        }
       }
     );
   }
@@ -221,10 +221,10 @@ export class SeeliePanel {
       '同步中...',
       '同步材料数据',
       async () => {
-      const success = await syncItemsData();
-      if (!success) {
-        throw new Error('材料同步失败');
-      }
+        const success = await syncService.syncItemsData();
+        if (!success) {
+          throw new Error('材料同步失败');
+        }
       }
     );
   }
@@ -322,7 +322,7 @@ export class SeeliePanel {
       logger.debug('开始执行完整同步...');
 
       // 调用 SyncService 的 syncAll 方法
-      const result = await syncAll();
+      const result = await syncService.syncAll();
       assertFullSyncSuccess(result);
 
       const { resinSync, characterSync, itemsSync } = result;
