@@ -21,10 +21,6 @@ import { ItemsData } from '../utils/seelie/types'
 import { getLanguageData } from '../utils/seelie/constants'
 import { exposeDevGlobals } from '@/utils/devGlobals'
 import {
-  mapAvatarDetailToCharacterDataInput,
-  mapAvatarDetailsToCharacterDataInput
-} from './mappers/hoyoToSeelieMapper'
-import {
   collectAllItemsInfo,
   buildItemsInventory,
   buildCnToSeelieNameMapping,
@@ -171,10 +167,9 @@ export class SyncService {
       }
 
       const avatarDetail = avatarDetails[0]
-      const characterData = mapAvatarDetailToCharacterDataInput(avatarDetail)
 
       // 同步角色数据
-      const result = await syncCharacter(characterData)
+      const result = await syncCharacter(avatarDetail)
 
       if (result.success > 0) {
         logger.debug(`✅ 角色 ${avatarDetail.avatar.name_mi18n} 同步成功`)
@@ -213,7 +208,7 @@ export class SyncService {
       }
 
       // 批量同步角色数据
-      const batchResult = await seelieSync(mapAvatarDetailsToCharacterDataInput(avatarDetails))
+      const batchResult = await seelieSync(avatarDetails)
 
       if (batchResult.success > 0) {
         logger.debug(`✅ 所有角色同步完成: 成功 ${batchResult.success}，失败 ${batchResult.failed}`)

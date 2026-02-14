@@ -2,9 +2,9 @@
 
 import type {
   AvatarBasicInfo,
-  AvatarDetail,
   AvatarDetailRequest
 } from './types';
+import type { CharacterDataInput } from '@/utils/seelie';
 import { request, NAP_CULTIVATE_TOOL_URL } from './client';
 import { resolveUserInfo, processBatches } from './utils';
 
@@ -37,7 +37,7 @@ export async function batchGetAvatarDetail(
   avatarList: AvatarDetailRequest[] | number[],
   uid: string | number | undefined,
   region?: string
-): Promise<AvatarDetail[]> {
+): Promise<CharacterDataInput[]> {
   const userInfo = await resolveUserInfo(uid, region);
   // 判断数组类型并进行相应处理
   const processedAvatarList: AvatarDetailRequest[] = typeof avatarList[0] === 'number'
@@ -53,7 +53,7 @@ export async function batchGetAvatarDetail(
     processedAvatarList,
     10,
     async (batch) => {
-      const response = await request<{ list: AvatarDetail[] }>('/user/batch_avatar_detail_v2', NAP_CULTIVATE_TOOL_URL, {
+      const response = await request<{ list: CharacterDataInput[] }>('/user/batch_avatar_detail_v2', NAP_CULTIVATE_TOOL_URL, {
         method: 'POST',
         params: { uid: userInfo.uid, region: userInfo.region },
         body: { avatar_list: batch }
@@ -79,7 +79,7 @@ export async function getAvatarDetail(
     teaser_need_weapon?: boolean;
     teaser_sp_skill?: boolean;
   } = {}
-): Promise<AvatarDetail> {
+): Promise<CharacterDataInput> {
   const {
     is_teaser = false,
     teaser_need_weapon = false,

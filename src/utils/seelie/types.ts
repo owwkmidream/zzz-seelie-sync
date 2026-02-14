@@ -113,7 +113,7 @@ export interface CharacterDataInput {
     promotes: number;
     unlock: boolean;
   };
-  weapon?: WeaponData;
+  weapon?: WeaponData | null;
 }
 
 /**
