@@ -1,5 +1,6 @@
 // Vue 3 VNode 遍历工具
 import { logger } from "./logger";
+import { exposeDevGlobals } from "./devGlobals";
 // 扩展 HTMLElement 类型
 declare global {
   interface HTMLElement {
@@ -198,12 +199,12 @@ export function initVNodeTraversal(): void {
 
     // 添加全局 mixin
     appElement.__vue_app__.mixin({
-      mounted() {
+      mounted(this: {
+        $?: { vnode?: VNode; type?: { name?: string } };
+        $nextTick?: (callback: () => void) => void;
+      }) {
         // 在组件挂载时触发防抖遍历
-        const vueInstance = this as unknown as {
-          $?: { vnode?: VNode; type?: { name?: string } };
-          $nextTick?: (callback: () => void) => void;
-        };
+        const vueInstance = this;
 
         if (vueInstance.$ && vueInstance.$.vnode) {
           // logger.debug('🔄 组件挂载，触发防抖遍历:', vueInstance.$.type?.name || 'Anonymous');
@@ -278,11 +279,10 @@ export function getVueInstance(element: HTMLElement): VueComponentInstance | und
 }
 
 // 将函数挂载到全局对象，方便调试
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  const globalWindow = window as unknown as Record<string, unknown>;
-  globalWindow.retraverseVNodes = retraverseVNodes;
-  globalWindow.startVNodeTraversal = startVNodeTraversal;
-  globalWindow.getVueInstance = getVueInstance;
-  globalWindow.clearAllVueInstances = clearAllVueInstances;
-  globalWindow.debounceVNodeTraversal = debounceVNodeTraversal;
-}
+exposeDevGlobals({
+  retraverseVNodes,
+  startVNodeTraversal,
+  getVueInstance,
+  clearAllVueInstances,
+  debounceVNodeTraversal
+});

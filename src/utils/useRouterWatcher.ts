@@ -1,5 +1,6 @@
 // Vue Router 监听 Hook
 import { logger } from "./logger";
+import { exposeDevGlobals } from "./devGlobals";
 
 interface VueApp {
   config?: {
@@ -44,6 +45,16 @@ let pendingHooks: PendingHook[] = [];
 let routerObserver: MutationObserver | null = null;
 let isObserving = false;
 
+function isVueRouter(value: unknown): value is VueRouter {
+  if (!value || typeof value !== 'object') return false;
+  const potentialRouter = value as Partial<VueRouter>;
+  return (
+    typeof potentialRouter.afterEach === 'function' &&
+    typeof potentialRouter.beforeEach === 'function' &&
+    typeof potentialRouter.push === 'function'
+  );
+}
+
 /**
  * 查找 Vue Router 实例
  */
@@ -83,16 +94,10 @@ function findVueRouter(): VueRouter | null {
       const value = provides[symbol];
 
       // 检查是否是 Vue Router 实例
-      if (value && typeof value === 'object') {
-        const potentialRouter = value as Record<string, unknown>
-        // Vue Router 通常有这些方法
-        if (typeof potentialRouter.afterEach === 'function' &&
-          typeof potentialRouter.beforeEach === 'function' &&
-          typeof potentialRouter.push === 'function') {
-          logger.info('✓ 从 provides 找到 Router 实例:', symbol.toString());
-          logger.debug('Router 实例:', value);
-          return potentialRouter as unknown as VueRouter;
-        }
+      if (isVueRouter(value)) {
+        logger.info('✓ 从 provides 找到 Router 实例:', symbol.toString());
+        logger.debug('Router 实例:', value);
+        return value;
       }
     }
   }
@@ -318,9 +323,8 @@ export function useRouterRerun(
 }
 
 // 将函数挂载到全局对象，方便调试
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  const globalWindow = window as unknown as Record<string, unknown>;
-  globalWindow.useRouterWatcher = useRouterWatcher;
-  globalWindow.useRouterRerun = useRouterRerun;
-  globalWindow.getCurrentRoute = getCurrentRoute;
-}
+exposeDevGlobals({
+  useRouterWatcher,
+  useRouterRerun,
+  getCurrentRoute
+});

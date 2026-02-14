@@ -5,6 +5,7 @@
 
 import { logger } from '@logger';
 import { useRouterWatcher, type RouteLocation } from './useRouterWatcher';
+import { exposeDevGlobals } from './devGlobals';
 
 // 组件接口定义
 export interface InjectableComponent {
@@ -531,8 +532,7 @@ export const domInjector = new DOMInjectorManager({
 });
 
 // 开发环境下挂载到全局对象，方便调试
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  const globalWindow = window as unknown as Record<string, unknown>;
-  globalWindow.DOMInjectorManager = DOMInjectorManager;
-  globalWindow.domInjector = domInjector;
-}
+exposeDevGlobals({
+  DOMInjectorManager,
+  domInjector
+});

@@ -11,6 +11,7 @@ import {
   clearRuntimeDataCache,
   isDataLoaded
 } from './constants'
+import { exposeDevGlobals } from '../devGlobals'
 
 /**
  * Seelie 数据操作工具类
@@ -102,28 +103,25 @@ export const getItems = (): unknown => {
 }
 
 // 挂载到全局对象，方便调试
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  const globalWindow = window as unknown as Record<string, unknown>;
-  globalWindow.setResinData = setResinData;
-  globalWindow.setToast = setToast;
-  globalWindow.setCharacter = setCharacter;
-  globalWindow.setTalents = setTalents;
-  globalWindow.setWeapon = setWeapon;
-  globalWindow.setInventory = setInventory;
-  globalWindow.syncCharacter = syncCharacter;
-  globalWindow.syncAllCharacters = syncAllCharacters;
-  globalWindow.findMinimumSetCoverIds = findMinimumSetCoverIds;
-  globalWindow.findMinimumSetWeapons = findMinimumSetWeapons;
-
-  // 挂载 constants 中的调试函数
-  globalWindow.getLanguageData = getLanguageData;
-  globalWindow.getStatsData = getStatsData;
-  globalWindow.getCharacterStats = getCharacterStats;
-  globalWindow.getWeaponStats = getWeaponStats;
-  globalWindow.getWeaponStatsCommon = getWeaponStatsCommon;
-  globalWindow.clearRuntimeDataCache = clearRuntimeDataCache;
-  globalWindow.isDataLoaded = isDataLoaded;
-}
+exposeDevGlobals({
+  setResinData,
+  setToast,
+  setCharacter,
+  setTalents,
+  setWeapon,
+  setInventory,
+  syncCharacter,
+  syncAllCharacters,
+  findMinimumSetCoverIds,
+  findMinimumSetWeapons,
+  getLanguageData,
+  getStatsData,
+  getCharacterStats,
+  getWeaponStats,
+  getWeaponStatsCommon,
+  clearRuntimeDataCache,
+  isDataLoaded
+})
 
 // 导出类型
 export type {
