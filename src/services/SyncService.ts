@@ -2,46 +2,142 @@ import { logger } from '@logger'
 import {
   getAvatarBasicList,
   batchGetAvatarDetail,
-  getGameNote,
-  AvatarCalcData
+  getGameNote
 } from '@/api/hoyo'
 import {
   setResinData,
   setToast,
   syncCharacter,
   syncAllCharacters as seelieSync,
-  type CharacterDataInput,
   type ResinDataInput,
   type SyncResult,
   type BatchSyncResult,
   findMinimumSetCoverIds,
   findMinimumSetWeapons,
-  getItems,
-  setInventory
+  getItems
 } from '@/utils/seelie'
 import { batchGetAvatarItemCalc } from '../api/hoyo/items'
-import { ItemsData, SeelieLanguageData } from '../utils/seelie/types'
+import { ItemsData } from '../utils/seelie/types'
 import { getLanguageData } from '../utils/seelie/constants'
+import { exposeDevGlobals } from '@/utils/devGlobals'
+import {
+  mapAvatarDetailToCharacterDataInput,
+  mapAvatarDetailsToCharacterDataInput
+} from './mappers/hoyoToSeelieMapper'
+import {
+  collectAllItemsInfo,
+  buildItemsInventory,
+  buildCnToSeelieNameMapping,
+  syncItemsToSeelie
+} from './mappers/itemsSyncMapper'
 
 /**
  * 同步服务类
  * 负责协调 API 层和 Seelie 工具层之间的数据同步
  */
 export class SyncService {
+  /**
+   * 布尔任务失败处理（日志 + Toast + 统一返回）
+   */
+  private failBooleanTask(message: string, error?: unknown): false {
+    if (error) {
+      logger.error(`❌ ${message}:`, error)
+    } else {
+      logger.error(`❌ ${message}`)
+    }
+    setToast(message, 'error')
+    return false
+  }
+
+  /**
+   * 单角色同步任务失败处理
+   */
+  private failSyncResult(message: string, error?: unknown): SyncResult {
+    if (error) {
+      logger.error(`❌ ${message}:`, error)
+    } else {
+      logger.error(`❌ ${message}`)
+    }
+    setToast(message, 'error')
+    return {
+      success: 0,
+      failed: 1,
+      errors: error ? [String(error)] : [message]
+    }
+  }
+
+  /**
+   * 批量角色同步失败处理
+   */
+  private failBatchSyncResult(message: string, error?: unknown): BatchSyncResult {
+    if (error) {
+      logger.error(`❌ ${message}:`, error)
+    } else {
+      logger.error(`❌ ${message}`)
+    }
+    setToast(message, 'error')
+    return {
+      success: 0,
+      failed: 1,
+      errors: error ? [String(error)] : [message],
+      total: 0,
+      details: []
+    }
+  }
+
+  /**
+   * 布尔任务执行模板（统一捕获并转为 failBooleanTask）
+   */
+  private async executeBooleanTask(
+    executor: () => Promise<boolean>,
+    failMessage: string
+  ): Promise<boolean> {
+    try {
+      return await executor()
+    } catch (error) {
+      return this.failBooleanTask(failMessage, error)
+    }
+  }
+
+  /**
+   * 单体结果任务执行模板（统一捕获并转为 failSyncResult）
+   */
+  private async executeSyncResultTask(
+    executor: () => Promise<SyncResult>,
+    failMessage: string
+  ): Promise<SyncResult> {
+    try {
+      return await executor()
+    } catch (error) {
+      return this.failSyncResult(failMessage, error)
+    }
+  }
+
+  /**
+   * 批量结果任务执行模板（统一捕获并转为 failBatchSyncResult）
+   */
+  private async executeBatchSyncTask(
+    executor: () => Promise<BatchSyncResult>,
+    failMessage: string
+  ): Promise<BatchSyncResult> {
+    try {
+      return await executor()
+    } catch (error) {
+      return this.failBatchSyncResult(failMessage, error)
+    }
+  }
 
   /**
    * 同步电量（树脂）数据
    */
   async syncResinData(): Promise<boolean> {
-    try {
+    return this.executeBooleanTask(async () => {
       logger.debug('🔋 开始同步电量数据...')
 
       // 获取游戏便笺数据
       const gameNote = await getGameNote()
       if (!gameNote) {
-        logger.error('❌ 获取游戏便笺失败')
-        setToast('获取游戏便笺失败', 'error')
-        return false
+        return this.failBooleanTask('获取游戏便笺失败')
       }
 
       // 构造树脂数据
@@ -54,38 +150,31 @@ export class SyncService {
         logger.debug('✅ 电量数据同步成功')
         setToast(`电量同步成功: ${resinData.progress.current}/${resinData.progress.max}`, 'success')
       } else {
-        logger.error('❌ 电量数据设置失败')
-        setToast('电量数据设置失败', 'error')
+        return this.failBooleanTask('电量数据设置失败')
       }
 
       return success
-    } catch (error) {
-      logger.error('❌ 电量数据同步失败:', error)
-      setToast('电量数据同步失败', 'error')
-      return false
-    }
+    }, '电量数据同步失败')
   }
 
   /**
    * 同步单个角色数据
    */
   async syncSingleCharacter(avatarId: number): Promise<SyncResult> {
-    try {
+    return this.executeSyncResultTask(async () => {
       logger.debug(`👤 开始同步角色数据: ${avatarId}`)
 
       // 获取角色详细信息
       const avatarDetails = await batchGetAvatarDetail([avatarId], undefined)
       if (!avatarDetails || avatarDetails.length === 0) {
-        const message = '获取角色详细信息失败'
-        logger.error(`❌ ${message}`)
-        setToast(message, 'error')
-        return { success: 0, failed: 1, errors: [message] }
+        return this.failSyncResult('获取角色详细信息失败')
       }
 
       const avatarDetail = avatarDetails[0]
+      const characterData = mapAvatarDetailToCharacterDataInput(avatarDetail)
 
       // 同步角色数据
-      const result = await syncCharacter(avatarDetail as unknown as CharacterDataInput)
+      const result = await syncCharacter(characterData)
 
       if (result.success > 0) {
         logger.debug(`✅ 角色 ${avatarDetail.avatar.name_mi18n} 同步成功`)
@@ -96,34 +185,20 @@ export class SyncService {
       }
 
       return result
-    } catch (error) {
-      const message = `角色 ${avatarId} 同步失败`
-      logger.error(`❌ ${message}:`, error)
-      setToast(message, 'error')
-      return { success: 0, failed: 1, errors: [String(error)] }
-    }
+    }, `角色 ${avatarId} 同步失败`)
   }
 
   /**
    * 同步所有角色数据
    */
   async syncAllCharacters(): Promise<BatchSyncResult> {
-    try {
+    return this.executeBatchSyncTask(async () => {
       logger.debug('👥 开始同步所有角色数据...')
 
       // 获取角色基础列表
       const avatarList = await getAvatarBasicList()
       if (!avatarList || avatarList.length === 0) {
-        const message = '获取角色列表失败或角色列表为空'
-        logger.error(`❌ ${message}`)
-        setToast(message, 'error')
-        return {
-          success: 0,
-          failed: 1,
-          errors: [message],
-          total: 0,
-          details: []
-        }
+        return this.failBatchSyncResult('获取角色列表失败或角色列表为空')
       }
 
       logger.debug(`📋 找到 ${avatarList.length} 个角色`)
@@ -134,20 +209,11 @@ export class SyncService {
       const avatarDetails = await batchGetAvatarDetail(avatarIds, undefined)
 
       if (!avatarDetails || avatarDetails.length === 0) {
-        const message = '获取角色详细信息失败'
-        logger.error(`❌ ${message}`)
-        setToast(message, 'error')
-        return {
-          success: 0,
-          failed: 1,
-          errors: [message],
-          total: 0,
-          details: []
-        }
+        return this.failBatchSyncResult('获取角色详细信息失败')
       }
 
       // 批量同步角色数据
-      const batchResult = await seelieSync(avatarDetails as unknown as CharacterDataInput[])
+      const batchResult = await seelieSync(mapAvatarDetailsToCharacterDataInput(avatarDetails))
 
       if (batchResult.success > 0) {
         logger.debug(`✅ 所有角色同步完成: 成功 ${batchResult.success}，失败 ${batchResult.failed}`)
@@ -158,25 +224,14 @@ export class SyncService {
       }
 
       return batchResult
-    } catch (error) {
-      const message = '所有角色同步失败'
-      logger.error(`❌ ${message}:`, error)
-      setToast(message, 'error')
-      return {
-        success: 0,
-        failed: 1,
-        errors: [String(error)],
-        total: 0,
-        details: []
-      }
-    }
+    }, '所有角色同步失败')
   }
 
   /**
    * 同步养成材料数据
    */
   async syncItemsData(): Promise<boolean> {
-    try {
+    return this.executeBooleanTask(async () => {
       logger.debug('🔋 开始始同步养成材料数据...')
 
       // 获取最小集合数据
@@ -192,17 +247,14 @@ export class SyncService {
       // 获取养成材料数据
       const itemsData = await batchGetAvatarItemCalc(calcParams)
       if (!itemsData) {
-        const message = '获取养成材料数据失败'
-        logger.error(`❌ ${message}`)
-        setToast(message, 'error')
-        return false
+        return this.failBooleanTask('获取养成材料数据失败')
       }
 
       // 收集所有物品信息
-      const allItemsInfo = this.collectAllItemsInfo(itemsData)
+      const allItemsInfo = collectAllItemsInfo(itemsData)
 
       // 构建物品数据映射
-      const itemsInventory = this.buildItemsInventory(itemsData, allItemsInfo)
+      const itemsInventory = buildItemsInventory(itemsData, allItemsInfo)
 
       // 获取语言数据和物品信息
       const seelieItems = getItems() as ItemsData
@@ -210,17 +262,14 @@ export class SyncService {
       const i18nData = await getLanguageData()
 
       if (!i18nData) {
-        const message = '获取语言数据失败'
-        logger.error(`❌ ${message}`)
-        setToast(message, 'error')
-        return false
+        return this.failBooleanTask('获取语言数据失败')
       }
 
       // 构建中文名称到 Seelie 物品名称的映射
-      const cnName2SeelieItemName = this.buildCnToSeelieNameMapping(i18nData)
+      const cnName2SeelieItemName = buildCnToSeelieNameMapping(i18nData)
 
       // 同步到 Seelie
-      const { successNum, failNum } = this.syncItemsToSeelie(
+      const { successNum, failNum } = syncItemsToSeelie(
         itemsInventory,
         cnName2SeelieItemName,
         seelieItems
@@ -234,139 +283,11 @@ export class SyncService {
         const toastType = failNum === 0 ? 'success' : 'warning'
         setToast(`养成材料同步成功: ${successNum}/${total}`, toastType)
       } else {
-        logger.error('❌ 养成材料同步失败')
-        setToast('养成材料同步失败', 'error')
+        return this.failBooleanTask('养成材料同步失败')
       }
 
       return success
-    } catch (error) {
-      const message = '养成材料同步失败'
-      logger.error(`❌ ${message}:`, error)
-      setToast(message, 'error')
-      return false
-    }
-  }
-
-  /**
-   * 收集所有物品信息（从所有消耗类型中获取完整的物品信息）
-   */
-  private collectAllItemsInfo(itemsData: AvatarCalcData[]): Record<string, { id: number; name: string }> {
-    const allItemsInfo: Record<string, { id: number; name: string }> = {}
-
-    for (const data of itemsData) {
-      // 从所有消耗类型中收集物品信息
-      const allConsumes = [
-        ...data.avatar_consume,
-        ...data.weapon_consume,
-        ...data.skill_consume,
-        ...data.need_get
-      ]
-
-      for (const item of allConsumes) {
-        const id = item.id.toString()
-        if (!(id in allItemsInfo)) {
-          allItemsInfo[id] = {
-            id: item.id,
-            name: item.name
-          }
-        }
-      }
-    }
-
-    return allItemsInfo
-  }
-
-  /**
-   * 构建物品库存数据（名称到数量的映射）
-   */
-  private buildItemsInventory(
-    itemsData: AvatarCalcData[],
-    allItemsInfo: Record<string, { id: number; name: string }>
-  ): Record<string, number> {
-    const inventory: Record<string, number> = {}
-
-    // 合并所有用户拥有的材料
-    const userOwnItems: Record<string, number> = {}
-    for (const data of itemsData) {
-      Object.assign(userOwnItems, data.user_owns_materials)
-    }
-
-    // 为所有物品构建名称到数量的映射
-    for (const [id, itemInfo] of Object.entries(allItemsInfo)) {
-      const count = userOwnItems[id] || 0 // 如果用户没有该物品，数量为0
-      inventory[itemInfo.name] = count
-    }
-
-    return inventory
-  }
-
-  /**
-   * 构建中文名称到 Seelie 物品名称的映射
-   */
-  private buildCnToSeelieNameMapping(i18nData: SeelieLanguageData): Record<string, string> {
-    const mapping: Record<string, string> = {}
-
-    for (const [key, value] of Object.entries(i18nData)) {
-      if (typeof value === 'string') {
-        mapping[value] = key
-      } else if (Array.isArray(value)) {
-        value.forEach((v, index) => {
-          mapping[v] = `${key}+${index}`
-        })
-      }
-    }
-
-    return mapping
-  }
-
-  /**
-   * 同步物品到 Seelie
-   */
-  private syncItemsToSeelie(
-    itemsInventory: Record<string, number>,
-    cnName2SeelieItemName: Record<string, string>,
-    seelieItems: ItemsData
-  ): { successNum: number; failNum: number } {
-    let successNum = 0
-    let failNum = 0
-
-    for (const [cnName, count] of Object.entries(itemsInventory)) {
-      const seelieName = cnName2SeelieItemName[cnName]
-      if (!seelieName) {
-        failNum++
-        continue
-      }
-
-      try {
-        const seelieNameParts = seelieName.split('+')
-
-        if (seelieNameParts.length > 1) {
-          // 处理分层物品（如物理芯片）
-          const realName = seelieNameParts[0]
-          const tier = Number(seelieNameParts[1])
-          const type = seelieItems[realName].type
-
-          if (type && setInventory(type, realName, tier, count)) {
-            successNum++
-          } else {
-            failNum++
-          }
-        } else {
-          // 处理普通物品
-          const type = seelieItems[seelieName]?.type
-
-          if (type && setInventory(type, seelieName, 0, count)) {
-            successNum++
-          } else {
-            failNum++
-          }
-        }
-      } catch {
-        failNum++
-      }
-    }
-
-    return { successNum, failNum }
+    }, '养成材料同步失败')
   }
 
   /**
@@ -443,12 +364,11 @@ export const syncAll = (): Promise<{
 }
 
 // 挂载到全局对象，方便调试
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  const globalWindow = window as unknown as Record<string, unknown>
-  globalWindow.syncService = syncService
-  globalWindow.syncResinData = syncResinData
-  globalWindow.syncSingleCharacter = syncSingleCharacter
-  globalWindow.syncAllCharacters = syncAllCharacters
-  globalWindow.syncItemsData = syncItemsData
-  globalWindow.syncAll = syncAll
-}
+exposeDevGlobals({
+  syncService,
+  syncResinData,
+  syncSingleCharacter,
+  syncAllCharacters,
+  syncItemsData,
+  syncAll
+})
