@@ -3,12 +3,14 @@ import { useRouterWatcher } from './useRouterWatcher';
 
 const PLEASE_IMAGE_SELECTOR = 'img[src*="please.png"]';
 const AD_SLOT_SELECTOR = '#large-leaderboard-ad, #leaderboard-target, .pw-incontent';
-const CLEANUP_TRIGGER_SELECTOR = `${PLEASE_IMAGE_SELECTOR}, ${AD_SLOT_SELECTOR}`;
+const SIGNAL_TRACKER_SELECTOR = 'a[href*="stardb.gg/zzz/signal-tracker"], a[href*="/signal-tracker"]';
+const CLEANUP_TRIGGER_SELECTOR = `${PLEASE_IMAGE_SELECTOR}, ${AD_SLOT_SELECTOR}, ${SIGNAL_TRACKER_SELECTOR}`;
 const TARGET_HOST = 'zzz.seelie.me';
 const EARLY_HIDE_STYLE_ID = 'seelie-ad-cleaner-style';
 const EARLY_HIDE_STYLE = `
 ${PLEASE_IMAGE_SELECTOR},
-${AD_SLOT_SELECTOR} {
+${AD_SLOT_SELECTOR},
+${SIGNAL_TRACKER_SELECTOR} {
   display: none !important;
   visibility: hidden !important;
 }
@@ -24,6 +26,8 @@ export const UBLOCK_RULES_TEXT = [
   'zzz.seelie.me###leaderboard-target',
   'zzz.seelie.me###large-leaderboard-ad',
   'zzz.seelie.me##.pw-incontent',
+  'zzz.seelie.me##a[href*="stardb.gg/zzz/signal-tracker"]',
+  'zzz.seelie.me##a[href*="/signal-tracker"]',
   'zzz.seelie.me##div.overflow-hidden.relative.text-white:has(img[src*="img/stickers/please.png"])',
   'zzz.seelie.me##div.overflow-hidden.relative.text-white:has(#leaderboard-target)',
   'zzz.seelie.me##div.overflow-hidden.relative.text-white:has(#large-leaderboard-ad)'
@@ -105,18 +109,38 @@ function collectAdContainers(): Set<HTMLElement> {
   return containers;
 }
 
+function collectSignalTrackerLinks(): Set<HTMLElement> {
+  const links = new Set<HTMLElement>();
+
+  document.querySelectorAll(SIGNAL_TRACKER_SELECTOR).forEach((node) => {
+    if (node instanceof HTMLElement) {
+      links.add(node);
+    }
+  });
+
+  return links;
+}
+
 function cleanupAds(): number {
   const containers = collectAdContainers();
+  const signalTrackerLinks = collectSignalTrackerLinks();
 
   containers.forEach((container) => {
     container.remove();
   });
 
-  if (containers.size > 0) {
-    logger.info(`🧹 已移除 ${containers.size} 个广告容器（关键字: please.png）`);
+  signalTrackerLinks.forEach((link) => {
+    link.remove();
+  });
+
+  const removedCount = containers.size + signalTrackerLinks.size;
+  if (removedCount > 0) {
+    logger.info(
+      `🧹 已移除广告节点 ${removedCount} 个（横幅: ${containers.size}，Signal Tracker: ${signalTrackerLinks.size}）`
+    );
   }
 
-  return containers.size;
+  return removedCount;
 }
 
 function scheduleCleanup(): void {
