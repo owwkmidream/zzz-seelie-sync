@@ -111,7 +111,7 @@ export default defineConfig({
           'public-data-api.mihoyo.com',
           'api-takumi.mihoyo.com'
         ],
-        'run-at': 'document-end',
+        'run-at': 'document-start',
       },
       build: {
         fileName,

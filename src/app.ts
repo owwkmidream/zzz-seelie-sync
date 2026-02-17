@@ -16,8 +16,19 @@ export function initApp(): void {
   // 初始化去广告逻辑（基于 please.png 关键词）
   initAdCleaner();
 
-  // 初始化 DOM 注入管理器
-  initDOMInjector();
+  // document-start 阶段 body 可能尚未就绪，延后初始化 DOM 注入管理器
+  runWhenDOMReady(() => {
+    initDOMInjector();
+  });
+}
+
+function runWhenDOMReady(task: () => void): void {
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', task, { once: true });
+    return;
+  }
+
+  task();
 }
 
 /**

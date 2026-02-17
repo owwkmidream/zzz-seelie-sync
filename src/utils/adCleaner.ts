@@ -5,11 +5,42 @@ const PLEASE_IMAGE_SELECTOR = 'img[src*="please.png"]';
 const AD_SLOT_SELECTOR = '#large-leaderboard-ad, #leaderboard-target, .pw-incontent';
 const CLEANUP_TRIGGER_SELECTOR = `${PLEASE_IMAGE_SELECTOR}, ${AD_SLOT_SELECTOR}`;
 const TARGET_HOST = 'zzz.seelie.me';
+const EARLY_HIDE_STYLE_ID = 'seelie-ad-cleaner-style';
+const EARLY_HIDE_STYLE = `
+${PLEASE_IMAGE_SELECTOR},
+${AD_SLOT_SELECTOR} {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+div.overflow-hidden.relative.text-white:has(${PLEASE_IMAGE_SELECTOR}),
+div.overflow-hidden.relative.text-white:has(${AD_SLOT_SELECTOR}) {
+  display: none !important;
+}
+`;
 
 let initialized = false;
 let observer: MutationObserver | null = null;
 let routeUnwatch: (() => void) | null = null;
-let cleanupTimer: number | null = null;
+let cleanupScheduled = false;
+
+function injectEarlyHideStyle(): void {
+  if (document.getElementById(EARLY_HIDE_STYLE_ID)) {
+    return;
+  }
+
+  const style = document.createElement('style');
+  style.id = EARLY_HIDE_STYLE_ID;
+  style.textContent = EARLY_HIDE_STYLE;
+
+  const parent = document.head || document.documentElement;
+  if (!parent) {
+    logger.warn('⚠️ 去广告样式注入失败：未找到 head/documentElement');
+    return;
+  }
+
+  parent.appendChild(style);
+}
 
 function looksLikeAdContainer(element: Element): boolean {
   const htmlElement = element as HTMLElement;
@@ -71,15 +102,17 @@ function cleanupAds(): number {
   return containers.size;
 }
 
-function scheduleCleanup(delay = 0): void {
-  if (cleanupTimer !== null) {
-    window.clearTimeout(cleanupTimer);
+function scheduleCleanup(): void {
+  if (cleanupScheduled) {
+    return;
   }
 
-  cleanupTimer = window.setTimeout(() => {
-    cleanupTimer = null;
+  cleanupScheduled = true;
+
+  queueMicrotask(() => {
+    cleanupScheduled = false;
     cleanupAds();
-  }, delay);
+  });
 }
 
 function shouldTriggerCleanup(mutations: MutationRecord[]): boolean {
@@ -107,9 +140,13 @@ function setupObserver(): void {
     return;
   }
 
+  if (!document.body) {
+    return;
+  }
+
   observer = new MutationObserver((mutations) => {
     if (shouldTriggerCleanup(mutations)) {
-      scheduleCleanup(80);
+      scheduleCleanup();
     }
   });
 
@@ -121,38 +158,26 @@ function setupObserver(): void {
   });
 }
 
-/**
- * 初始化去广告逻辑（基于 please.png 关键词）
- */
-export function initAdCleaner(): void {
+function startCleanerRuntime(): void {
   if (initialized) {
-    logger.debug('去广告模块已初始化，跳过重复初始化');
-    return;
-  }
-
-  if (window.location.hostname !== TARGET_HOST) {
-    logger.debug(`去广告模块跳过，当前域名: ${window.location.hostname}`);
     return;
   }
 
   if (!document.body) {
-    window.addEventListener('DOMContentLoaded', () => {
-      initAdCleaner();
-    }, { once: true });
     return;
   }
 
   initialized = true;
 
-  scheduleCleanup();
+  cleanupAds();
   setupObserver();
 
   const { unwatch } = useRouterWatcher(
     () => {
-      scheduleCleanup(150);
+      scheduleCleanup();
     },
     {
-      delay: 150,
+      delay: 0,
       immediate: true
     }
   );
@@ -162,13 +187,36 @@ export function initAdCleaner(): void {
 }
 
 /**
+ * 初始化去广告逻辑（基于 please.png 关键词）
+ */
+export function initAdCleaner(): void {
+  if (window.location.hostname !== TARGET_HOST) {
+    logger.debug(`去广告模块跳过，当前域名: ${window.location.hostname}`);
+    return;
+  }
+
+  injectEarlyHideStyle();
+
+  if (initialized) {
+    logger.debug('去广告模块已初始化，跳过重复初始化');
+    return;
+  }
+
+  if (!document.body) {
+    window.addEventListener('DOMContentLoaded', () => {
+      startCleanerRuntime();
+    }, { once: true });
+    return;
+  }
+
+  startCleanerRuntime();
+}
+
+/**
  * 停止去广告逻辑
  */
 export function destroyAdCleaner(): void {
-  if (cleanupTimer !== null) {
-    window.clearTimeout(cleanupTimer);
-    cleanupTimer = null;
-  }
+  cleanupScheduled = false;
 
   if (observer) {
     observer.disconnect();
