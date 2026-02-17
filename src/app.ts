@@ -2,6 +2,7 @@
 
 import { domInjector } from './utils/useDOMInjector';
 import { registerAllComponents } from './utils/componentRegistry';
+import { initAdCleaner } from './utils/adCleaner';
 import './utils/seelie';
 import './api/hoyo';
 import { logger } from './utils/logger';
@@ -11,6 +12,9 @@ import { logger } from './utils/logger';
  */
 export function initApp(): void {
   logger.info('🎯 zzz-seelie-sync 脚本已加载');
+
+  // 初始化去广告逻辑（基于 please.png 关键词）
+  initAdCleaner();
 
   // 初始化 DOM 注入管理器
   initDOMInjector();
