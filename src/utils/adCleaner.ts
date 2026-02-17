@@ -18,6 +18,16 @@ div.overflow-hidden.relative.text-white:has(${AD_SLOT_SELECTOR}) {
   display: none !important;
 }
 `;
+export const UBLOCK_RULES_TEXT = [
+  '! zzz-seelie-sync 推荐规则',
+  'zzz.seelie.me##img[src*="img/stickers/please.png"]',
+  'zzz.seelie.me###leaderboard-target',
+  'zzz.seelie.me###large-leaderboard-ad',
+  'zzz.seelie.me##.pw-incontent',
+  'zzz.seelie.me##div.overflow-hidden.relative.text-white:has(img[src*="img/stickers/please.png"])',
+  'zzz.seelie.me##div.overflow-hidden.relative.text-white:has(#leaderboard-target)',
+  'zzz.seelie.me##div.overflow-hidden.relative.text-white:has(#large-leaderboard-ad)'
+].join('\n');
 
 let initialized = false;
 let observer: MutationObserver | null = null;
@@ -40,6 +50,13 @@ function injectEarlyHideStyle(): void {
   }
 
   parent.appendChild(style);
+}
+
+function removeEarlyHideStyle(): void {
+  const style = document.getElementById(EARLY_HIDE_STYLE_ID);
+  if (style) {
+    style.remove();
+  }
 }
 
 function looksLikeAdContainer(element: Element): boolean {
@@ -228,6 +245,7 @@ export function destroyAdCleaner(): void {
     routeUnwatch = null;
   }
 
+  removeEarlyHideStyle();
   initialized = false;
   logger.debug('🗑️ 去广告模块已停止');
 }
