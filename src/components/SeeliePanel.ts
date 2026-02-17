@@ -15,6 +15,9 @@ import { createSyncSectionView } from './seeliePanelSyncView';
 
 // URL
 const MYS_URL = 'https://act.mihoyo.com/zzz/gt/character-builder-h#/';
+const MYS_POPUP_NAME = 'zzz-seelie-mys-auth';
+const MYS_POPUP_WIDTH = 1120;
+const MYS_POPUP_HEIGHT = 900;
 
 type SyncOperationStatus = 'success' | 'warning' | 'error';
 
@@ -28,6 +31,7 @@ export class SeeliePanel {
   private userInfo: UserInfoWithError | null = null;
   private isLoading = false;
   private isExpanded = false; // 控制二级界面展开状态
+  private mysPopupCloseWatcher: number | null = null;
 
   // 组件相关的选择器常量
   public static readonly TARGET_SELECTOR = 'div.flex.flex-col.items-center.justify-center.w-full.mt-3';
@@ -92,7 +96,7 @@ export class SeeliePanel {
       logger.debug('用户信息加载成功:', this.userInfo);
     } catch (error) {
       logger.error('加载用户信息失败:', error);
-      setToast('用户信息加载失败，部分同步能力可能不可用', 'warning');
+      setToast('用户信息加载失败，部分同步功能可能不可用', 'warning');
       this.userInfo = mapUserInfoError(error);
     }
   }
@@ -107,7 +111,7 @@ export class SeeliePanel {
 
     // 用户信息区域
     const userInfoSection = createUserInfoSection(this.userInfo, {
-      onOpenMys: () => window.open(MYS_URL, '_blank'),
+      onOpenMys: () => this.openMysPopup(),
       onRetry: () => this.refreshUserInfo()
     });
 
@@ -118,6 +122,67 @@ export class SeeliePanel {
     panel.appendChild(syncSection);
 
     return panel;
+  }
+
+  /**
+   * 以弹窗形式打开米游社页面，降低上下文切换成本
+   */
+  private openMysPopup(): void {
+    const width = Math.min(MYS_POPUP_WIDTH, window.outerWidth);
+    const height = Math.min(MYS_POPUP_HEIGHT, window.outerHeight);
+
+    const screenLeft = typeof window.screenLeft === 'number' ? window.screenLeft : window.screenX;
+    const screenTop = typeof window.screenTop === 'number' ? window.screenTop : window.screenY;
+    // 多屏环境下副屏可能位于主屏左侧/上方，坐标会是负数，不能强制截断为 0
+    const left = screenLeft + Math.round((window.outerWidth - width) / 2);
+    const top = screenTop + Math.round((window.outerHeight - height) / 2);
+
+    const popup = window.open(
+      MYS_URL,
+      MYS_POPUP_NAME,
+      `popup=yes,resizable=yes,scrollbars=yes,width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    if (!popup) {
+      setToast('登录弹窗被拦截，请允许弹窗后重试', 'warning');
+      return;
+    }
+
+    try {
+      popup.focus();
+    } catch (error) {
+      logger.warn('弹窗聚焦失败，但登录窗口已打开:', error);
+    }
+    this.startMysPopupCloseWatcher(popup);
+  }
+
+  /**
+   * 监听米游社弹窗关闭，关闭后自动刷新页面
+   */
+  private startMysPopupCloseWatcher(popup: Window): void {
+    this.stopMysPopupCloseWatcher();
+
+    this.mysPopupCloseWatcher = window.setInterval(() => {
+      if (!popup.closed) {
+        return;
+      }
+
+      this.stopMysPopupCloseWatcher();
+      logger.info('检测到米游社弹窗关闭，刷新页面以更新登录状态');
+      window.location.reload();
+    }, 500);
+  }
+
+  /**
+   * 停止监听米游社弹窗关闭
+   */
+  private stopMysPopupCloseWatcher(): void {
+    if (this.mysPopupCloseWatcher === null) {
+      return;
+    }
+
+    window.clearInterval(this.mysPopupCloseWatcher);
+    this.mysPopupCloseWatcher = null;
   }
 
   /**
@@ -476,6 +541,8 @@ export class SeeliePanel {
    * 销毁面板
    */
   public destroy(): void {
+    this.stopMysPopupCloseWatcher();
+
     // 清理当前实例的容器
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);

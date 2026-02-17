@@ -2,13 +2,11 @@ import GM_fetch from '@trim21/gm-fetch';
 import type {
   ApiResponse,
   UserInfo,
-  UserGameRolesResponse,
-  LoginAccountResponse
+  LoginInfoResponse
 } from './types';
 import { logger } from '../../utils/logger';
 import {
-  GAME_ROLE_URL,
-  NAP_TOKEN_URL,
+  NAP_LOGIN_INFO_URL,
   defaultHeaders
 } from './config';
 import { ApiResponseError, HttpRequestError } from './errors';
@@ -30,62 +28,40 @@ async function initializeNapToken(): Promise<void> {
   logger.info('🔄 开始初始化 nap_token 与用户信息...');
 
   try {
-    // 第一步：获取用户游戏角色信息
-    const rolesResponse = await GM_fetch(GAME_ROLE_URL, {
+    const loginInfoResponse = await GM_fetch(`${NAP_LOGIN_INFO_URL}&ts=${Date.now()}`, {
       method: 'GET',
-      headers: defaultHeaders
-    });
-
-    if (!rolesResponse.ok) {
-      throw new HttpRequestError(rolesResponse.status, rolesResponse.statusText, '获取用户角色失败');
-    }
-
-    const rolesData = await rolesResponse.json() as ApiResponse<UserGameRolesResponse>;
-
-    if (rolesData.retcode !== 0) {
-      throw new ApiResponseError(rolesData.retcode, rolesData.message, '获取用户角色失败');
-    }
-
-    if (!rolesData.data?.list || rolesData.data.list.length === 0) {
-      logger.warn('⚠️ 未获取到任何角色信息，无法初始化用户态');
-      throw new Error('未找到绝区零游戏角色');
-    }
-
-    // 获取第一个角色信息
-    const roleInfo = rolesData.data.list[0];
-    logger.info(`🎮 选取角色: ${roleInfo.nickname} (UID: ${roleInfo.game_uid}, 等级: ${roleInfo.level})`);
-
-    // 第二步：使用角色信息设置 nap_token
-    const tokenResponse = await GM_fetch(NAP_TOKEN_URL, {
-      method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        ...defaultHeaders
-      },
-      body: JSON.stringify({
-        region: roleInfo.region,
-        uid: roleInfo.game_uid,
-        game_biz: roleInfo.game_biz
-      })
+        ...defaultHeaders,
+        Accept: '*/*',
+        Referer: 'https://act.mihoyo.com/'
+      }
     });
 
-    if (!tokenResponse.ok) {
-      throw new HttpRequestError(tokenResponse.status, tokenResponse.statusText, '设置 nap_token 失败');
+    if (!loginInfoResponse.ok) {
+      throw new HttpRequestError(loginInfoResponse.status, loginInfoResponse.statusText, '获取登录信息失败');
     }
 
-    const tokenData = await tokenResponse.json() as ApiResponse<LoginAccountResponse>;
+    const loginInfoData = await loginInfoResponse.json() as ApiResponse<LoginInfoResponse>;
 
-    if (tokenData.retcode !== 0) {
-      throw new ApiResponseError(tokenData.retcode, tokenData.message, '设置 nap_token 失败');
+    if (loginInfoData.retcode !== 0) {
+      throw new ApiResponseError(loginInfoData.retcode, loginInfoData.message, '获取登录信息失败');
     }
+
+    if (!loginInfoData.data?.game_uid || !loginInfoData.data.region) {
+      logger.warn('⚠️ 登录信息缺少必要字段，无法初始化用户态');
+      throw new Error('登录信息不完整，未找到绝区零角色信息');
+    }
+
+    const loginInfo = loginInfoData.data;
+    logger.info(`🎮 登录角色: ${loginInfo.nickname} (UID: ${loginInfo.game_uid}, 等级: ${loginInfo.level})`);
 
     // 缓存用户信息
     userInfoCache = {
-      uid: roleInfo.game_uid,
-      nickname: roleInfo.nickname,
-      level: roleInfo.level,
-      region: roleInfo.region,
-      accountId: roleInfo.game_uid // 使用 game_uid 作为 accountId
+      uid: loginInfo.game_uid,
+      nickname: loginInfo.nickname,
+      level: loginInfo.level,
+      region: loginInfo.region,
+      accountId: loginInfo.account_id || loginInfo.game_uid
     };
 
     logger.info('✅ nap_token 初始化完成');

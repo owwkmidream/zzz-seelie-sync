@@ -6,8 +6,7 @@ export const NAP_CULTIVATE_TOOL_URL = 'https://act-api-takumi.mihoyo.com/event/n
 export const GAME_RECORD_URL = 'https://api-takumi-record.mihoyo.com/event/game_record_zzz/api/zzz';
 export const DEVICE_FP_URL = 'https://public-data-api.mihoyo.com/device-fp/api/getFp';
 
-export const GAME_ROLE_URL = 'https://api-takumi.mihoyo.com/binding/api/getUserGameRolesByCookie?game_biz=nap_cn';
-export const NAP_TOKEN_URL = 'https://api-takumi.mihoyo.com/common/badge/v1/login/account';
+export const NAP_LOGIN_INFO_URL = 'https://api-takumi.mihoyo.com/common/badge/v1/login/info?game_biz=nap_cn&lang=zh-cn';
 
 // UA 请求头
 export const defaultHeaders: Record<string, string> = {

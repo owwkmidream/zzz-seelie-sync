@@ -50,7 +50,7 @@ export function createUserInfoErrorView(
   errorContainer.appendChild(errorMessage);
 
   if (errorInfo.error === 'login_required') {
-    errorContainer.appendChild(createHint('请在新标签页中登录米游社后刷新页面'));
+    errorContainer.appendChild(createHint('请在居中弹窗中登录米游社后刷新页面'));
     errorContainer.appendChild(
       createActionButton(
         'px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-all duration-200',

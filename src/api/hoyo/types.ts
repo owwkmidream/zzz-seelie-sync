@@ -92,26 +92,17 @@ export interface DeviceFpRequest {
   bbs_device_id: string;
 }
 
-// 用户游戏角色信息
-export interface GameRole {
-  game_biz: string;
+// 登录信息响应（用于初始化 e_nap_token 与用户信息）
+export interface LoginInfoResponse {
+  game: string;
   region: string;
   game_uid: string;
-  nickname: string;
+  game_biz: string;
   level: number;
-  is_chosen: boolean;
+  nickname: string;
   region_name: string;
-  is_official: boolean;
-}
-
-export interface UserGameRolesResponse {
-  list: GameRole[];
-}
-
-// 登录账户响应
-export interface LoginAccountResponse {
-  // 这个接口主要是设置cookie，通常返回空数据或简单状态
-  [key: string]: never;
+  type: number;
+  account_id: string;
 }
 
 export interface Property {
