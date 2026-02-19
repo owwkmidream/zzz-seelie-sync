@@ -1,4 +1,4 @@
-import { destroyAdCleaner, initAdCleaner, UBLOCK_RULES_TEXT } from './adCleaner';
+import { destroyAdCleaner, getUBlockRulesText, initAdCleaner } from './adCleaner';
 import { logger } from './logger';
 
 const TARGET_HOST = 'zzz.seelie.me';
@@ -56,7 +56,7 @@ function unregisterMenuCommand(commandId: string | number | null): void {
 
 function copyRulesToClipboard(): boolean {
   try {
-    GM_setClipboard(UBLOCK_RULES_TEXT, 'text');
+    GM_setClipboard(getUBlockRulesText(), 'text');
     return true;
   } catch (error) {
     logger.warn('复制 uBlock 规则失败:', error);
@@ -71,7 +71,7 @@ function showRulesToUser(): void {
     return;
   }
 
-  window.prompt('当前环境不支持自动复制，请手动复制以下规则到 uBlock Origin 的“我的过滤器”：', UBLOCK_RULES_TEXT);
+  window.prompt('当前环境不支持自动复制，请手动复制以下规则到 uBlock Origin 的“我的过滤器”：', getUBlockRulesText());
 }
 
 function buildToggleMenuTitle(enabled: boolean): string {

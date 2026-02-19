@@ -4,19 +4,14 @@
 import GM_fetch from '@trim21/gm-fetch'
 import type { SeelieLanguageData, SeelieStatsData } from './types'
 import { logger } from '../logger'
+import { getSiteManifest, SEELIE_BASE_URL, type StatsFileName } from '../siteManifest'
 
 /**
  * Seelie 数据更新器
  * 从 seelie.me 获取最新的语言包和统计数据
  */
 export class SeelieDataUpdater {
-  private static readonly SEELIE_BASE_URL = 'https://zzz.seelie.me'
   private static readonly UNIQUE_ZZZ_KEYS = ['denny', 'w_engine', 'drive_disc']
-  private static readonly STATS_FILE_PATTERNS = [
-    { name: 'charactersStats', pattern: /stats-characters-[a-f0-9]+\.js/ },
-    { name: 'weaponsStats', pattern: /stats-weapons-[a-f0-9]+\.js/ },
-    { name: 'weaponsStatsCommon', pattern: /stats-weapons-common-[a-f0-9]+\.js/ }
-  ]
 
   /**
    * 获取网络内容
@@ -131,19 +126,22 @@ export class SeelieDataUpdater {
   /**
    * 处理统计数据文件（并行版本）
    */
-  private static async processStatsFiles(indexScriptContent: string): Promise<SeelieStatsData> {
+  private static async processStatsFiles(
+    statsFiles: Partial<Record<StatsFileName, string>>
+  ): Promise<SeelieStatsData> {
     logger.debug('▶️  开始并行处理统计数据文件...')
 
+    const statsFileNames: StatsFileName[] = ['charactersStats', 'weaponsStats', 'weaponsStatsCommon']
+
     // 并行处理所有统计文件
-    const statsPromises = this.STATS_FILE_PATTERNS.map(async ({ name, pattern }) => {
-      const match = indexScriptContent.match(pattern)
-      if (!match) {
+    const statsPromises = statsFileNames.map(async (name) => {
+      const fileName = statsFiles[name]
+      if (!fileName) {
         logger.warn(`⚠️  未找到 ${name} 文件，跳过...`)
         return { name, data: null }
       }
 
-      const fileName = match[0]
-      const statsFileUrl = `${this.SEELIE_BASE_URL}/assets/${fileName}`
+      const statsFileUrl = `${SEELIE_BASE_URL}/assets/${fileName}`
       logger.debug(`📥 下载 ${name} -> ${statsFileUrl}`)
 
       try {
@@ -180,32 +178,22 @@ export class SeelieDataUpdater {
     try {
       logger.debug('🚀 开始更新 Seelie 数据...')
 
-      // 1. 获取主页，找到 index-....js
-      logger.debug('第一步：获取 Seelie.me 主页...')
-      const mainPageHtml = await this.fetchContent(this.SEELIE_BASE_URL)
-      const indexScriptMatch = mainPageHtml.match(/\/assets\/index-([a-f0-9]+)\.js/)
-      if (!indexScriptMatch) {
-        throw new Error('在主页HTML中未找到 index-....js 脚本。')
+      // 1. 统一从 site manifest 获取 index 解析结果
+      const siteManifest = await getSiteManifest()
+      logger.debug(`第一步：使用站点 manifest（来源: ${siteManifest.source}）`)
+      logger.debug(`第二步：发现主脚本 -> ${siteManifest.indexScriptUrl}`)
+
+      if (!siteManifest.stringsZhUrl) {
+        throw new Error('在主脚本中未找到 strings-zh-*.js 语言包。')
       }
 
-      const indexScriptUrl = `${this.SEELIE_BASE_URL}${indexScriptMatch[0]}`
-      logger.debug(`第二步：发现主脚本 -> ${indexScriptUrl}`)
-
-      // 2. 获取主脚本，找到 strings-zh-....js
-      const indexScriptContent = await this.fetchContent(indexScriptUrl)
-      const stringsFileMatch = indexScriptContent.match(/strings-zh-([a-f0-9]+)\.js/)
-      if (!stringsFileMatch) {
-        throw new Error('在主脚本中未找到 strings-zh-....js 语言包。')
-      }
-
-      const stringsFileUrl = `${this.SEELIE_BASE_URL}/assets/locale/${stringsFileMatch[0]}`
-      logger.debug(`第三步：发现中文语言包 -> ${stringsFileUrl}`)
+      logger.debug(`第三步：发现中文语言包 -> ${siteManifest.stringsZhUrl}`)
 
       // 3. 并行获取语言包内容和处理统计数据文件
       logger.debug('🔄 开始并行处理语言包和统计数据...')
       const [stringsFileContent, statsData] = await Promise.all([
-        this.fetchContent(stringsFileUrl),
-        this.processStatsFiles(indexScriptContent)
+        this.fetchContent(siteManifest.stringsZhUrl),
+        this.processStatsFiles(siteManifest.statsFiles)
       ])
 
       logger.debug('✅ 语言包和统计数据并行处理完成')
