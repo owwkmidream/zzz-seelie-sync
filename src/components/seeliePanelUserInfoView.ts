@@ -4,6 +4,7 @@ import type { UserInfoWithError } from './seeliePanelUserInfo';
 interface UserInfoViewActions {
   onOpenMys: () => void;
   onRetry: () => void;
+  onStartQRLogin?: () => void;
 }
 
 /**
@@ -36,7 +37,8 @@ export function createUserInfoSection(
     // 错误状态显示
     const errorContainer = createUserInfoErrorView(userInfo, {
       onOpenMys: actions.onOpenMys,
-      onRetry: actions.onRetry
+      onRetry: actions.onRetry,
+      onStartQRLogin: actions.onStartQRLogin,
     });
     infoText.appendChild(errorContainer);
   } else {

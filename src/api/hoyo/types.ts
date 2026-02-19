@@ -288,3 +288,55 @@ export enum EquipmentType {
   Slot5 = 5, // 生攻防/穿透率/属性加成
   Slot6 = 6  // 生攻防/冲击力/异常掌控/能量自动回复
 }
+
+// ── 通行证扫码登录 ──
+
+/** 扫码状态 */
+export type QRLoginStatus = 'Created' | 'Scanned' | 'Confirmed';
+
+/** createQRLogin 响应 data */
+export interface QRLoginData {
+  ticket: string;
+  url: string;
+}
+
+/** queryQRLoginStatus 响应 data */
+export interface QRLoginStatusData {
+  status: QRLoginStatus;
+  tokens?: Array<{ token: string; token_type: number }>;
+  user_info?: { aid: string; mid: string };
+}
+
+/** getCookieAccountInfoBySToken 响应 data */
+export interface CookieTokenData {
+  uid: string;
+  cookie_token: string;
+}
+
+/** getUserGameRolesByCookie 响应中的角色信息 */
+export interface UserGameRole {
+  game_biz: string;
+  region: string;
+  game_uid: string;
+  nickname: string;
+  level: number;
+  is_chosen: boolean;
+  region_name: string;
+  is_official: boolean;
+}
+
+/** getUserGameRolesByCookie 响应 data */
+export interface UserGameRolesResponse {
+  list: UserGameRole[];
+}
+
+/** login/account 响应 data（服务端设置 e_nap_token Cookie） */
+export interface LoginAccountResponse {
+  game: string;
+  region: string;
+  game_uid: string;
+  game_biz: string;
+  level: number;
+  nickname: string;
+  region_name: string;
+}

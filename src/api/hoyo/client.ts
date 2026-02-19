@@ -15,6 +15,13 @@ import {
   HttpRequestError,
   InvalidDeviceFingerprintError
 } from './errors';
+import {
+  ensurePassportCookieHeader,
+  getPersistedCookieHeader,
+  hasPersistedStoken,
+  isPassportAuthHttpStatus,
+  isPassportAuthRetcode,
+} from './passportService';
 
 export { generateUUID, generateHexString } from './deviceUtils';
 export { NAP_CULTIVATE_TOOL_URL, GAME_RECORD_URL, DEVICE_FP_URL } from './config';
@@ -60,13 +67,26 @@ export async function request<T = unknown>(
   const requestLabel = `${method} ${endpoint}`;
 
   // 执行请求的内部函数
-  const executeRequest = async (isRetry = false): Promise<ApiResponse<T>> => {
+  const executeRequest = async (
+    isRetry = false,
+    isAuthRetry = false,
+    forcedCookieHeader?: string
+  ): Promise<ApiResponse<T>> => {
     // 异步获取并合并请求头
     const zzzHeaders = await getZZZHeaderWithDevice();
     const finalHeaders = {
       ...zzzHeaders,
       ...headers
     };
+
+    const persistedStokenAvailable = await hasPersistedStoken();
+    const hasCookieHeader = typeof finalHeaders.cookie === 'string' || typeof finalHeaders.Cookie === 'string';
+    if (!hasCookieHeader && persistedStokenAvailable) {
+      const persistedCookieHeader = forcedCookieHeader || await getPersistedCookieHeader();
+      if (persistedCookieHeader) {
+        finalHeaders.cookie = persistedCookieHeader;
+      }
+    }
 
     if (finalHeaders['x-rpc-device_fp'] === '0000000000000') {
       throw new InvalidDeviceFingerprintError();
@@ -87,6 +107,16 @@ export async function request<T = unknown>(
       const response = await GM_fetch(...payload);
 
       if (!response.ok) {
+        if (!isAuthRetry && persistedStokenAvailable && isPassportAuthHttpStatus(response.status)) {
+          logger.warn(`⚠️ 鉴权失败，尝试刷新 cookie_token 并重试 ${requestLabel}`, {
+            status: response.status,
+            statusText: response.statusText,
+          });
+
+          const refreshedCookieHeader = await ensurePassportCookieHeader(true);
+          return await executeRequest(isRetry, true, refreshedCookieHeader);
+        }
+
         throw new HttpRequestError(response.status, response.statusText);
       }
 
@@ -111,6 +141,16 @@ export async function request<T = unknown>(
             logger.error(`❌ 设备指纹刷新失败，无法重试 ${requestLabel}`, fpError);
             throw new DeviceFingerprintRefreshError(data.retcode, data.message, fpError);
           }
+        }
+
+        if (!isAuthRetry && persistedStokenAvailable && isPassportAuthRetcode(data.retcode, data.message)) {
+          logger.warn(`⚠️ 业务鉴权失败，尝试刷新 cookie_token 并重试 ${requestLabel}`, {
+            retcode: data.retcode,
+            message: data.message,
+          });
+
+          const refreshedCookieHeader = await ensurePassportCookieHeader(true);
+          return await executeRequest(isRetry, true, refreshedCookieHeader);
         }
 
         logger.error(`❌ 请求失败 ${requestLabel}`, {

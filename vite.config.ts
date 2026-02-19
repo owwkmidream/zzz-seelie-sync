@@ -105,14 +105,18 @@ export default defineConfig({
         // GM API 权限
         grant: [
           'GM.xmlHttpRequest',
-          'GM.cookie'
+          'GM.cookie',
+          'GM.getValue',
+          'GM.setValue',
+          'GM.deleteValue'
         ],
         // 允许跨域请求到米哈游API
         connect: [
           'act-api-takumi.mihoyo.com',
           'api-takumi-record.mihoyo.com',
           'public-data-api.mihoyo.com',
-          'api-takumi.mihoyo.com'
+          'api-takumi.mihoyo.com',
+          'passport-api.mihoyo.com'
         ],
         'run-at': 'document-start',
       },
@@ -122,7 +126,8 @@ export default defineConfig({
         autoGrant: true, // 自动检测并添加 @grant
         externalGlobals: {
           ...(minify ? {} : {
-            '@trim21/gm-fetch': cdn.jsdelivrFastly('GM_fetch')
+            '@trim21/gm-fetch': cdn.jsdelivrFastly('GM_fetch'),
+            qrcode: cdn.jsdelivrFastly('QRCode', 'build/qrcode.min.js'),
           })
         },
       },

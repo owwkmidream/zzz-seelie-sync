@@ -5,6 +5,8 @@
 
 import { logger } from '@logger';
 import { initializeUserInfo, refreshDeviceInfo } from '@/api/hoyo';
+import { createQRLogin, startQRLoginPolling } from '@/api/hoyo/passportService';
+import { clearUserInfo, resetNapTokenlInitialization } from '@/api/hoyo';
 import { syncService } from '@/services/SyncService';
 import {
   copyAdCleanerRules,
@@ -17,6 +19,7 @@ import { SYNC_OPTION_CONFIGS, type SyncActionType } from './seeliePanelSyncOptio
 import { buildFullSyncFeedback } from './seeliePanelSyncResult';
 import { createUserInfoSection } from './seeliePanelUserInfoView';
 import { createSyncSectionView } from './seeliePanelSyncView';
+import { createQRLoginView, updateQRLoginStatus, refreshQRCode } from './seeliePanelQrLoginView';
 import { ensurePanelStyles } from './zssPanelStyles';
 
 // URL
@@ -40,6 +43,7 @@ export class SeeliePanel {
   private mysPopupCloseWatcher: number | null = null;
   private settingsModal: HTMLDivElement | null = null;
   private settingsModalKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
+  private qrLoginCancelFn: (() => void) | null = null;
 
   // 组件相关的选择器常量
   public static readonly TARGET_SELECTOR = 'div.flex.flex-col.items-center.justify-center.w-full.mt-3';
@@ -122,7 +126,8 @@ export class SeeliePanel {
     // 用户信息区域
     const userInfoSection = createUserInfoSection(this.userInfo, {
       onOpenMys: () => this.openMysPopup(),
-      onRetry: () => this.refreshUserInfo()
+      onRetry: () => this.refreshUserInfo(),
+      onStartQRLogin: () => this.startQRLogin(),
     });
 
     // 同步按钮区域
@@ -243,6 +248,75 @@ export class SeeliePanel {
 
     window.clearInterval(this.mysPopupCloseWatcher);
     this.mysPopupCloseWatcher = null;
+  }
+
+  /**
+   * 启动扫码登录流程
+   */
+  private async startQRLogin(): Promise<void> {
+    if (!this.container) return;
+
+    try {
+      // Step 1: 创建二维码
+      const qrData = await createQRLogin();
+
+      // 替换用户信息区域为扫码视图
+      const userSection = this.container.querySelector('.ZSS-user-section');
+      if (!userSection) return;
+
+      const { container: qrContainer, ...qrElements } = createQRLoginView(
+        qrData,
+        () => {
+          this.cancelQRLogin();
+          void this.refreshUserInfo();
+        },
+      );
+      userSection.replaceChildren(qrContainer);
+
+      // Step 2: 开始轮询
+      this.qrLoginCancelFn = startQRLoginPolling(qrData.ticket, {
+        onStatusChange: (status) => {
+          updateQRLoginStatus({ container: qrContainer, ...qrElements }, status);
+          if (status === 'Scanned') {
+            logger.info('扫码登录：用户已扫码，等待确认');
+          }
+        },
+        onQRExpired: (newData) => {
+          refreshQRCode({ container: qrContainer, ...qrElements }, newData);
+          logger.info('扫码登录：二维码已过期，已自动刷新');
+          setToast('二维码已过期，已自动刷新', 'warning');
+        },
+        onComplete: () => {
+          this.qrLoginCancelFn = null;
+          logger.info('扫码登录成功，刷新面板');
+          setToast('登录成功', 'success');
+
+          // 重置初始化标记，强制重新加载用户信息
+          clearUserInfo();
+          resetNapTokenlInitialization();
+          void this.refreshUserInfo();
+        },
+        onError: (error) => {
+          this.qrLoginCancelFn = null;
+          logger.error('扫码登录失败:', error);
+          setToast('扫码登录失败，请重试', 'error');
+          void this.refreshUserInfo();
+        },
+      });
+    } catch (error) {
+      logger.error('启动扫码登录失败:', error);
+      setToast('无法创建二维码，请重试', 'error');
+    }
+  }
+
+  /**
+   * 取消扫码登录（仅停止轮询，不刷新面板）
+   */
+  private cancelQRLogin(): void {
+    if (this.qrLoginCancelFn) {
+      this.qrLoginCancelFn();
+      this.qrLoginCancelFn = null;
+    }
   }
 
   /**
@@ -613,6 +687,7 @@ export class SeeliePanel {
   public destroy(): void {
     this.stopMysPopupCloseWatcher();
     this.closeSettingsModal();
+    this.cancelQRLogin();
 
     // 清理当前实例的容器
     if (this.container && this.container.parentNode) {
@@ -643,14 +718,17 @@ export class SeeliePanel {
    */
   public async refreshUserInfo(): Promise<void> {
     try {
-      if (this.container) {
-        // 重新创建面板
-        const parent = this.container.parentNode;
-        if (parent) {
-          this.destroy();
-          await this.createPanel();
-        }
-      }
+      if (!this.container) return;
+
+      // 刷新期间先停止可能存在的扫码轮询，避免旧回调竞争更新 UI
+      this.cancelQRLogin();
+
+      await this.loadUserInfo();
+
+      // 原地重渲染，避免 destroy/create 与 DOM 注入器并发时出现重复面板
+      const nextPanel = this.createPanelElement();
+      this.container.replaceWith(nextPanel);
+      this.container = nextPanel;
     } catch (error) {
       logger.error('刷新用户信息失败:', error);
     }

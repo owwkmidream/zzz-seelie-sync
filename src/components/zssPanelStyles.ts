@@ -296,6 +296,47 @@ export function ensurePanelStyles(): void {
     transform: rotate(360deg);
   }
 }
+
+.ZSS-mt-2 {
+  margin-top: .5rem;
+}
+
+.ZSS-qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: .75rem;
+}
+
+.ZSS-qr-image {
+  width: 180px;
+  height: 180px;
+  border-radius: .5rem;
+  background-color: rgb(255 255 255);
+  display: block;
+  box-sizing: border-box;
+  object-fit: contain;
+  image-rendering: pixelated;
+  margin-bottom: .75rem;
+}
+
+.ZSS-qr-status {
+  font-size: .875rem;
+  line-height: 1.25rem;
+  color: rgb(148 156 182);
+  margin-bottom: .5rem;
+  text-align: center;
+  transition: color .2s ${HOST_EASE};
+}
+
+.ZSS-qr-status--success {
+  color: rgb(52 211 153);
+}
+
+.ZSS-qr-actions {
+  display: flex;
+  gap: .5rem;
+}
   `;
 
   (document.head || document.documentElement).appendChild(style);

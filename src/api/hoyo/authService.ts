@@ -10,12 +10,64 @@ import {
   defaultHeaders
 } from './config';
 import { ApiResponseError, HttpRequestError } from './errors';
+import {
+  ensurePassportCookieHeader,
+  hasPersistedStoken,
+  initializeNapToken as initializePassportNapToken,
+  isPassportAuthHttpStatus,
+  isPassportAuthRetcode,
+} from './passportService';
 
 // 初始化请求标记
 let napTokenInitialized = false;
 
 // 用户信息缓存
 let userInfoCache: UserInfo | null = null;
+
+function shouldFallbackToPersistedStoken(error: unknown): boolean {
+  if (error instanceof HttpRequestError) {
+    return isPassportAuthHttpStatus(error.status);
+  }
+
+  if (error instanceof ApiResponseError) {
+    return isPassportAuthRetcode(error.retcode, error.apiMessage);
+  }
+
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return msg.includes('登录') || msg.includes('token') || msg.includes('cookie');
+  }
+
+  return false;
+}
+
+async function requestLoginInfo(cookieHeader?: string): Promise<ApiResponse<LoginInfoResponse>> {
+  const headers: Record<string, string> = {
+    ...defaultHeaders,
+    Accept: '*/*',
+    Referer: 'https://act.mihoyo.com/',
+  };
+
+  if (cookieHeader) {
+    headers.cookie = cookieHeader;
+  }
+
+  const loginInfoResponse = await GM_fetch(`${NAP_LOGIN_INFO_URL}&ts=${Date.now()}`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!loginInfoResponse.ok) {
+    throw new HttpRequestError(loginInfoResponse.status, loginInfoResponse.statusText, '获取登录信息失败');
+  }
+
+  const loginInfoData = await loginInfoResponse.json() as ApiResponse<LoginInfoResponse>;
+  if (loginInfoData.retcode !== 0) {
+    throw new ApiResponseError(loginInfoData.retcode, loginInfoData.message, '获取登录信息失败');
+  }
+
+  return loginInfoData;
+}
 
 /**
  * 获取 nap_token 并缓存用户信息
@@ -28,23 +80,24 @@ async function initializeNapToken(): Promise<void> {
   logger.info('🔄 开始初始化 nap_token 与用户信息...');
 
   try {
-    const loginInfoResponse = await GM_fetch(`${NAP_LOGIN_INFO_URL}&ts=${Date.now()}`, {
-      method: 'GET',
-      headers: {
-        ...defaultHeaders,
-        Accept: '*/*',
-        Referer: 'https://act.mihoyo.com/'
+    let loginInfoData: ApiResponse<LoginInfoResponse>;
+
+    try {
+      // 优先尝试使用现有浏览器登录态
+      loginInfoData = await requestLoginInfo();
+    } catch (primaryError) {
+      if (!await hasPersistedStoken() || !shouldFallbackToPersistedStoken(primaryError)) {
+        throw primaryError;
       }
-    });
 
-    if (!loginInfoResponse.ok) {
-      throw new HttpRequestError(loginInfoResponse.status, loginInfoResponse.statusText, '获取登录信息失败');
-    }
+      logger.warn('⚠️ 现有登录态不可用，尝试使用持久化 stoken 刷新登录态');
 
-    const loginInfoData = await loginInfoResponse.json() as ApiResponse<LoginInfoResponse>;
+      // 用持久化 stoken -> cookie_token -> login/account 刷新 nap 相关登录态
+      await initializePassportNapToken();
 
-    if (loginInfoData.retcode !== 0) {
-      throw new ApiResponseError(loginInfoData.retcode, loginInfoData.message, '获取登录信息失败');
+      // 带持久化 cookie 再次获取 login/info
+      const cookieHeader = await ensurePassportCookieHeader();
+      loginInfoData = await requestLoginInfo(cookieHeader);
     }
 
     if (!loginInfoData.data?.game_uid || !loginInfoData.data.region) {

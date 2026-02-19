@@ -1,5 +1,9 @@
 // 米哈游绝区零API统一导出
 import { exposeDevGlobals } from '@/utils/devGlobals';
+import * as avatarModule from './avatar';
+import * as gameNoteModule from './game-note';
+import * as clientModule from './client';
+import * as utilsModule from './utils';
 
 // 类型导出
 export type * from './types';
@@ -38,35 +42,19 @@ export {
   processBatches,
 } from './utils';
 
+// 扫码登录
+export {
+  createQRLogin,
+  startQRLoginPolling,
+  type QRLoginCallbacks,
+} from './passportService';
+
 // 将主要函数挂载到全局对象，方便调试
-if (import.meta.env.DEV && typeof window !== 'undefined') {
-  // 导入各个模块的函数
-  import('./avatar').then(avatarModule => {
-    import('./game-note').then(gameNoteModule => {
-      import('./client').then(clientModule => {
-        import('./utils').then(utilsModule => {
-          exposeDevGlobals({
-            ZZZApi: {
-              // 角色相关
-              ...avatarModule,
-              // 游戏便笺相关
-              ...gameNoteModule,
-              // 客户端相关
-              getDeviceFingerprint: clientModule.getDeviceFingerprint,
-              generateUUID: clientModule.generateUUID,
-              generateHexString: clientModule.generateHexString,
-              getCurrentDeviceInfo: clientModule.getCurrentDeviceInfo,
-              refreshDeviceInfo: clientModule.refreshDeviceInfo,
-              resetNapTokenlInitialization: clientModule.resetNapTokenlInitialization,
-              getUserInfo: clientModule.getUserInfo,
-              clearUserInfo: clientModule.clearUserInfo,
-              initializeUserInfo: clientModule.initializeUserInfo,
-              // 工具函数
-              ...utilsModule
-            }
-          });
-        });
-      });
-    });
-  });
-}
+exposeDevGlobals({
+  ZZZApi: {
+    ...avatarModule,
+    ...gameNoteModule,
+    ...clientModule,
+    ...utilsModule,
+  }
+});

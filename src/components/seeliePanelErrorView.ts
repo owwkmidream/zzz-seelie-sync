@@ -3,6 +3,7 @@ import type { UserInfoError } from './seeliePanelUserInfo';
 interface ErrorViewActions {
   onOpenMys: () => void;
   onRetry: () => void;
+  onStartQRLogin?: () => void;
 }
 
 function createActionButton(
@@ -50,10 +51,19 @@ export function createUserInfoErrorView(
   errorContainer.appendChild(errorMessage);
 
   if (errorInfo.error === 'login_required') {
-    errorContainer.appendChild(createHint('请在居中弹窗中登录米游社后刷新页面'));
+    errorContainer.appendChild(createHint('使用米游社 App 扫码登录，或前往米游社网页登录'));
+    if (actions.onStartQRLogin) {
+      errorContainer.appendChild(
+        createActionButton(
+          'ZSS-action-button ZSS-action-button--login',
+          '扫码登录',
+          actions.onStartQRLogin
+        )
+      );
+    }
     errorContainer.appendChild(
       createActionButton(
-        'ZSS-action-button ZSS-action-button--login',
+        'ZSS-action-button ZSS-action-button--retry-default ZSS-mt-2',
         '前往米游社登录',
         actions.onOpenMys
       )
