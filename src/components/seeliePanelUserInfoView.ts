@@ -14,20 +14,20 @@ export function createUserInfoSection(
   actions: UserInfoViewActions
 ): HTMLDivElement {
   const section = document.createElement('div');
-  section.className = 'flex flex-col items-center justify-center mb-3';
+  section.className = 'ZSS-user-section';
 
   // 用户信息文本
   const infoText = document.createElement('div');
-  infoText.className = 'flex flex-col items-center text-center';
+  infoText.className = 'ZSS-user-info-text';
 
   if (userInfo && !('error' in userInfo)) {
     // 正常用户信息显示
     const nickname = document.createElement('div');
-    nickname.className = 'text-sm font-medium text-white';
+    nickname.className = 'ZSS-user-nickname';
     nickname.textContent = userInfo.nickname;
 
     const uid = document.createElement('div');
-    uid.className = 'text-xs text-gray-400';
+    uid.className = 'ZSS-user-uid';
     uid.textContent = `UID: ${userInfo.uid}`;
 
     infoText.appendChild(nickname);
@@ -42,7 +42,7 @@ export function createUserInfoSection(
   } else {
     // 默认错误状态
     const errorText = document.createElement('div');
-    errorText.className = 'text-sm text-red-400';
+    errorText.className = 'ZSS-user-error-fallback';
     errorText.textContent = '用户信息加载失败';
     infoText.appendChild(errorText);
   }

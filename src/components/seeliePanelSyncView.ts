@@ -20,17 +20,17 @@ function createDetailedSyncOptions(
   actions: SyncSectionActions
 ): HTMLDivElement {
   const container = document.createElement('div');
-  container.className = 'grid grid-cols-2 gap-2';
+  container.className = 'ZSS-sync-grid';
 
   syncOptions.forEach(option => {
     const button = document.createElement('button');
     const buttonClass = isUserInfoValid
-      ? 'bg-gray-600 hover:bg-gray-500'
-      : 'bg-gray-700 opacity-50 cursor-not-allowed';
+      ? 'ZSS-sync-option-btn--enabled'
+      : 'ZSS-sync-option-btn--disabled';
 
-    button.className = `flex items-center justify-center px-3 py-2 ${buttonClass} text-white text-sm font-medium rounded transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`;
+    button.className = `ZSS-sync-option-btn ${buttonClass}`;
     button.disabled = !isUserInfoValid;
-    button.innerHTML = `${option.icon}<span class="sync-text">${option.text}</span>`;
+    button.innerHTML = `${option.icon}<span class="ZSS-sync-text">${option.text}</span>`;
 
     if (isUserInfoValid) {
       button.addEventListener('click', (event) => {
@@ -50,30 +50,34 @@ function createDetailedSyncOptions(
 export function createSyncSectionView(options: SyncSectionViewOptions): HTMLDivElement {
   const { isUserInfoValid, syncOptions, actions } = options;
   const section = document.createElement('div');
-  section.className = 'flex flex-col items-center';
+  section.className = 'ZSS-sync-section';
 
-  const disabledClass = isUserInfoValid ? '' : ' opacity-50 cursor-not-allowed';
-  const disabledBgClass = isUserInfoValid ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-800';
+  const mainButtonModifier = isUserInfoValid
+    ? 'ZSS-main-sync-btn--enabled'
+    : 'ZSS-main-sync-btn--disabled';
 
   // 主同步按钮
   const mainSyncButton = document.createElement('button');
-  mainSyncButton.className = `flex items-center justify-center px-6 py-2 ${disabledBgClass} text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mb-2${disabledClass}`;
+  mainSyncButton.className = `ZSS-main-sync-btn ${mainButtonModifier}`;
   mainSyncButton.setAttribute('data-sync-main', 'true');
   mainSyncButton.disabled = !isUserInfoValid;
   mainSyncButton.innerHTML = `
-    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg class="ZSS-icon-md ZSS-mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
     </svg>
-    <span class="sync-text">${isUserInfoValid ? '同步全部' : '请先登录'}</span>
+    <span class="ZSS-sync-text">${isUserInfoValid ? '同步全部' : '请先登录'}</span>
   `;
 
   // 展开/收起按钮
+  const expandButtonModifier = isUserInfoValid
+    ? 'ZSS-expand-btn--enabled'
+    : 'ZSS-expand-btn--disabled';
   const expandButton = document.createElement('button');
-  expandButton.className = `flex items-center justify-center px-4 py-1 ${isUserInfoValid ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-700'} text-white text-sm rounded transition-all duration-200${disabledClass}`;
+  expandButton.className = `ZSS-expand-btn ${expandButtonModifier}`;
   expandButton.disabled = !isUserInfoValid;
   expandButton.innerHTML = `
-    <span class="mr-1 text-xs">更多选项</span>
-    <svg class="w-3 h-3 expand-icon transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <span class="ZSS-expand-label">更多选项</span>
+    <svg class="ZSS-icon-sm ZSS-expand-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
     </svg>
   `;
@@ -90,7 +94,7 @@ export function createSyncSectionView(options: SyncSectionViewOptions): HTMLDivE
 
   // 详细选项容器（初始隐藏）
   const detailsContainer = document.createElement('div');
-  detailsContainer.className = 'w-full mt-2 overflow-hidden transition-all duration-300';
+  detailsContainer.className = 'ZSS-details-container';
   detailsContainer.style.maxHeight = '0';
   detailsContainer.style.opacity = '0';
 
@@ -98,7 +102,7 @@ export function createSyncSectionView(options: SyncSectionViewOptions): HTMLDivE
 
   // 设置按钮
   const settingsWrapper = document.createElement('div');
-  settingsWrapper.className = 'flex justify-center mt-2';
+  settingsWrapper.className = 'ZSS-settings-wrapper';
   settingsWrapper.appendChild(createSettingsButton(() => actions.onOpenSettings()));
 
   section.appendChild(mainSyncButton);

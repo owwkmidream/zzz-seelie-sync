@@ -17,6 +17,7 @@ import { SYNC_OPTION_CONFIGS, type SyncActionType } from './seeliePanelSyncOptio
 import { buildFullSyncFeedback } from './seeliePanelSyncResult';
 import { createUserInfoSection } from './seeliePanelUserInfoView';
 import { createSyncSectionView } from './seeliePanelSyncView';
+import { ensurePanelStyles } from './zssPanelStyles';
 
 // URL
 const MYS_URL = 'https://act.mihoyo.com/zzz/gt/character-builder-h#/';
@@ -112,8 +113,10 @@ export class SeeliePanel {
    * 创建面板元素
    */
   private createPanelElement(): HTMLDivElement {
+    ensurePanelStyles();
+
     const panel = document.createElement('div');
-    panel.className = 'w-full mb-3 p-3 bg-gray-800 rounded-lg border border-gray-200/20';
+    panel.className = 'ZSS-panel';
     panel.setAttribute('data-seelie-panel', 'true');
 
     // 用户信息区域
@@ -169,7 +172,7 @@ export class SeeliePanel {
   private closeSettingsModal(): void {
     if (this.settingsModal) {
       // 退场动画
-      this.settingsModal.classList.remove('seelie-open');
+      this.settingsModal.classList.remove('ZSS-open');
       const modal = this.settingsModal;
       setTimeout(() => modal.remove(), 300);
       this.settingsModal = null;
@@ -274,8 +277,9 @@ export class SeeliePanel {
     if (this.isLoading) return;
 
     this.isExpanded = !this.isExpanded;
-    const detailsContainer = this.container?.querySelector('.overflow-hidden') as HTMLDivElement;
-    const expandIcon = expandButton.querySelector('.expand-icon') as SVGElement;
+    const detailsContainer = this.container?.querySelector('.ZSS-details-container') as HTMLDivElement | null;
+    const expandIcon = expandButton.querySelector('.ZSS-expand-icon') as SVGElement | null;
+    if (!detailsContainer || !expandIcon) return;
 
     if (this.isExpanded) {
       // 展开
@@ -434,7 +438,11 @@ export class SeeliePanel {
     if (this.isLoading) return;
 
     this.isLoading = true;
-    const syncText = button.querySelector('.sync-text') as HTMLSpanElement;
+    const syncText = button.querySelector('.ZSS-sync-text') as HTMLSpanElement | null;
+    if (!syncText) {
+      this.isLoading = false;
+      return;
+    }
     const originalText = syncText.textContent;
 
     try {
@@ -445,7 +453,7 @@ export class SeeliePanel {
       // 添加旋转动画到图标
       const icon = button.querySelector('svg') as SVGElement | null;
       if (icon) {
-        icon.classList.add('animate-spin');
+        icon.classList.add('ZSS-animate-spin');
       }
 
       // 执行同步操作
@@ -571,30 +579,26 @@ export class SeeliePanel {
       warning: '部分完成',
       error: '同步失败'
     };
-    const colorMap: Record<SyncOperationStatus, { bg: string; hover: string }> = {
-      success: { bg: 'bg-green-600', hover: 'hover:bg-green-700' },
-      warning: { bg: 'bg-amber-500', hover: 'hover:bg-amber-600' },
-      error: { bg: 'bg-red-600', hover: 'hover:bg-red-700' }
+    const stateClassMap: Record<SyncOperationStatus, string> = {
+      success: 'ZSS-sync-state-success',
+      warning: 'ZSS-sync-state-warning',
+      error: 'ZSS-sync-state-error',
     };
-    const originalBgClass = button.className.match(/bg-[a-z]+-\d+/)?.[0] || 'bg-gray-700';
-    const originalHoverClass = button.className.match(/hover:bg-[a-z]+-\d+/)?.[0] || 'hover:bg-gray-600';
-    const nextStyle = colorMap[type];
+    const allStateClasses = Object.values(stateClassMap);
+    const nextStateClass = stateClassMap[type];
 
     syncText.textContent = textMap[type];
 
-    button.className = button.className
-      .replace(originalBgClass, nextStyle.bg)
-      .replace(originalHoverClass, nextStyle.hover);
+    button.classList.remove(...allStateClasses);
+    button.classList.add(nextStateClass);
 
     // 2秒后恢复原状态
     setTimeout(() => {
       syncText.textContent = originalText || '同步全部';
-      button.className = button.className
-        .replace(nextStyle.bg, originalBgClass)
-        .replace(nextStyle.hover, originalHoverClass);
+      button.classList.remove(nextStateClass);
 
       if (icon) {
-        icon.classList.remove('animate-spin');
+        icon.classList.remove('ZSS-animate-spin');
       }
 
       // 恢复所有按钮状态

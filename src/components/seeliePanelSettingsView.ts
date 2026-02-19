@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 设置面板视图 — 深色主题 UI
  *
  * 职责：
@@ -14,7 +14,7 @@ import {
 
 // ─── 常量 ───────────────────────────────────────────
 
-const SETTINGS_STYLE_ID = 'seelie-settings-style';
+const SETTINGS_STYLE_ID = 'ZSS-settings-style';
 
 // ─── 注入全局样式（仅执行一次） ────────────────────────
 
@@ -25,43 +25,43 @@ function ensureSettingsStyles(): void {
   style.id = SETTINGS_STYLE_ID;
   style.textContent = `
 /* ── 设置入口按钮 ── */
-.seelie-settings-btn {
+.ZSS-settings-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 6px 20px;
   border-radius: 6px;
-  border: 1px solid rgba(75, 85, 99, 0.6);
-  background: rgba(31, 41, 55, 0.8);
-  color: #9ca3af;
+  border: 1px solid #dbe1eb33;
+  background: rgba(49, 50, 77, 0.55);
+  color: rgb(148 156 182);
   font-size: 12px;
   cursor: pointer;
   transition: color 0.2s, border-color 0.2s, background 0.2s;
   line-height: 1;
 }
-.seelie-settings-btn:hover {
-  color: #c7d2fe;
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(49, 46, 89, 0.5);
+.ZSS-settings-btn:hover {
+  color: rgb(255 255 255);
+  border-color: #dbe1eb55;
+  background: rgba(72, 75, 106, 0.8);
 }
-.seelie-settings-btn .seelie-icon {
+.ZSS-settings-btn .ZSS-icon {
   width: 14px;
   height: 14px;
   flex-shrink: 0;
 }
-.seelie-settings-btn:hover .seelie-icon {
+.ZSS-settings-btn:hover .ZSS-icon {
   transform: rotate(45deg);
 }
 
 /* ── icon 尺寸通用约束 ── */
-.seelie-icon {
+.ZSS-icon {
   display: inline-block;
   flex-shrink: 0;
   transition: transform 0.35s cubic-bezier(.4,0,.2,1);
 }
 
 /* ── Modal overlay ── */
-.seelie-modal-overlay {
+.ZSS-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 99999;
@@ -73,51 +73,51 @@ function ensureSettingsStyles(): void {
   backdrop-filter: blur(0px);
   transition: background 0.25s ease, backdrop-filter 0.25s ease;
 }
-.seelie-modal-overlay.seelie-open {
-  background: rgba(0, 0, 0, 0.5);
+.ZSS-modal-overlay.ZSS-open {
+  background: rgba(7, 4, 21, 0.55);
   backdrop-filter: blur(4px);
 }
 
 /* ── Modal dialog ── */
-.seelie-modal-dialog {
+.ZSS-modal-dialog {
   width: 100%;
   max-width: 380px;
   border-radius: 12px;
-  border: 1px solid #374151;
-  background: #111827;
+  border: 1px solid #dbe1eb33;
+  background: rgb(31 30 54);
   box-shadow: 0 20px 50px rgba(0,0,0,0.45);
   overflow: hidden;
   transform: translateY(16px) scale(0.97);
   opacity: 0;
   transition: transform 0.25s cubic-bezier(.4,0,.2,1), opacity 0.25s ease;
 }
-.seelie-modal-overlay.seelie-open .seelie-modal-dialog {
+.ZSS-modal-overlay.ZSS-open .ZSS-modal-dialog {
   transform: translateY(0) scale(1);
   opacity: 1;
 }
 
 /* ── Modal header ── */
-.seelie-modal-header {
+.ZSS-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid #dbe1eb1f;
 }
-.seelie-modal-title {
+.ZSS-modal-title {
   display: flex;
   align-items: center;
   gap: 7px;
   font-size: 14px;
   font-weight: 600;
-  color: #f3f4f6;
+  color: rgb(255 255 255);
 }
-.seelie-modal-title .seelie-icon {
+.ZSS-modal-title .ZSS-icon {
   width: 16px;
   height: 16px;
-  color: #818cf8;
+  color: rgb(167 139 250);
 }
-.seelie-modal-close {
+.ZSS-modal-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -126,21 +126,21 @@ function ensureSettingsStyles(): void {
   border-radius: 6px;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: rgb(148 156 182);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.seelie-modal-close:hover {
-  background: #1f2937;
-  color: #e5e7eb;
+.ZSS-modal-close:hover {
+  background: rgba(72, 75, 106, 0.65);
+  color: rgb(255 255 255);
 }
-.seelie-modal-close .seelie-icon {
+.ZSS-modal-close .ZSS-icon {
   width: 16px;
   height: 16px;
 }
 
 /* ── Modal body ── */
-.seelie-modal-body {
+.ZSS-modal-body {
   padding: 14px 18px;
   display: flex;
   flex-direction: column;
@@ -148,66 +148,66 @@ function ensureSettingsStyles(): void {
 }
 
 /* ── Setting card ── */
-.seelie-card {
+.ZSS-card {
   border-radius: 8px;
-  border: 1px solid #1f2937;
-  background: #1a2233;
+  border: 1px solid #dbe1eb26;
+  background: rgba(49, 50, 77, 0.28);
   padding: 12px 14px;
 }
 
 /* ── Toggle row（带开关的设置行） ── */
-.seelie-toggle-row {
+.ZSS-toggle-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.seelie-toggle-row > .seelie-icon {
+.ZSS-toggle-row > .ZSS-icon {
   width: 16px;
   height: 16px;
-  color: #818cf8;
+  color: rgb(167 139 250);
 }
-.seelie-toggle-info {
+.ZSS-toggle-info {
   flex: 1;
   min-width: 0;
 }
-.seelie-toggle-label {
+.ZSS-toggle-label {
   font-size: 13px;
   font-weight: 500;
-  color: #e5e7eb;
+  color: rgb(255 255 255);
   line-height: 1.3;
 }
-.seelie-toggle-desc {
+.ZSS-toggle-desc {
   font-size: 11px;
-  color: #6b7280;
+  color: rgb(148 156 182);
   margin-top: 2px;
   line-height: 1.4;
 }
 
 /* ── Toggle 开关 ── */
-.seelie-switch {
+.ZSS-switch {
   position: relative;
   width: 36px;
   height: 20px;
   flex-shrink: 0;
   cursor: pointer;
 }
-.seelie-switch input {
+.ZSS-switch input {
   opacity: 0;
   width: 0;
   height: 0;
   position: absolute;
 }
-.seelie-switch-track {
+.ZSS-switch-track {
   position: absolute;
   inset: 0;
   border-radius: 10px;
-  background: #374151;
+  background: rgb(72 75 106);
   transition: background 0.2s ease;
 }
-.seelie-switch input:checked + .seelie-switch-track {
-  background: #6366f1;
+.ZSS-switch input:checked + .ZSS-switch-track {
+  background: rgb(139 92 246);
 }
-.seelie-switch-knob {
+.ZSS-switch-knob {
   position: absolute;
   top: 2px;
   left: 2px;
@@ -218,127 +218,104 @@ function ensureSettingsStyles(): void {
   box-shadow: 0 1px 2px rgba(0,0,0,0.25);
   transition: transform 0.2s cubic-bezier(.4,0,.2,1);
 }
-.seelie-switch input:checked ~ .seelie-switch-knob {
+.ZSS-switch input:checked ~ .ZSS-switch-knob {
   transform: translateX(16px);
 }
 
 /* ── Action row（带按钮的设置行） ── */
-.seelie-action-row {
+.ZSS-action-row {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.seelie-action-row > .seelie-icon {
+.ZSS-action-row > .ZSS-icon {
   width: 16px;
   height: 16px;
-  color: #818cf8;
+  color: rgb(167 139 250);
 }
-.seelie-action-btn {
+.ZSS-action-btn {
   padding: 5px 14px;
   font-size: 12px;
   font-weight: 500;
-  color: #d1d5db;
-  background: transparent;
-  border: 1px solid #374151;
+  color: rgb(255 255 255);
+  background: rgba(49, 50, 77, 0.6);
+  border: 1px solid #dbe1eb33;
   border-radius: 6px;
   cursor: pointer;
   flex-shrink: 0;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-.seelie-action-btn:hover {
-  border-color: #6366f1;
-  color: #c7d2fe;
-  background: rgba(99, 102, 241, 0.08);
+.ZSS-action-btn:hover {
+  border-color: #dbe1eb55;
+  color: rgb(255 255 255);
+  background: rgba(72, 75, 106, 0.85);
 }
-.seelie-action-btn:disabled {
+.ZSS-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 /* ── uBlock section ── */
-.seelie-ublock-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-.seelie-ublock-header .seelie-icon {
-  width: 14px;
-  height: 14px;
-  color: #818cf8;
-}
-.seelie-ublock-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: #e5e7eb;
-}
-.seelie-ublock-desc {
-  font-size: 11px;
-  color: #6b7280;
-  line-height: 1.5;
-  margin-bottom: 10px;
-}
-.seelie-ublock-copy {
+.ZSS-ublock-copy {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   width: 100%;
+  margin-top: 10px;
   padding: 7px 0;
-  font-size: 12px;
-  font-weight: 500;
-  color: #d1d5db;
-  background: transparent;
-  border: 1px solid #374151;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-.seelie-ublock-copy:hover {
-  border-color: #6366f1;
-  color: #c7d2fe;
-  background: rgba(99, 102, 241, 0.08);
-}
-.seelie-ublock-copy.is-loading {
+.ZSS-ublock-copy.is-loading {
   opacity: 0.7;
   cursor: wait;
 }
-.seelie-ublock-copy.is-success {
+.ZSS-ublock-copy.is-success {
   border-color: #22c55e;
   color: #bbf7d0;
   background: rgba(34, 197, 94, 0.12);
 }
-.seelie-ublock-copy.is-error {
+.ZSS-ublock-copy.is-success:hover {
+  border-color: #22c55e;
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.12);
+}
+.ZSS-ublock-copy.is-error {
   border-color: #f59e0b;
   color: #fde68a;
   background: rgba(245, 158, 11, 0.12);
 }
-.seelie-ublock-copy .seelie-icon {
+.ZSS-ublock-copy.is-error:hover {
+  border-color: #f59e0b;
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+}
+.ZSS-ublock-copy .ZSS-icon {
   width: 13px;
   height: 13px;
 }
 
 /* ── Modal footer ── */
-.seelie-modal-footer {
+.ZSS-modal-footer {
   display: flex;
   justify-content: flex-end;
   padding: 10px 18px;
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid #dbe1eb1f;
 }
-.seelie-modal-footer-btn {
+.ZSS-modal-footer-btn {
   padding: 5px 16px;
   font-size: 12px;
   font-weight: 500;
-  color: #d1d5db;
-  background: #1f2937;
-  border: 1px solid #374151;
+  color: rgb(255 255 255);
+  background: rgba(49, 50, 77, 0.6);
+  border: 1px solid #dbe1eb33;
   border-radius: 6px;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.seelie-modal-footer-btn:hover {
-  border-color: #4b5563;
-  color: #f3f4f6;
+.ZSS-modal-footer-btn:hover {
+  border-color: #dbe1eb55;
+  color: rgb(255 255 255);
+  background: rgba(72, 75, 106, 0.85);
 }
   `;
 
@@ -348,7 +325,7 @@ function ensureSettingsStyles(): void {
 // ─── 工具：创建固定尺寸 SVG 图标 ─────────────────────
 
 function icon(svg: string): string {
-  return `<span class="seelie-icon">${svg}</span>`;
+  return `<span class="ZSS-icon">${svg}</span>`;
 }
 
 const SVG = {
@@ -382,7 +359,7 @@ export function createSettingsButton(onClick: () => void): HTMLButtonElement {
 
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'seelie-settings-btn';
+  btn.className = 'ZSS-settings-btn';
   btn.innerHTML = `${icon(SVG.gear)}<span>设置</span>`;
   btn.addEventListener('click', onClick);
   return btn;
@@ -396,24 +373,24 @@ export function createSettingsModalView(actions: SettingsModalActions): HTMLDivE
 
   // ── overlay
   const overlay = document.createElement('div');
-  overlay.className = 'seelie-modal-overlay';
+  overlay.className = 'ZSS-modal-overlay';
   overlay.setAttribute('data-seelie-settings-modal', 'true');
 
   // ── dialog
   const dialog = document.createElement('div');
-  dialog.className = 'seelie-modal-dialog';
+  dialog.className = 'ZSS-modal-dialog';
 
   // ── header
   const header = document.createElement('div');
-  header.className = 'seelie-modal-header';
+  header.className = 'ZSS-modal-header';
 
   const title = document.createElement('div');
-  title.className = 'seelie-modal-title';
+  title.className = 'ZSS-modal-title';
   title.innerHTML = `${icon(SVG.gear)}脚本设置`;
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
-  closeBtn.className = 'seelie-modal-close';
+  closeBtn.className = 'ZSS-modal-close';
   closeBtn.innerHTML = icon(SVG.close);
   closeBtn.addEventListener('click', actions.onClose);
 
@@ -421,7 +398,7 @@ export function createSettingsModalView(actions: SettingsModalActions): HTMLDivE
 
   // ── body
   const body = document.createElement('div');
-  body.className = 'seelie-modal-body';
+  body.className = 'ZSS-modal-body';
 
   // 广告相关设置 — 仅目标站点显示
   if (isAdCleanerSettingAvailable()) {
@@ -436,11 +413,11 @@ export function createSettingsModalView(actions: SettingsModalActions): HTMLDivE
 
   // ── footer
   const footer = document.createElement('div');
-  footer.className = 'seelie-modal-footer';
+  footer.className = 'ZSS-modal-footer';
 
   const footerBtn = document.createElement('button');
   footerBtn.type = 'button';
-  footerBtn.className = 'seelie-modal-footer-btn';
+  footerBtn.className = 'ZSS-modal-footer-btn';
   footerBtn.textContent = '关闭';
   footerBtn.addEventListener('click', actions.onClose);
   footer.appendChild(footerBtn);
@@ -456,7 +433,7 @@ export function createSettingsModalView(actions: SettingsModalActions): HTMLDivE
   dialog.addEventListener('click', (e) => e.stopPropagation());
 
   // 入场动画
-  requestAnimationFrame(() => overlay.classList.add('seelie-open'));
+  requestAnimationFrame(() => overlay.classList.add('ZSS-open'));
 
   return overlay;
 }
@@ -465,30 +442,30 @@ export function createSettingsModalView(actions: SettingsModalActions): HTMLDivE
 
 function buildAdCleanerCard(actions: SettingsModalActions): HTMLDivElement {
   const card = document.createElement('div');
-  card.className = 'seelie-card';
+  card.className = 'ZSS-card';
 
   const row = document.createElement('div');
-  row.className = 'seelie-toggle-row';
+  row.className = 'ZSS-toggle-row';
 
   const iconEl = document.createElement('span');
-  iconEl.className = 'seelie-icon';
+  iconEl.className = 'ZSS-icon';
   iconEl.innerHTML = SVG.shield;
 
   const info = document.createElement('div');
-  info.className = 'seelie-toggle-info';
+  info.className = 'ZSS-toggle-info';
 
   const label = document.createElement('div');
-  label.className = 'seelie-toggle-label';
+  label.className = 'ZSS-toggle-label';
   label.textContent = '脚本去广告';
 
   const desc = document.createElement('div');
-  desc.className = 'seelie-toggle-desc';
+  desc.className = 'ZSS-toggle-desc';
   desc.textContent = '关闭后将停止脚本内的去广告逻辑';
 
   info.append(label, desc);
 
   const toggle = document.createElement('label');
-  toggle.className = 'seelie-switch';
+  toggle.className = 'ZSS-switch';
 
   const input = document.createElement('input');
   input.type = 'checkbox';
@@ -496,10 +473,10 @@ function buildAdCleanerCard(actions: SettingsModalActions): HTMLDivElement {
   input.addEventListener('change', () => actions.onToggleAdCleaner(input.checked));
 
   const track = document.createElement('span');
-  track.className = 'seelie-switch-track';
+  track.className = 'ZSS-switch-track';
 
   const knob = document.createElement('span');
-  knob.className = 'seelie-switch-knob';
+  knob.className = 'ZSS-switch-knob';
 
   toggle.append(input, track, knob);
 
@@ -511,21 +488,32 @@ function buildAdCleanerCard(actions: SettingsModalActions): HTMLDivElement {
 
 function buildUBlockCard(actions: SettingsModalActions): HTMLDivElement {
   const card = document.createElement('div');
-  card.className = 'seelie-card';
+  card.className = 'ZSS-card';
 
-  const headerRow = document.createElement('div');
-  headerRow.className = 'seelie-ublock-header';
-  headerRow.innerHTML = `${icon(SVG.filter)}<span class="seelie-ublock-title">uBlock Origin 规则</span>`;
+  const row = document.createElement('div');
+  row.className = 'ZSS-action-row';
+
+  const iconEl = document.createElement('span');
+  iconEl.className = 'ZSS-icon';
+  iconEl.innerHTML = SVG.filter;
+
+  const info = document.createElement('div');
+  info.className = 'ZSS-toggle-info';
+
+  const label = document.createElement('div');
+  label.className = 'ZSS-toggle-label';
+  label.textContent = 'uBlock Origin 规则';
 
   const desc = document.createElement('div');
-  desc.className = 'seelie-ublock-desc';
-  desc.textContent = '复制规则到 uBlock Origin「我的过滤器」，在浏览器层面拦截广告。';
+  desc.className = 'ZSS-toggle-desc';
+  desc.textContent = '复制到「我的过滤器」，在浏览器层拦截广告';
+  info.append(label, desc);
 
   const copyBtn = document.createElement('button');
   copyBtn.type = 'button';
-  copyBtn.className = 'seelie-ublock-copy';
-  copyBtn.innerHTML = `${icon(SVG.copy)}<span class="seelie-ublock-copy-text">复制规则到剪贴板</span>`;
-  const copyText = copyBtn.querySelector('.seelie-ublock-copy-text') as HTMLSpanElement;
+  copyBtn.className = 'ZSS-action-btn ZSS-ublock-copy';
+  copyBtn.innerHTML = `${icon(SVG.copy)}<span class="ZSS-ublock-copy-text">复制规则到剪贴板</span>`;
+  const copyText = copyBtn.querySelector('.ZSS-ublock-copy-text') as HTMLSpanElement;
   let resetTimer: number | null = null;
 
   const setCopyButtonState = (state: 'idle' | 'loading' | 'success' | 'error'): void => {
@@ -535,7 +523,7 @@ function buildUBlockCard(actions: SettingsModalActions): HTMLDivElement {
     if (state === 'loading') {
       copyBtn.classList.add('is-loading');
       copyBtn.disabled = true;
-      copyText.textContent = '复制中...';
+      copyText.textContent = '复制中…';
       return;
     }
 
@@ -575,37 +563,38 @@ function buildUBlockCard(actions: SettingsModalActions): HTMLDivElement {
     }, 1800);
   });
 
-  card.append(headerRow, desc, copyBtn);
+  row.append(iconEl, info);
+  card.append(row, copyBtn);
   return card;
 }
 
 function buildResetDeviceCard(actions: SettingsModalActions): HTMLDivElement {
   const card = document.createElement('div');
-  card.className = 'seelie-card';
+  card.className = 'ZSS-card';
 
   const row = document.createElement('div');
-  row.className = 'seelie-action-row';
+  row.className = 'ZSS-action-row';
 
   const iconEl = document.createElement('span');
-  iconEl.className = 'seelie-icon';
+  iconEl.className = 'ZSS-icon';
   iconEl.innerHTML = SVG.refresh;
 
   const info = document.createElement('div');
-  info.className = 'seelie-toggle-info';
+  info.className = 'ZSS-toggle-info';
 
   const label = document.createElement('div');
-  label.className = 'seelie-toggle-label';
+  label.className = 'ZSS-toggle-label';
   label.textContent = '重置设备信息';
 
   const desc = document.createElement('div');
-  desc.className = 'seelie-toggle-desc';
+  desc.className = 'ZSS-toggle-desc';
   desc.textContent = '同步遇到 1034 设备异常时使用';
 
   info.append(label, desc);
 
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'seelie-action-btn';
+  btn.className = 'ZSS-action-btn';
   btn.textContent = '重置';
   btn.addEventListener('click', async () => {
     btn.disabled = true;
