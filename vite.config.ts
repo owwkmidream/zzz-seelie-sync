@@ -105,10 +105,7 @@ export default defineConfig({
         // GM API 权限
         grant: [
           'GM.xmlHttpRequest',
-          'GM.cookie',
-          'GM_registerMenuCommand',
-          'GM_unregisterMenuCommand',
-          'GM_setClipboard'
+          'GM.cookie'
         ],
         // 允许跨域请求到米哈游API
         connect: [

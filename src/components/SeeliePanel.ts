@@ -6,6 +6,11 @@
 import { logger } from '@logger';
 import { initializeUserInfo, refreshDeviceInfo } from '@/api/hoyo';
 import { syncService } from '@/services/SyncService';
+import {
+  copyAdCleanerRules,
+  setAdCleanerEnabled
+} from '@/utils/adCleanerMenu';
+import { createSettingsModalView } from './seeliePanelSettingsView';
 import { setToast } from '@/utils/seelie';
 import { mapUserInfoError, type UserInfoWithError } from './seeliePanelUserInfo';
 import { SYNC_OPTION_CONFIGS, type SyncActionType } from './seeliePanelSyncOptions';
@@ -32,6 +37,8 @@ export class SeeliePanel {
   private isLoading = false;
   private isExpanded = false; // 控制二级界面展开状态
   private mysPopupCloseWatcher: number | null = null;
+  private settingsModal: HTMLDivElement | null = null;
+  private settingsModalKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
 
   // 组件相关的选择器常量
   public static readonly TARGET_SELECTOR = 'div.flex.flex-col.items-center.justify-center.w-full.mt-3';
@@ -125,6 +132,61 @@ export class SeeliePanel {
   }
 
   /**
+   * 打开设置弹窗
+   */
+  private openSettingsModal(): void {
+    if (!this.container || this.settingsModal) {
+      return;
+    }
+
+    const modal = createSettingsModalView({
+      onToggleAdCleaner: (enabled) => {
+        setAdCleanerEnabled(enabled);
+        const stateText = enabled ? '开启' : '关闭';
+        setToast(`脚本去广告已${stateText}，如未生效可刷新页面`, 'success');
+      },
+      onCopyUBlockRules: async () => {
+        const copied = await copyAdCleanerRules();
+        if (copied) {
+          setToast('uBlock 规则已复制到剪贴板', 'success');
+        } else {
+          setToast('复制失败，请手动复制', 'warning');
+        }
+      },
+      onResetDevice: () => this.handleResetDeviceInfo(),
+      onClose: () => this.closeSettingsModal(),
+    });
+
+    this.settingsModal = modal;
+    document.body.appendChild(modal);
+
+    this.settingsModalKeydownHandler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        this.closeSettingsModal();
+      }
+    };
+    window.addEventListener('keydown', this.settingsModalKeydownHandler);
+  }
+
+  /**
+   * 关闭设置弹窗
+   */
+  private closeSettingsModal(): void {
+    if (this.settingsModal) {
+      // 退场动画
+      this.settingsModal.classList.remove('seelie-open');
+      const modal = this.settingsModal;
+      setTimeout(() => modal.remove(), 300);
+      this.settingsModal = null;
+    }
+
+    if (this.settingsModalKeydownHandler) {
+      window.removeEventListener('keydown', this.settingsModalKeydownHandler);
+      this.settingsModalKeydownHandler = null;
+    }
+  }
+
+  /**
    * 以弹窗形式打开米游社页面，降低上下文切换成本
    */
   private openMysPopup(): void {
@@ -204,7 +266,8 @@ export class SeeliePanel {
       actions: {
         onSyncAll: (button) => this.handleSyncAll(button),
         onToggleExpanded: (button) => this.toggleExpanded(button),
-        onSyncAction: (action, event) => syncActionHandlers[action](event)
+        onSyncAction: (action, event) => syncActionHandlers[action](event),
+        onOpenSettings: () => this.openSettingsModal()
       }
     });
   }
@@ -333,6 +396,20 @@ export class SeeliePanel {
    * 处理重置设备信息
    */
   private async handleResetDeviceInfo(event?: Event): Promise<void> {
+    // 从设置面板调用（无 event）
+    if (!event) {
+      try {
+        await refreshDeviceInfo();
+        setToast('设备信息已重置', 'success');
+        logger.info('设备信息重置完成');
+      } catch (error) {
+        setToast('设备信息重置失败', 'error');
+        logger.error('设备信息重置失败:', error);
+      }
+      return;
+    }
+
+    // 从同步按钮区域调用（有 event）
     await this.handleSyncActionFromEvent(
       event,
       '重置中...',
@@ -341,17 +418,11 @@ export class SeeliePanel {
         try {
           await refreshDeviceInfo();
           setToast('设备信息已重置', 'success');
-          return {
-            status: 'success',
-            message: '设备信息重置完成'
-          };
+          return { status: 'success' as const, message: '设备信息重置完成' };
         } catch (error) {
           setToast('设备信息重置失败', 'error');
           logger.error('设备信息重置失败:', error);
-          return {
-            status: 'error',
-            message: '设备信息重置失败'
-          };
+          return { status: 'error' as const, message: '设备信息重置失败' };
         }
       }
     );
@@ -542,6 +613,7 @@ export class SeeliePanel {
    */
   public destroy(): void {
     this.stopMysPopupCloseWatcher();
+    this.closeSettingsModal();
 
     // 清理当前实例的容器
     if (this.container && this.container.parentNode) {

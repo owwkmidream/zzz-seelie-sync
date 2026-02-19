@@ -1,9 +1,11 @@
 import type { SyncActionType, SyncOptionConfig } from './seeliePanelSyncOptions';
+import { createSettingsButton } from './seeliePanelSettingsView';
 
 interface SyncSectionActions {
   onSyncAll: (button: HTMLButtonElement) => Promise<void> | void;
   onToggleExpanded: (button: HTMLButtonElement) => Promise<void> | void;
   onSyncAction: (action: SyncActionType, event: Event) => Promise<void> | void;
+  onOpenSettings: () => void;
 }
 
 interface SyncSectionViewOptions {
@@ -20,7 +22,6 @@ function createDetailedSyncOptions(
   const container = document.createElement('div');
   container.className = 'grid grid-cols-2 gap-2';
 
-  // 创建按钮
   syncOptions.forEach(option => {
     const button = document.createElement('button');
     const buttonClass = isUserInfoValid
@@ -31,7 +32,6 @@ function createDetailedSyncOptions(
     button.disabled = !isUserInfoValid;
     button.innerHTML = `${option.icon}<span class="sync-text">${option.text}</span>`;
 
-    // 只有在用户信息有效时才绑定事件
     if (isUserInfoValid) {
       button.addEventListener('click', (event) => {
         void actions.onSyncAction(option.action, event);
@@ -78,7 +78,7 @@ export function createSyncSectionView(options: SyncSectionViewOptions): HTMLDivE
     </svg>
   `;
 
-  // 绑定事件（只有在用户信息有效时才绑定）
+  // 绑定事件
   if (isUserInfoValid) {
     mainSyncButton.addEventListener('click', () => {
       void actions.onSyncAll(mainSyncButton);
@@ -94,12 +94,17 @@ export function createSyncSectionView(options: SyncSectionViewOptions): HTMLDivE
   detailsContainer.style.maxHeight = '0';
   detailsContainer.style.opacity = '0';
 
-  // 创建详细同步选项
   detailsContainer.appendChild(createDetailedSyncOptions(syncOptions, isUserInfoValid, actions));
+
+  // 设置按钮
+  const settingsWrapper = document.createElement('div');
+  settingsWrapper.className = 'flex justify-center mt-2';
+  settingsWrapper.appendChild(createSettingsButton(() => actions.onOpenSettings()));
 
   section.appendChild(mainSyncButton);
   section.appendChild(expandButton);
   section.appendChild(detailsContainer);
+  section.appendChild(settingsWrapper);
 
   return section;
 }

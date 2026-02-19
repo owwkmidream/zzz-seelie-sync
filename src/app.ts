@@ -2,7 +2,7 @@
 
 import { domInjector } from './utils/useDOMInjector';
 import { registerAllComponents } from './utils/componentRegistry';
-import { initAdCleanerMenu } from './utils/adCleanerMenu';
+import { initAdCleanerSettings } from './utils/adCleanerMenu';
 import './utils/seelie';
 import './api/hoyo';
 import { logger } from './utils/logger';
@@ -13,8 +13,8 @@ import { logger } from './utils/logger';
 export function initApp(): void {
   logger.info('🎯 zzz-seelie-sync 脚本已加载');
 
-  // 初始化去广告菜单与逻辑
-  initAdCleanerMenu();
+  // 初始化去广告设置对应的运行时逻辑
+  initAdCleanerSettings();
 
   // document-start 阶段 body 可能尚未就绪，延后初始化 DOM 注入管理器
   runWhenDOMReady(() => {
