@@ -303,27 +303,6 @@ function ensureSettingsStyles(): void {
   width: 13px;
   height: 13px;
 }
-.seelie-ublock-textarea {
-  display: block;
-  width: 100%;
-  height: 90px;
-  margin-top: 8px;
-  padding: 8px 10px;
-  font-size: 11px;
-  font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
-  line-height: 1.6;
-  color: #9ca3af;
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 6px;
-  resize: vertical;
-  outline: none;
-  transition: border-color 0.15s;
-  box-sizing: border-box;
-}
-.seelie-ublock-textarea:focus {
-  border-color: #4f46e5;
-}
 
 /* ── Modal footer ── */
 .seelie-modal-footer {

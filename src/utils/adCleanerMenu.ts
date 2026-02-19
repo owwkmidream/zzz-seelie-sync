@@ -62,13 +62,6 @@ export function setAdCleanerEnabled(enabled: boolean): void {
 }
 
 /**
- * 获取当前 uBlock 规则文本
- */
-export function getAdCleanerRulesText(): string {
-  return getUBlockRulesText();
-}
-
-/**
  * 复制 uBlock 规则到剪贴板
  */
 export async function copyAdCleanerRules(): Promise<boolean> {

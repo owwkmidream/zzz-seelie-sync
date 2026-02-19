@@ -150,7 +150,7 @@ export class SeeliePanel {
         if (copied) {
           setToast('uBlock 规则已复制到剪贴板', 'success');
         } else {
-          setToast('复制失败，请手动复制', 'warning');
+          setToast('复制失败，请检查浏览器剪贴板权限后重试', 'warning');
         }
       },
       onResetDevice: () => this.handleResetDeviceInfo(),
