@@ -18,6 +18,7 @@ export {
   getUserInfo,
   clearUserInfo,
   initializeUserInfo,
+  hydrateUserInfoFromRole,
   getCurrentDeviceInfo,
   refreshDeviceInfo,
   resetNapTokenlInitialization,

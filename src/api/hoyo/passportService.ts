@@ -10,6 +10,7 @@ import type {
   QRLoginData,
   QRLoginStatusData,
   CookieTokenData,
+  UserGameRole,
   UserGameRolesResponse,
   LoginAccountResponse,
 } from './types';
@@ -25,6 +26,8 @@ import {
 // ── 常量 ──
 
 const PASSPORT_BASE = 'https://passport-api.mihoyo.com';
+const VERIFY_COOKIE_TOKEN_URL = `${PASSPORT_BASE}/account/ma-cn-session/web/verifyCookieToken`;
+const COOKIE_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** 扫码阶段固定请求头 */
 const PASSPORT_HEADERS = {
@@ -56,8 +59,6 @@ let passportTokenStorageMigrated = false;
 interface PersistedPassportTokens {
   stoken: string;
   mid: string;
-  cookieToken?: string;
-  uid?: string;
   updatedAt: number;
   cookieTokenUpdatedAt?: number;
 }
@@ -71,8 +72,6 @@ function parsePersistedTokens(raw: string): PersistedPassportTokens | null {
     return {
       stoken: parsed.stoken,
       mid: parsed.mid,
-      cookieToken: parsed.cookieToken,
-      uid: parsed.uid,
       updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : Date.now(),
       cookieTokenUpdatedAt: typeof parsed.cookieTokenUpdatedAt === 'number' ? parsed.cookieTokenUpdatedAt : undefined,
     };
@@ -124,17 +123,6 @@ async function writePersistedTokens(tokens: PersistedPassportTokens): Promise<vo
   await GM.setValue(PASSPORT_TOKEN_STORAGE_KEY, JSON.stringify(tokens));
 }
 
-function buildCookieHeader(tokens: PersistedPassportTokens): string {
-  const cookieParts = [
-    `mid=${tokens.mid}`,
-    `stoken=${tokens.stoken}`,
-  ];
-
-  if (tokens.cookieToken) cookieParts.push(`cookie_token=${tokens.cookieToken}`);
-  if (tokens.uid) cookieParts.push(`account_id=${tokens.uid}`);
-  return `${cookieParts.join(';')};`;
-}
-
 function shouldRefreshPassportCookieByError(error: unknown): boolean {
   if (error instanceof HttpRequestError) {
     return isPassportAuthHttpStatus(error.status);
@@ -152,26 +140,62 @@ async function persistStokenAndMid(stoken: string, mid: string): Promise<void> {
   await writePersistedTokens({
     stoken,
     mid,
-    cookieToken: changed ? undefined : current?.cookieToken,
-    uid: changed ? undefined : current?.uid,
     updatedAt: Date.now(),
     cookieTokenUpdatedAt: changed ? undefined : current?.cookieTokenUpdatedAt,
   });
 }
 
-async function persistCookieToken(cookieToken: string, uid: string): Promise<void> {
+async function markCookieTokenRefreshed(): Promise<PersistedPassportTokens> {
   const current = await readPersistedTokens();
-  if (!current) {
+  if (!current?.stoken || !current?.mid) {
     throw new Error('未找到 stoken/mid，无法持久化 cookie_token');
   }
 
-  await writePersistedTokens({
+  const refreshed: PersistedPassportTokens = {
     ...current,
-    cookieToken,
-    uid,
     updatedAt: Date.now(),
     cookieTokenUpdatedAt: Date.now(),
+  };
+  await writePersistedTokens(refreshed);
+  return refreshed;
+}
+
+function isCookieTokenFresh(tokens: PersistedPassportTokens): boolean {
+  if (!tokens.cookieTokenUpdatedAt) {
+    return false;
+  }
+
+  return Date.now() - tokens.cookieTokenUpdatedAt < COOKIE_TOKEN_TTL_MS;
+}
+
+async function verifyPersistedCookieToken(): Promise<boolean> {
+  const deviceInfo = await getCurrentDeviceInfo();
+  const verifyResponse = await GM_fetch(VERIFY_COOKIE_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      ...COOKIE_TOKEN_HEADERS_BASE,
+      'x-rpc-device_id': deviceInfo.deviceId,
+      'x-rpc-device_fp': deviceInfo.deviceFp || '0000000000000',
+    },
   });
+
+  if (!verifyResponse.ok) {
+    if (isPassportAuthHttpStatus(verifyResponse.status)) {
+      return false;
+    }
+    throw new HttpRequestError(verifyResponse.status, verifyResponse.statusText, '校验 cookie_token 失败');
+  }
+
+  const verifyData = await verifyResponse.json() as ApiResponse<unknown>;
+  if (verifyData.retcode === 0) {
+    return true;
+  }
+
+  if (verifyData.retcode === -100 || isPassportAuthRetcode(verifyData.retcode, verifyData.message)) {
+    return false;
+  }
+
+  throw new ApiResponseError(verifyData.retcode, verifyData.message, '校验 cookie_token 失败');
 }
 
 async function ensurePersistedCookieToken(forceRefresh = false): Promise<PersistedPassportTokens> {
@@ -180,17 +204,25 @@ async function ensurePersistedCookieToken(forceRefresh = false): Promise<Persist
     throw new Error('未找到持久化 stoken，请先扫码登录');
   }
 
-  if (!forceRefresh && current.cookieToken && current.uid) {
-    return current;
+  if (!forceRefresh) {
+    if (isCookieTokenFresh(current)) {
+      return current;
+    }
+
+    try {
+      const cookieTokenValid = await verifyPersistedCookieToken();
+      if (cookieTokenValid) {
+        return await markCookieTokenRefreshed();
+      }
+
+      logger.warn('⚠️ cookie_token 已失效（retcode -100），尝试使用 stoken 刷新');
+    } catch (verifyError) {
+      logger.warn('⚠️ cookie_token 校验异常，降级为使用 stoken 刷新', verifyError);
+    }
   }
 
-  const cookieData = await getCookieTokenBySToken(current.stoken, current.mid);
-  await persistCookieToken(cookieData.cookie_token, cookieData.uid);
-  const refreshed = await readPersistedTokens();
-  if (!refreshed?.cookieToken || !refreshed.uid) {
-    throw new Error('cookie_token 持久化失败');
-  }
-  return refreshed;
+  await getCookieTokenBySToken(current.stoken, current.mid);
+  return await markCookieTokenRefreshed();
 }
 
 export async function hasPersistedStoken(): Promise<boolean> {
@@ -203,15 +235,8 @@ export async function clearPersistedPassportTokens(): Promise<void> {
   localStorage.removeItem(PASSPORT_TOKEN_STORAGE_KEY);
 }
 
-export async function getPersistedCookieHeader(): Promise<string | null> {
-  const current = await readPersistedTokens();
-  if (!current?.stoken || !current?.mid || !current.cookieToken) return null;
-  return buildCookieHeader(current);
-}
-
-export async function ensurePassportCookieHeader(forceRefresh = false): Promise<string> {
-  const tokens = await ensurePersistedCookieToken(forceRefresh);
-  return buildCookieHeader(tokens);
+export async function ensurePassportCookieHeader(forceRefresh = false): Promise<void> {
+  await ensurePersistedCookieToken(forceRefresh);
 }
 
 export function isPassportAuthHttpStatus(status: number): boolean {
@@ -412,18 +437,17 @@ export async function getCookieTokenBySToken(stoken: string, mid: string): Promi
  * 获取游戏角色信息并初始化 nap_token
  * 通过持久化 stoken/cookie_token 链路触发 login/account，确保后续接口可用
  */
-export async function initializeNapToken(): Promise<void> {
+export async function initializeNapToken(): Promise<UserGameRole> {
   logger.info('🔄 开始初始化 nap_token...');
 
-  const execute = async (forceRefreshCookie: boolean): Promise<void> => {
-    const cookieHeader = await ensurePassportCookieHeader(forceRefreshCookie);
+  const execute = async (forceRefreshCookie: boolean): Promise<UserGameRole> => {
+    await ensurePassportCookieHeader(forceRefreshCookie);
 
     // Step A: 获取用户游戏角色列表
     const rolesResponse = await GM_fetch(GAME_ROLE_URL, {
       method: 'GET',
       headers: {
         ...defaultHeaders,
-        cookie: cookieHeader,
       },
     });
 
@@ -449,7 +473,6 @@ export async function initializeNapToken(): Promise<void> {
       headers: {
         'Content-Type': 'application/json',
         ...defaultHeaders,
-        cookie: cookieHeader,
       },
       body: JSON.stringify({
         region: roleInfo.region,
@@ -466,20 +489,24 @@ export async function initializeNapToken(): Promise<void> {
     if (tokenData.retcode !== 0) {
       throw new ApiResponseError(tokenData.retcode, tokenData.message, '设置 nap_token 失败');
     }
+
+    return roleInfo;
   };
 
   try {
-    await execute(false);
+    const roleInfo = await execute(false);
+    logger.info('✅ nap_token 初始化完成');
+    return roleInfo;
   } catch (error) {
     if (!shouldRefreshPassportCookieByError(error)) {
       throw error;
     }
 
     logger.warn('⚠️ nap_token 初始化鉴权失败，尝试刷新 cookie_token 后重试');
-    await execute(true);
+    const roleInfo = await execute(true);
+    logger.info('✅ nap_token 初始化完成');
+    return roleInfo;
   }
-
-  logger.info('✅ nap_token 初始化完成');
 }
 
 // ── 轮询编排 ──
@@ -490,7 +517,7 @@ export interface QRLoginCallbacks {
   /** 二维码过期，传入新的 QR data */
   onQRExpired: (newData: QRLoginData) => void;
   /** 登录完成 */
-  onComplete: () => void;
+  onComplete: (roleInfo: UserGameRole) => void;
   /** 发生错误 */
   onError: (error: unknown) => void;
 }
@@ -535,16 +562,16 @@ export function startQRLoginPolling(
             if (cancelled) return;
 
             // Step 3: 换 cookie_token
-            const cookieData = await getCookieTokenBySToken(stoken, mid);
+            await getCookieTokenBySToken(stoken, mid);
             if (cancelled) return;
-            await persistCookieToken(cookieData.cookie_token, cookieData.uid);
+            await markCookieTokenRefreshed();
             if (cancelled) return;
 
             // Step 4: 获取 nap_token（调用 login/account）
-            await initializeNapToken();
+            const roleInfo = await initializeNapToken();
             if (cancelled) return;
 
-            callbacks.onComplete();
+            callbacks.onComplete(roleInfo);
           } catch (error) {
             if (cancelled) return;
             callbacks.onError(error);

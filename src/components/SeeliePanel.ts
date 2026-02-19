@@ -4,9 +4,8 @@
  */
 
 import { logger } from '@logger';
-import { initializeUserInfo, refreshDeviceInfo } from '@/api/hoyo';
+import { hydrateUserInfoFromRole, initializeUserInfo, refreshDeviceInfo } from '@/api/hoyo';
 import { createQRLogin, startQRLoginPolling } from '@/api/hoyo/passportService';
-import { clearUserInfo, resetNapTokenlInitialization } from '@/api/hoyo';
 import { syncService } from '@/services/SyncService';
 import {
   copyAdCleanerRules,
@@ -286,14 +285,13 @@ export class SeeliePanel {
           logger.info('扫码登录：二维码已过期，已自动刷新');
           setToast('二维码已过期，已自动刷新', 'warning');
         },
-        onComplete: () => {
+        onComplete: (roleInfo) => {
           this.qrLoginCancelFn = null;
           logger.info('扫码登录成功，刷新面板');
           setToast('登录成功', 'success');
 
-          // 重置初始化标记，强制重新加载用户信息
-          clearUserInfo();
-          resetNapTokenlInitialization();
+          // 直接使用 login/account 阶段已拿到的角色信息更新缓存，避免重复调用 login/info
+          hydrateUserInfoFromRole(roleInfo);
           void this.refreshUserInfo();
         },
         onError: (error) => {

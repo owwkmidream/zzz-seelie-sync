@@ -17,7 +17,6 @@ import {
 } from './errors';
 import {
   ensurePassportCookieHeader,
-  getPersistedCookieHeader,
   hasPersistedStoken,
   isPassportAuthHttpStatus,
   isPassportAuthRetcode,
@@ -31,6 +30,7 @@ export {
   getUserInfo,
   clearUserInfo,
   initializeUserInfo,
+  hydrateUserInfoFromRole,
   resetNapTokenlInitialization
 } from './authService';
 
@@ -69,24 +69,16 @@ export async function request<T = unknown>(
   // 执行请求的内部函数
   const executeRequest = async (
     isRetry = false,
-    isAuthRetry = false,
-    forcedCookieHeader?: string
+    isAuthRetry = false
   ): Promise<ApiResponse<T>> => {
     // 异步获取并合并请求头
     const zzzHeaders = await getZZZHeaderWithDevice();
-    const finalHeaders = {
+    const finalHeaders: Record<string, string> = {
       ...zzzHeaders,
       ...headers
     };
 
     const persistedStokenAvailable = await hasPersistedStoken();
-    const hasCookieHeader = typeof finalHeaders.cookie === 'string' || typeof finalHeaders.Cookie === 'string';
-    if (!hasCookieHeader && persistedStokenAvailable) {
-      const persistedCookieHeader = forcedCookieHeader || await getPersistedCookieHeader();
-      if (persistedCookieHeader) {
-        finalHeaders.cookie = persistedCookieHeader;
-      }
-    }
 
     if (finalHeaders['x-rpc-device_fp'] === '0000000000000') {
       throw new InvalidDeviceFingerprintError();
@@ -113,8 +105,8 @@ export async function request<T = unknown>(
             statusText: response.statusText,
           });
 
-          const refreshedCookieHeader = await ensurePassportCookieHeader(true);
-          return await executeRequest(isRetry, true, refreshedCookieHeader);
+          await ensurePassportCookieHeader(true);
+          return await executeRequest(isRetry, true);
         }
 
         throw new HttpRequestError(response.status, response.statusText);
@@ -149,8 +141,8 @@ export async function request<T = unknown>(
             message: data.message,
           });
 
-          const refreshedCookieHeader = await ensurePassportCookieHeader(true);
-          return await executeRequest(isRetry, true, refreshedCookieHeader);
+          await ensurePassportCookieHeader(true);
+          return await executeRequest(isRetry, true);
         }
 
         logger.error(`❌ 请求失败 ${requestLabel}`, {

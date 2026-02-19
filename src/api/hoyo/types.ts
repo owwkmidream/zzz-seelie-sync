@@ -6,7 +6,6 @@ export interface UserInfo {
   nickname: string;
   level: number;
   region: string;
-  accountId: string;
 }
 
 // 设备信息接口
