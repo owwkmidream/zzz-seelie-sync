@@ -146,12 +146,7 @@ export class SeeliePanel {
         setToast(`脚本去广告已${stateText}，如未生效可刷新页面`, 'success');
       },
       onCopyUBlockRules: async () => {
-        const copied = await copyAdCleanerRules();
-        if (copied) {
-          setToast('uBlock 规则已复制到剪贴板', 'success');
-        } else {
-          setToast('复制失败，请检查浏览器剪贴板权限后重试', 'warning');
-        }
+        return copyAdCleanerRules();
       },
       onResetDevice: () => this.handleResetDeviceInfo(),
       onClose: () => this.closeSettingsModal(),

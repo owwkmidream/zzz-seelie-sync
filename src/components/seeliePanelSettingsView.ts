@@ -299,6 +299,20 @@ function ensureSettingsStyles(): void {
   color: #c7d2fe;
   background: rgba(99, 102, 241, 0.08);
 }
+.seelie-ublock-copy.is-loading {
+  opacity: 0.7;
+  cursor: wait;
+}
+.seelie-ublock-copy.is-success {
+  border-color: #22c55e;
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.12);
+}
+.seelie-ublock-copy.is-error {
+  border-color: #f59e0b;
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+}
 .seelie-ublock-copy .seelie-icon {
   width: 13px;
   height: 13px;
@@ -355,7 +369,7 @@ const SVG = {
 
 export interface SettingsModalActions {
   onToggleAdCleaner: (enabled: boolean) => void;
-  onCopyUBlockRules: () => Promise<void>;
+  onCopyUBlockRules: () => Promise<boolean>;
   onResetDevice: () => Promise<void>;
   onClose: () => void;
 }
@@ -510,10 +524,55 @@ function buildUBlockCard(actions: SettingsModalActions): HTMLDivElement {
   const copyBtn = document.createElement('button');
   copyBtn.type = 'button';
   copyBtn.className = 'seelie-ublock-copy';
-  copyBtn.innerHTML = `${icon(SVG.copy)}<span>复制规则到剪贴板</span>`;
+  copyBtn.innerHTML = `${icon(SVG.copy)}<span class="seelie-ublock-copy-text">复制规则到剪贴板</span>`;
+  const copyText = copyBtn.querySelector('.seelie-ublock-copy-text') as HTMLSpanElement;
+  let resetTimer: number | null = null;
 
-  copyBtn.addEventListener('click', () => {
-    void actions.onCopyUBlockRules();
+  const setCopyButtonState = (state: 'idle' | 'loading' | 'success' | 'error'): void => {
+    copyBtn.classList.remove('is-loading', 'is-success', 'is-error');
+    copyBtn.disabled = false;
+
+    if (state === 'loading') {
+      copyBtn.classList.add('is-loading');
+      copyBtn.disabled = true;
+      copyText.textContent = '复制中...';
+      return;
+    }
+
+    if (state === 'success') {
+      copyBtn.classList.add('is-success');
+      copyText.textContent = '已复制';
+      return;
+    }
+
+    if (state === 'error') {
+      copyBtn.classList.add('is-error');
+      copyText.textContent = '复制失败';
+      return;
+    }
+
+    copyText.textContent = '复制规则到剪贴板';
+  };
+
+  copyBtn.addEventListener('click', async () => {
+    if (resetTimer !== null) {
+      window.clearTimeout(resetTimer);
+      resetTimer = null;
+    }
+
+    setCopyButtonState('loading');
+
+    try {
+      const copied = await actions.onCopyUBlockRules();
+      setCopyButtonState(copied ? 'success' : 'error');
+    } catch {
+      setCopyButtonState('error');
+    }
+
+    resetTimer = window.setTimeout(() => {
+      setCopyButtonState('idle');
+      resetTimer = null;
+    }, 1800);
   });
 
   card.append(headerRow, desc, copyBtn);
