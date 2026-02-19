@@ -301,13 +301,6 @@ export function ensurePanelStyles(): void {
   margin-top: .5rem;
 }
 
-.ZSS-qr-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: .75rem;
-}
-
 .ZSS-qr-image {
   width: 180px;
   height: 180px;
@@ -333,10 +326,6 @@ export function ensurePanelStyles(): void {
   color: rgb(52 211 153);
 }
 
-.ZSS-qr-actions {
-  display: flex;
-  gap: .5rem;
-}
   `;
 
   (document.head || document.documentElement).appendChild(style);

@@ -18,7 +18,7 @@ import { SYNC_OPTION_CONFIGS, type SyncActionType } from './seeliePanelSyncOptio
 import { buildFullSyncFeedback } from './seeliePanelSyncResult';
 import { createUserInfoSection } from './seeliePanelUserInfoView';
 import { createSyncSectionView } from './seeliePanelSyncView';
-import { createQRLoginView, updateQRLoginStatus, refreshQRCode } from './seeliePanelQrLoginView';
+import { createQRLoginModal, updateQRLoginStatus, refreshQRCode } from './seeliePanelQrLoginView';
 import { ensurePanelStyles } from './zssPanelStyles';
 
 // URL
@@ -43,6 +43,9 @@ export class SeeliePanel {
   private settingsModal: HTMLDivElement | null = null;
   private settingsModalKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
   private qrLoginCancelFn: (() => void) | null = null;
+  private qrLoginModal: HTMLDivElement | null = null;
+  private qrLoginKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
+  private qrLoginGeneration = 0;
 
   // 组件相关的选择器常量
   public static readonly TARGET_SELECTOR = 'div.flex.flex-col.items-center.justify-center.w-full.mt-3';
@@ -255,38 +258,56 @@ export class SeeliePanel {
   private async startQRLogin(): Promise<void> {
     if (!this.container) return;
 
+    // 若已有扫码流程进行中，先清理旧实例（防止并发导致监听器/轮询泄漏）
+    this.cancelQRLogin();
+
+    // 递增 generation，用于 await 后校验当前流程是否仍有效
+    const generation = ++this.qrLoginGeneration;
+
     try {
       // Step 1: 创建二维码
       const qrData = await createQRLogin();
 
-      // 替换用户信息区域为扫码视图
-      const userSection = this.container.querySelector('.ZSS-user-section');
-      if (!userSection) return;
+      // 若在等待期间有后发调用已接管，或组件已被销毁，当前调用静默退出
+      if (this.qrLoginGeneration !== generation || !this.container) return;
 
-      const { container: qrContainer, ...qrElements } = createQRLoginView(
+      // 以 Modal 弹窗展示二维码
+      const qrElements = createQRLoginModal(
         qrData,
         () => {
           this.cancelQRLogin();
           void this.refreshUserInfo();
         },
       );
-      userSection.replaceChildren(qrContainer);
+
+      this.qrLoginModal = qrElements.overlay;
+      document.body.appendChild(this.qrLoginModal);
+
+      // ESC 关闭
+      this.qrLoginKeydownHandler = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          this.cancelQRLogin();
+          void this.refreshUserInfo();
+        }
+      };
+      window.addEventListener('keydown', this.qrLoginKeydownHandler);
 
       // Step 2: 开始轮询
       this.qrLoginCancelFn = startQRLoginPolling(qrData.ticket, {
         onStatusChange: (status) => {
-          updateQRLoginStatus({ container: qrContainer, ...qrElements }, status);
+          updateQRLoginStatus(qrElements, status);
           if (status === 'Scanned') {
             logger.info('扫码登录：用户已扫码，等待确认');
           }
         },
         onQRExpired: (newData) => {
-          refreshQRCode({ container: qrContainer, ...qrElements }, newData);
+          refreshQRCode(qrElements, newData);
           logger.info('扫码登录：二维码已过期，已自动刷新');
           setToast('二维码已过期，已自动刷新', 'warning');
         },
         onComplete: (roleInfo) => {
           this.qrLoginCancelFn = null;
+          this.closeQRLoginModal();
           logger.info('扫码登录成功，刷新面板');
           setToast('登录成功', 'success');
 
@@ -296,6 +317,7 @@ export class SeeliePanel {
         },
         onError: (error) => {
           this.qrLoginCancelFn = null;
+          this.closeQRLoginModal();
           logger.error('扫码登录失败:', error);
           setToast('扫码登录失败，请重试', 'error');
           void this.refreshUserInfo();
@@ -308,13 +330,31 @@ export class SeeliePanel {
   }
 
   /**
-   * 取消扫码登录（仅停止轮询，不刷新面板）
+   * 关闭扫码登录 Modal（退场动画 + 移除 DOM）
+   */
+  private closeQRLoginModal(): void {
+    if (this.qrLoginModal) {
+      this.qrLoginModal.classList.remove('ZSS-open');
+      const modal = this.qrLoginModal;
+      setTimeout(() => modal.remove(), 300);
+      this.qrLoginModal = null;
+    }
+
+    if (this.qrLoginKeydownHandler) {
+      window.removeEventListener('keydown', this.qrLoginKeydownHandler);
+      this.qrLoginKeydownHandler = null;
+    }
+  }
+
+  /**
+   * 取消扫码登录（停止轮询 + 关闭弹窗）
    */
   private cancelQRLogin(): void {
     if (this.qrLoginCancelFn) {
       this.qrLoginCancelFn();
       this.qrLoginCancelFn = null;
     }
+    this.closeQRLoginModal();
   }
 
   /**
@@ -686,6 +726,7 @@ export class SeeliePanel {
     this.stopMysPopupCloseWatcher();
     this.closeSettingsModal();
     this.cancelQRLogin();
+    this.closeQRLoginModal();
 
     // 清理当前实例的容器
     if (this.container && this.container.parentNode) {

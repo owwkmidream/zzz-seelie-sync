@@ -1,6 +1,6 @@
 /**
- * 扫码登录 UI 视图
- * 在面板内展示二维码并实时更新扫码状态
+ * 扫码登录 Modal 视图
+ * 以弹窗形式展示二维码并实时更新扫码状态
  */
 
 import type { QRLoginData, QRLoginStatus } from '@/api/hoyo/types';
@@ -16,8 +16,21 @@ const STATUS_TEXT: Record<QRLoginStatus, string> = {
   Confirmed: '登录成功，正在刷新…',
 };
 
-interface QRLoginViewElements {
-  container: HTMLDivElement;
+// ─── SVG 图标 ────────────────────────────────────────
+
+const SVG = {
+  qrcode: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><path d="M14 14h2v2h-2z"/><path d="M20 14h2v2h-2z"/><path d="M14 20h2v2h-2z"/><path d="M20 20h2v2h-2z"/><path d="M17 17h2v2h-2z"/></svg>`,
+  close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+} as const;
+
+function icon(svg: string): string {
+  return `<span class="ZSS-icon">${svg}</span>`;
+}
+
+// ─── 内部工具 ────────────────────────────────────────
+
+export interface QRLoginViewElements {
+  overlay: HTMLDivElement;
   qrImage: HTMLCanvasElement;
   statusText: HTMLDivElement;
 }
@@ -60,15 +73,44 @@ async function renderQRCode(elements: QRLoginViewElements, qrText: string): Prom
   }
 }
 
+// ─── 公开接口 ────────────────────────────────────────
+
 /**
- * 创建扫码登录视图
+ * 创建扫码登录 Modal
  */
-export function createQRLoginView(
+export function createQRLoginModal(
   qrData: QRLoginData,
   onCancel: () => void,
 ): QRLoginViewElements {
-  const container = document.createElement('div');
-  container.className = 'ZSS-qr-container';
+  // ── overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'ZSS-modal-overlay';
+  overlay.setAttribute('data-seelie-qr-modal', 'true');
+
+  // ── dialog
+  const dialog = document.createElement('div');
+  dialog.className = 'ZSS-modal-dialog';
+
+  // ── header
+  const header = document.createElement('div');
+  header.className = 'ZSS-modal-header';
+
+  const title = document.createElement('div');
+  title.className = 'ZSS-modal-title';
+  title.innerHTML = `${icon(SVG.qrcode)}扫码登录`;
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'ZSS-modal-close';
+  closeBtn.innerHTML = icon(SVG.close);
+  closeBtn.addEventListener('click', onCancel);
+
+  header.append(title, closeBtn);
+
+  // ── body
+  const body = document.createElement('div');
+  body.className = 'ZSS-modal-body';
+  body.style.alignItems = 'center';
 
   // 二维码画布
   const qrImage = document.createElement('canvas');
@@ -83,22 +125,33 @@ export function createQRLoginView(
   statusText.className = 'ZSS-qr-status';
   statusText.textContent = STATUS_TEXT.Created;
 
-  // 操作区域
-  const actions = document.createElement('div');
-  actions.className = 'ZSS-qr-actions';
+  body.append(qrImage, statusText);
+
+  // ── footer
+  const footer = document.createElement('div');
+  footer.className = 'ZSS-modal-footer';
 
   const cancelButton = document.createElement('button');
-  cancelButton.className = 'ZSS-action-button ZSS-action-button--retry-default';
+  cancelButton.type = 'button';
+  cancelButton.className = 'ZSS-modal-footer-btn';
   cancelButton.textContent = '取消';
   cancelButton.addEventListener('click', onCancel);
+  footer.appendChild(cancelButton);
 
-  actions.appendChild(cancelButton);
+  // ── assemble
+  dialog.append(header, body, footer);
+  overlay.appendChild(dialog);
 
-  container.appendChild(qrImage);
-  container.appendChild(statusText);
-  container.appendChild(actions);
+  // 点击遮罩关闭
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) onCancel();
+  });
+  dialog.addEventListener('click', (e) => e.stopPropagation());
 
-  const elements: QRLoginViewElements = { container, qrImage, statusText };
+  // 入场动画
+  requestAnimationFrame(() => overlay.classList.add('ZSS-open'));
+
+  const elements: QRLoginViewElements = { overlay, qrImage, statusText };
   void renderQRCode(elements, qrData.url);
   return elements;
 }
