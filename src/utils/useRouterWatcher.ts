@@ -1,6 +1,5 @@
 // Vue Router 监听 Hook
 import { logger } from "./logger";
-import { exposeDevGlobals } from "./devGlobals";
 
 interface VueApp {
   config?: {
@@ -332,10 +331,3 @@ export function useRouterRerun(
     { delay, immediate }
   );
 }
-
-// 将函数挂载到全局对象，方便调试
-exposeDevGlobals({
-  useRouterWatcher,
-  useRouterRerun,
-  getCurrentRoute
-});

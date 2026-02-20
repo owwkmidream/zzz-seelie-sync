@@ -1,9 +1,4 @@
 // 米哈游绝区零API统一导出
-import { exposeDevGlobals } from '@/utils/devGlobals';
-import * as avatarModule from './avatar';
-import * as gameNoteModule from './game-note';
-import * as clientModule from './client';
-import * as utilsModule from './utils';
 
 // 类型导出
 export type * from './types';
@@ -49,13 +44,3 @@ export {
   startQRLoginPolling,
   type QRLoginCallbacks,
 } from './passportService';
-
-// 将主要函数挂载到全局对象，方便调试
-exposeDevGlobals({
-  ZZZApi: {
-    ...avatarModule,
-    ...gameNoteModule,
-    ...clientModule,
-    ...utilsModule,
-  }
-});

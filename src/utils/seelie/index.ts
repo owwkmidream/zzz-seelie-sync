@@ -2,16 +2,6 @@
 
 import type { ResinDataInput, CharacterDataInput, SyncResult, BatchSyncResult, ToastType } from './types'
 import { CharacterManager } from './managers'
-import {
-  getLanguageData,
-  getStatsData,
-  getCharacterStats,
-  getWeaponStats,
-  getWeaponStatsCommon,
-  clearRuntimeDataCache,
-  isDataLoaded
-} from './constants'
-import { exposeDevGlobals } from '../devGlobals'
 
 /**
  * Seelie 数据操作工具类
@@ -101,27 +91,6 @@ export const findMinimumSetWeapons = (): Record<string, number> => {
 export const getItems = (): unknown => {
   return seelieDataManager.getItems()
 }
-
-// 挂载到全局对象，方便调试
-exposeDevGlobals({
-  setResinData,
-  setToast,
-  setCharacter,
-  setTalents,
-  setWeapon,
-  setInventory,
-  syncCharacter,
-  syncAllCharacters,
-  findMinimumSetCoverIds,
-  findMinimumSetWeapons,
-  getLanguageData,
-  getStatsData,
-  getCharacterStats,
-  getWeaponStats,
-  getWeaponStatsCommon,
-  clearRuntimeDataCache,
-  isDataLoaded
-})
 
 // 导出类型
 export type {

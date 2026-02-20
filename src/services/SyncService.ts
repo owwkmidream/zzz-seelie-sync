@@ -20,7 +20,6 @@ import {
 import { batchGetAvatarItemCalc } from '../api/hoyo/items'
 import { ItemsData } from '../utils/seelie/types'
 import { getLanguageData } from '../utils/seelie/constants'
-import { exposeDevGlobals } from '@/utils/devGlobals'
 import {
   collectAllItemsInfo,
   buildItemsInventory,
@@ -432,26 +431,3 @@ export class SyncService {
 
 // 创建全局实例
 export const syncService = new SyncService()
-
-const syncResinData = (): Promise<boolean> => syncService.syncResinData()
-const syncSingleCharacter = (avatarId: number): Promise<SyncResult> => syncService.syncSingleCharacter(avatarId)
-const syncAllCharacters = (): Promise<BatchSyncResult> => syncService.syncAllCharacters()
-const syncItemsData = async (): Promise<boolean> => (await syncService.syncItemsData()).success
-const syncItemsDataDetail = (): Promise<ItemsSyncResult> => syncService.syncItemsData()
-const syncAll = (): Promise<{
-  resinSync: boolean
-  characterSync: BatchSyncResult
-  itemsSync: boolean
-  itemsPartial: boolean
-}> => syncService.syncAll()
-
-// 挂载到全局对象，方便调试
-exposeDevGlobals({
-  syncService,
-  syncResinData,
-  syncSingleCharacter,
-  syncAllCharacters,
-  syncItemsData,
-  syncItemsDataDetail,
-  syncAll
-})
