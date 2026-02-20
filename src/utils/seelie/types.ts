@@ -236,6 +236,10 @@ export interface SeelieData {
 export interface ItemData {
   dim_hash?: string | string[];
   type: string;
+  /** 单层材料 ID */
+  id?: number;
+  /** 多阶材料 ID（tier 索引） */
+  ids?: number[];
 }
 
 export interface ItemsData {

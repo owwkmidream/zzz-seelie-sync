@@ -24,7 +24,10 @@ import {
   collectAllItemsInfo,
   buildItemsInventory,
   buildCnToSeelieNameMapping,
-  syncItemsToSeelie
+  syncItemsToSeelie,
+  buildUserOwnItemsById,
+  buildItemIdToSeelieIndex,
+  syncItemsToSeelieById
 } from './mappers/itemsSyncMapper'
 
 interface SyncTaskOptions {
@@ -36,6 +39,10 @@ export interface ItemsSyncResult {
   partial: boolean
   successNum: number
   failNum: number
+  /** 未命中 ID 映射的材料 ID 列表 */
+  unknownIds?: string[]
+  /** 本次使用的映射策略 */
+  mappedBy?: 'id' | 'name-fallback'
 }
 
 /**
@@ -300,6 +307,7 @@ export class SyncService {
 
   /**
    * 同步养成材料数据
+   * 主路径：ID 映射；若命中率不足则降级名字映射
    */
   async syncItemsData(options?: SyncTaskOptions): Promise<ItemsSyncResult> {
     const notify = this.shouldNotify(options)
@@ -307,79 +315,108 @@ export class SyncService {
     try {
       logger.info('🔋 开始同步养成材料数据...')
 
-      // 获取最小集合数据
+      // ── 公共：获取 API 材料数据 ──
       const minSetChar = findMinimumSetCoverIds()
       const minSetWeapon = findMinimumSetWeapons()
-
-      // 构建请求参数
       const calcParams = minSetChar.map(item => ({
         avatar_id: item.id,
         weapon_id: minSetWeapon[item.style]
       }))
 
-      // 获取养成材料数据
       const itemsData = await batchGetAvatarItemCalc(calcParams)
       if (!itemsData) {
         return this.failItemsSyncResult('获取养成材料数据失败', undefined, notify)
       }
 
-      // 收集所有物品信息
-      const allItemsInfo = collectAllItemsInfo(itemsData)
-
-      // 构建物品数据映射
-      const itemsInventory = buildItemsInventory(itemsData, allItemsInfo)
-
-      // 获取语言数据和物品信息
+      // ── 获取 Seelie items ──
       const seelieItems = getItems() as ItemsData
-      seelieItems["denny"] = {type: "denny"}
-      const i18nData = await getLanguageData()
 
-      if (!i18nData) {
-        return this.failItemsSyncResult('获取语言数据失败', undefined, notify)
+      // ── 尝试 ID 主路径 ──
+      const coinId = itemsData[0]?.coin_id
+      const idIndex = buildItemIdToSeelieIndex(seelieItems, coinId)
+
+      if (idIndex.size > 0) {
+        const userOwnById = buildUserOwnItemsById(itemsData)
+        const idResult = syncItemsToSeelieById(userOwnById, idIndex)
+        const total = idResult.successNum + idResult.failNum
+        const hitRate = total > 0 ? idResult.successNum / total : 0
+
+        logger.info(`📊 ID 映射命中率: ${(hitRate * 100).toFixed(1)}% (${idResult.successNum}/${total})`)
+
+        // 命中率 >= 70%，使用 ID 路径结果
+        if (hitRate >= 0.7) {
+          return this.buildItemsSyncResult(idResult.successNum, idResult.failNum, notify, {
+            mappedBy: 'id',
+            unknownIds: idResult.unknownIds
+          })
+        }
+
+        logger.warn(`⚠️ ID 映射命中率过低 (${(hitRate * 100).toFixed(1)}%)，降级到名字映射`)
+      } else {
+        logger.warn('⚠️ Seelie items 中无 id/ids 字段，降级到名字映射')
       }
 
-      // 构建中文名称到 Seelie 物品名称的映射
-      const cnName2SeelieItemName = buildCnToSeelieNameMapping(i18nData)
-
-      // 同步到 Seelie
-      const { successNum, failNum } = syncItemsToSeelie(
-        itemsInventory,
-        cnName2SeelieItemName,
-        seelieItems
-      )
-
-      const hasSuccess = successNum > 0
-      const total = successNum + failNum
-      const isPartial = hasSuccess && failNum > 0
-
-      if (hasSuccess && !isPartial) {
-        logger.info(`✅ 养成材料同步成功: ${successNum}/${total}`)
-        if (notify) {
-          setToast(`养成材料同步完成: 成功 ${successNum}，失败 ${failNum}`, 'success')
-        }
-        return {
-          success: true,
-          partial: false,
-          successNum,
-          failNum
-        }
-      } else if (hasSuccess) {
-        logger.warn(`⚠️ 养成材料同步部分成功: ${successNum}/${total}`)
-        if (notify) {
-          setToast(`养成材料同步部分完成: 成功 ${successNum}，失败 ${failNum}`, 'warning')
-        }
-        return {
-          success: true,
-          partial: true,
-          successNum,
-          failNum
-        }
-      }
-
-      return this.failItemsSyncResult('养成材料同步失败', undefined, notify)
+      // ── 降级：名字映射路径 ──
+      return await this.syncItemsByName(itemsData, seelieItems, notify)
     } catch (error) {
       return this.failItemsSyncResult('养成材料同步失败', error, notify)
     }
+  }
+
+  /**
+   * 名字映射路径（fallback）
+   */
+  private async syncItemsByName(
+    itemsData: Awaited<ReturnType<typeof batchGetAvatarItemCalc>>,
+    seelieItems: ItemsData,
+    notify: boolean
+  ): Promise<ItemsSyncResult> {
+    const allItemsInfo = collectAllItemsInfo(itemsData)
+    const itemsInventory = buildItemsInventory(itemsData, allItemsInfo)
+
+    seelieItems['denny'] = { type: 'denny' }
+    const i18nData = await getLanguageData()
+
+    if (!i18nData) {
+      return this.failItemsSyncResult('获取语言数据失败（名字映射降级）', undefined, notify)
+    }
+
+    const cnName2SeelieItemName = buildCnToSeelieNameMapping(i18nData)
+    const { successNum, failNum } = syncItemsToSeelie(itemsInventory, cnName2SeelieItemName, seelieItems)
+
+    return this.buildItemsSyncResult(successNum, failNum, notify, { mappedBy: 'name-fallback' })
+  }
+
+  /**
+   * 构建统一的 ItemsSyncResult 并输出日志/Toast
+   */
+  private buildItemsSyncResult(
+    successNum: number,
+    failNum: number,
+    notify: boolean,
+    extra: { mappedBy: ItemsSyncResult['mappedBy']; unknownIds?: string[] }
+  ): ItemsSyncResult {
+    const hasSuccess = successNum > 0
+    const total = successNum + failNum
+    const isPartial = hasSuccess && failNum > 0
+
+    logger.info(`📦 材料同步策略: ${extra.mappedBy}`)
+
+    if (hasSuccess && !isPartial) {
+      logger.info(`✅ 养成材料同步成功: ${successNum}/${total}`)
+      if (notify) {
+        setToast(`养成材料同步完成: 成功 ${successNum}，失败 ${failNum}`, 'success')
+      }
+      return { success: true, partial: false, successNum, failNum, ...extra }
+    } else if (hasSuccess) {
+      logger.warn(`⚠️ 养成材料同步部分成功: ${successNum}/${total}`)
+      if (notify) {
+        setToast(`养成材料同步部分完成: 成功 ${successNum}，失败 ${failNum}`, 'warning')
+      }
+      return { success: true, partial: true, successNum, failNum, ...extra }
+    }
+
+    return this.failItemsSyncResult('养成材料同步失败', undefined, notify)
   }
 
   /**
