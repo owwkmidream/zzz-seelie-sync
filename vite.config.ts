@@ -127,7 +127,11 @@ export default defineConfig({
         externalGlobals: {
           ...(minify ? {} : {
             '@trim21/gm-fetch': cdn.jsdelivrFastly('GM_fetch'),
-            qrcode: cdn.jsdelivrFastly('QRCode', 'build/qrcode.min.js'),
+            // qrcode 从 1.5.2 起不再发布 build/qrcode.js，固定到最后一个可用 UMD 版本
+            qrcode: [
+              'QRCode',
+              'https://fastly.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js',
+            ],
           })
         },
       },
