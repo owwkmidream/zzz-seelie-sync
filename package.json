@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:nightly": "cross-env RELEASE_NIGHTLY=true vite build",
     "build:release": "cross-env RELEASE=true vite build",
-    "preview": "tsc && vite preview",
+    "preview": "vite build && vite preview",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
     "lint:prod": "cross-env NODE_ENV=production eslint src --ext .js,.jsx,.ts,.tsx",
