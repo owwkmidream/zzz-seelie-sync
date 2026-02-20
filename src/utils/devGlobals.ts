@@ -23,6 +23,7 @@ interface ExportLookupResult {
 interface DevModuleRegistry {
   modules: Record<string, RuntimeModule>;
   modulePaths: string[];
+  resolvedExports: Record<string, unknown>;
   uniqueExports: Record<string, unknown>;
   duplicateExports: Record<string, string[]>;
   getModule: (modulePath: string) => RuntimeModule | undefined;
@@ -59,10 +60,31 @@ function getRuntimeExports(moduleNamespace: unknown): RuntimeModule {
   );
 }
 
+function getModulePathPriority(modulePath: string): number {
+  if (modulePath.endsWith('/index.ts')) {
+    return 1;
+  }
+  return 0;
+}
+
+function shouldPreferModulePath(currentPath: string, candidatePath: string): boolean {
+  const currentPriority = getModulePathPriority(currentPath);
+  const candidatePriority = getModulePathPriority(candidatePath);
+
+  if (currentPriority !== candidatePriority) {
+    return candidatePriority < currentPriority;
+  }
+
+  return candidatePath.localeCompare(currentPath) < 0;
+}
+
 function buildDevModuleRegistry(modules: Record<string, RuntimeModule>): DevModuleRegistry {
+  const resolvedExports: Record<string, unknown> = {};
   const uniqueExports: Record<string, unknown> = {};
   const duplicateExports: Record<string, string[]> = {};
   const exportToModules = new Map<string, string[]>();
+  const exportToFirstValue = new Map<string, unknown>();
+  const resolvedExportSourcePaths = new Map<string, string>();
   const modulePaths = Object.keys(modules).sort((leftPath, rightPath) => leftPath.localeCompare(rightPath));
 
   for (const modulePath of modulePaths) {
@@ -71,19 +93,33 @@ function buildDevModuleRegistry(modules: Record<string, RuntimeModule>): DevModu
       const existingModules = exportToModules.get(exportName);
       if (!existingModules) {
         exportToModules.set(exportName, [modulePath]);
+        exportToFirstValue.set(exportName, exportValue);
+        resolvedExportSourcePaths.set(exportName, modulePath);
+        resolvedExports[exportName] = exportValue;
         uniqueExports[exportName] = exportValue;
         continue;
       }
 
       existingModules.push(modulePath);
       duplicateExports[exportName] = [...existingModules];
-      delete uniqueExports[exportName];
+
+      const firstValue = exportToFirstValue.get(exportName);
+      if (!Object.is(firstValue, exportValue)) {
+        delete uniqueExports[exportName];
+      }
+
+      const currentResolvedSource = resolvedExportSourcePaths.get(exportName);
+      if (!currentResolvedSource || shouldPreferModulePath(currentResolvedSource, modulePath)) {
+        resolvedExportSourcePaths.set(exportName, modulePath);
+        resolvedExports[exportName] = exportValue;
+      }
     }
   }
 
   return {
     modules,
     modulePaths,
+    resolvedExports,
     uniqueExports,
     duplicateExports,
     getModule: (modulePath: string) => modules[modulePath],
@@ -192,25 +228,29 @@ export async function exposeAllModulesAsDevGlobals(): Promise<void> {
     const domainAliasExports: Record<string, Record<string, unknown>> = {};
     const domainModules: Record<string, Record<string, RuntimeModule>> = {};
     const domainModulePaths: Record<string, string[]> = {};
+    const domainUniqueExports: Record<string, Record<string, unknown>> = {};
     const domainDuplicateExports: Record<string, Record<string, string[]>> = {};
 
     for (const [domain, domainRegistry] of Object.entries(domainRegistries)) {
-      domainAliasExports[domain] = domainRegistry.uniqueExports;
+      domainAliasExports[domain] = domainRegistry.resolvedExports;
       domainModules[domain] = domainRegistry.modules;
       domainModulePaths[domain] = domainRegistry.modulePaths;
+      domainUniqueExports[domain] = domainRegistry.uniqueExports;
       domainDuplicateExports[domain] = domainRegistry.duplicateExports;
     }
 
     exposeDevGlobals({
       zssDevModules: registry.modules,
       zssDevModulePaths: registry.modulePaths,
-      zssDevExports: registry.uniqueExports,
+      zssDevExports: registry.resolvedExports,
+      zssDevUniqueExports: registry.uniqueExports,
       zssDevDuplicateExports: registry.duplicateExports,
       getZssDevModule: registry.getModule,
       findZssDevExport: registry.findExport,
       zssDev: domainAliasExports,
       zssDevDomainModules: domainModules,
       zssDevDomainModulePaths: domainModulePaths,
+      zssDevDomainUniqueExports: domainUniqueExports,
       zssDevDomainDuplicateExports: domainDuplicateExports,
       getZssDevDomain: (domain: string) => domainRegistries[domain],
       findZssDevExportInDomain: (domain: string, exportName: string): ExportLookupResult | null => {
