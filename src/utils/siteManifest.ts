@@ -1,4 +1,4 @@
-import GM_fetch from '@trim21/gm-fetch'
+import GM_fetch from '@/utils/gmFetch'
 import { logger } from './logger'
 
 export const SEELIE_BASE_URL = 'https://zzz.seelie.me'

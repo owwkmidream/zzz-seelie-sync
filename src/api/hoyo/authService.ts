@@ -1,4 +1,4 @@
-import GM_fetch from '@trim21/gm-fetch';
+import GM_fetch from '@/utils/gmFetch';
 import type {
   ApiResponse,
   UserInfo,

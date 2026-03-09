@@ -3,7 +3,7 @@
  * 实现 createQRLogin → queryQRLoginStatus → getCookieAccountInfoBySToken 最短链路
  */
 
-import GM_fetch from '@trim21/gm-fetch';
+import GM_fetch from '@/utils/gmFetch';
 import { GM } from '$';
 import type {
   ApiResponse,
@@ -406,16 +406,18 @@ export async function getCookieTokenBySToken(stoken: string, mid: string): Promi
   const deviceInfo = await getCurrentDeviceInfo();
   const query = `stoken=${stoken}`;
   const ds = generateDS(query);
+  const cookie = `mid=${mid};stoken=${stoken};`;
 
   const url = `${PASSPORT_BASE}/account/auth/api/getCookieAccountInfoBySToken?stoken=${encodeURIComponent(stoken)}`;
 
   const response = await GM_fetch(url, {
     method: 'GET',
+    anonymous: true,
+    cookie,
     headers: {
       ...COOKIE_TOKEN_HEADERS_BASE,
       'x-rpc-device_id': deviceInfo.deviceId,
       'x-rpc-device_fp': deviceInfo.deviceFp || '0000000000000',
-      'cookie': `mid=${mid};stoken=${stoken};`,
       'ds': ds,
     },
   });

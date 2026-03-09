@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import monkey, { cdn } from 'vite-plugin-monkey';
+import monkey from 'vite-plugin-monkey';
 import { resolve } from 'path';
 import { execSync } from 'node:child_process';
 import { name as packageName, version as packageVersion } from './package.json';
@@ -126,7 +126,6 @@ export default defineConfig({
         autoGrant: true, // 自动检测并添加 @grant
         externalGlobals: {
           ...(minify ? {} : {
-            '@trim21/gm-fetch': cdn.jsdelivrFastly('GM_fetch'),
             // qrcode 从 1.5.2 起不再发布 build/qrcode.js，固定到最后一个可用 UMD 版本
             qrcode: [
               'QRCode',

@@ -21,7 +21,6 @@
     "docs:index:check": "node scripts/index-doc.js check"
   },
   "dependencies": {
-    "@trim21/gm-fetch": "^0.3.0",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {

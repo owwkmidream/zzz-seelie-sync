@@ -21,6 +21,7 @@
 
 ### 最近结构变更
 
+- `2026-02-26`：移除第三方 `@trim21/gm-fetch` 依赖，新增 `src/utils/gmFetch.ts` 统一封装 `GM.xmlHttpRequest`，为后续匿名请求与手动 Cookie 注入预留能力。
 - `2026-02-26`：建立索引维护体系，新增 `AGENT.md`、`scripts/index-doc.js`，并将 `docs/index.md` 固化为“手动区 + 自动区”双层结构。
 - `2026-02-20`：材料同步策略升级为“ID 映射优先 + 名称映射降级”，核心变更在 `src/services/SyncService.ts` 与 `src/services/mappers/itemsSyncMapper.ts`。
 - `2026-02-20`：开发调试全局导出策略统一，涉及 `src/main.ts`、`src/utils/devGlobals.ts`、`src/api/hoyo/index.ts`、`src/utils/seelie/index.ts`。
@@ -73,6 +74,7 @@
 | `src/utils/adCleanerMenu.ts` | `utils` | 去广告设置菜单 |
 | `src/utils/componentRegistry.ts` | `utils` | 组件注册入口 |
 | `src/utils/devGlobals.ts` | `utils` | 开发调试全局导出 |
+| `src/utils/gmFetch.ts` | `utils` | 通用工具模块 |
 | `src/utils/logger.ts` | `utils` | 日志工具 |
 | `src/utils/seelie/calculators.ts` | `utils/seelie` | Seelie 数据处理核心模块 |
 | `src/utils/seelie/constants.ts` | `utils/seelie` | Seelie 数据处理核心模块 |

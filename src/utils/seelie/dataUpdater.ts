@@ -1,7 +1,7 @@
 // Seelie 数据自动更新模块
 // 将 scripts/update-and-restore.js 的逻辑适配到油猴脚本环境
 
-import GM_fetch from '@trim21/gm-fetch'
+import GM_fetch from '@/utils/gmFetch'
 import type { SeelieLanguageData, SeelieStatsData } from './types'
 import { logger } from '../logger'
 import { getSiteManifest, SEELIE_BASE_URL, type StatsFileName } from '../siteManifest'

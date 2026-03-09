@@ -1,6 +1,6 @@
 // 米哈游绝区零 API 客户端请求编排
 
-import GM_fetch from '@trim21/gm-fetch';
+import GM_fetch from '@/utils/gmFetch';
 import type { ApiResponse } from './types';
 import { logger } from '../../utils/logger';
 import {
