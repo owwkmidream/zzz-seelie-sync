@@ -69,9 +69,9 @@ export function buildDeviceFpRequest(profile: DeviceInfo): DeviceFpRequest {
     device_id: profile.deviceId,
     seed_id: profile.seedId,
     seed_time: profile.seedTime,
-    platform: '4',
+    platform: '2',
     device_fp: profile.deviceFp,
-    app_name: 'nap_cn',
+    app_name: 'bbs_cn',
     ext_fields: buildDeviceExtFields(profile),
   };
 }

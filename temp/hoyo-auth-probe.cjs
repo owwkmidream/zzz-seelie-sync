@@ -629,9 +629,9 @@ function createGetFpBody(fixture, source) {
     device_id: fixture.deviceInfo.deviceId,
     seed_id: fixture.deviceInfo.seedId,
     seed_time: fixture.deviceInfo.seedTime,
-    platform: '4',
+    platform: '2',
     device_fp: fixture.deviceInfo.deviceFp,
-    app_name: 'nap_cn',
+    app_name: 'bbs_cn',
   };
 
   return JSON.stringify({

@@ -20,8 +20,8 @@ test('buildDeviceFpRequest: 使用稳定的 deviceId/seedId/seedTime', () => {
   assert.equal(request.seed_id, 'seed-id');
   assert.equal(request.seed_time, '1700000000000');
   assert.equal(request.device_fp, 'device-fp');
-  assert.equal(request.platform, '4');
-  assert.equal(request.app_name, 'nap_cn');
+  assert.equal(request.platform, '2');
+  assert.equal(request.app_name, 'bbs_cn');
 });
 
 test('buildDeviceFpRequest: ext_fields 与当前手机画像模板一致', () => {
