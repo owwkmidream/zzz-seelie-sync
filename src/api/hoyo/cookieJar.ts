@@ -1,6 +1,6 @@
 import { getResponseHeaderLines } from '../../utils/gmFetch';
 import type { AuthBundle } from './types';
-import { buildCookieHeader, buildCookieTokenV2Header, parseSetCookieLine } from './cookieUtils';
+import { buildCookieHeader, buildCookieTokenHeader, parseSetCookieLine } from './cookieUtils';
 
 export function buildStokenCookie(bundle: AuthBundle): string {
   return buildCookieHeader([
@@ -18,7 +18,7 @@ export function buildLTokenCookie(bundle: AuthBundle): string {
 }
 
 export function buildCookieTokenCookie(bundle: AuthBundle): string {
-  return buildCookieTokenV2Header(bundle.mid, bundle.cookieTokenV2);
+  return buildCookieTokenHeader(bundle.accountId, bundle.cookieToken);
 }
 
 export function buildCombinedSessionCookie(bundle: AuthBundle): string {
@@ -36,8 +36,10 @@ export function buildNapCookie(bundle: AuthBundle): string {
   ]);
 }
 
-export function getCookieValueFromResponse(response: Response, cookieName: string): string | null {
-  const setCookieLines = getResponseHeaderLines(response, 'set-cookie');
+export function getCookieValueFromSetCookieLines(
+  setCookieLines: readonly string[],
+  cookieName: string,
+): string | null {
   for (const line of setCookieLines) {
     const parsed = parseSetCookieLine(line);
     if (parsed?.name === cookieName) {
@@ -45,4 +47,8 @@ export function getCookieValueFromResponse(response: Response, cookieName: strin
     }
   }
   return null;
+}
+
+export function getCookieValueFromResponse(response: Response, cookieName: string): string | null {
+  return getCookieValueFromSetCookieLines(getResponseHeaderLines(response, 'set-cookie'), cookieName);
 }

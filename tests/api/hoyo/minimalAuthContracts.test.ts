@@ -8,7 +8,9 @@ import {
 } from '../../../src/api/hoyo/minimalAuthContracts';
 
 test('minimal auth contracts: NAP 主链结构与实测一致', () => {
-  assert.deepEqual(getMinimalAuthContract('login/account').minimalCookies, ['account_mid_v2', 'cookie_token_v2']);
+  assert.deepEqual(getMinimalAuthContract('verifyCookieToken').minimalCookies, ['account_id', 'cookie_token']);
+  assert.deepEqual(getMinimalAuthContract('getUserGameRolesByCookieToken').minimalCookies, ['account_id', 'cookie_token']);
+  assert.deepEqual(getMinimalAuthContract('login/account').minimalCookies, ['account_id', 'cookie_token']);
   assert.deepEqual(getMinimalAuthContract('login/info').minimalCookies, ['e_nap_token']);
   assert.deepEqual(getMinimalAuthContract('avatar_basic_list').minimalHeaders, ['x-rpc-device_fp']);
   assert.deepEqual(getMinimalAuthContract('batch_avatar_detail_v2').minimalHeaders, ['x-rpc-device_fp']);

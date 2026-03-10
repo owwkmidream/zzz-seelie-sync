@@ -144,13 +144,11 @@ export async function persistRootTokens(
     next.ltoken = undefined;
     next.ltuid = undefined;
     next.cookieToken = undefined;
-    next.cookieTokenV2 = undefined;
     next.accountId = undefined;
     next.eNapToken = undefined;
     next.selectedRole = undefined;
     next.ltokenUpdatedAt = undefined;
     next.cookieTokenUpdatedAt = undefined;
-    next.cookieTokenV2UpdatedAt = undefined;
     next.eNapTokenUpdatedAt = undefined;
     next.roleUpdatedAt = undefined;
   }
@@ -172,13 +170,6 @@ export async function persistCookieToken(cookieToken: string, accountId?: string
     cookieToken,
     accountId,
     cookieTokenUpdatedAt: Date.now(),
-  });
-}
-
-export async function persistCookieTokenV2(cookieTokenV2: string): Promise<AuthBundle> {
-  return await patchAuthBundle({
-    cookieTokenV2,
-    cookieTokenV2UpdatedAt: Date.now(),
   });
 }
 
@@ -212,10 +203,6 @@ export function hasLToken(bundle: AuthBundle): bundle is AuthBundle & { ltoken: 
 
 export function hasCookieToken(bundle: AuthBundle): bundle is AuthBundle & { cookieToken: string; accountId: string } {
   return Boolean(bundle.cookieToken && bundle.accountId);
-}
-
-export function hasCookieTokenV2(bundle: AuthBundle): bundle is AuthBundle & { mid: string; cookieTokenV2: string } {
-  return Boolean(bundle.mid && bundle.cookieTokenV2);
 }
 
 export function hasNapToken(bundle: AuthBundle): bundle is AuthBundle & { eNapToken: string } {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   buildCookieHeader,
-  buildCookieTokenV2Header,
+  buildCookieTokenHeader,
   parseSetCookieLine,
 } from '../../../src/api/hoyo/cookieUtils';
 
@@ -30,7 +30,7 @@ test('parseSetCookieLine: 无效输入返回 null', () => {
   assert.equal(parseSetCookieLine(''), null);
 });
 
-test('buildCookieTokenV2Header: 只输出 account_mid_v2 与 cookie_token_v2', () => {
-  const header = buildCookieTokenV2Header('428094597', 'cookie-token-v2');
-  assert.equal(header, 'account_mid_v2=428094597; cookie_token_v2=cookie-token-v2');
+test('buildCookieTokenHeader: 只输出 account_id 与 cookie_token', () => {
+  const header = buildCookieTokenHeader('428094597', 'cookie-token');
+  assert.equal(header, 'account_id=428094597; cookie_token=cookie-token');
 });

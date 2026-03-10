@@ -8,12 +8,13 @@ interface LoggerLike {
 
 interface CookieTokenExchangeResult {
   uid?: string;
-  cookieTokenV2: string;
+  cookieToken: string;
+  accountId: string;
 }
 
 interface CookieSessionBundle extends AuthBundle {
-  mid: string;
-  cookieTokenV2: string;
+  accountId: string;
+  cookieToken: string;
 }
 
 export interface PassportNapCoreDeps {
@@ -21,7 +22,7 @@ export interface PassportNapCoreDeps {
   logger: LoggerLike;
   readAuthBundle: () => Promise<AuthBundle>;
   patchAuthBundle: (patch: Partial<AuthBundle>) => Promise<AuthBundle>;
-  persistCookieTokenV2: (cookieTokenV2: string) => Promise<AuthBundle>;
+  persistCookieToken: (cookieToken: string, accountId: string) => Promise<AuthBundle>;
   persistSelectedRole: (role: UserGameRole) => Promise<AuthBundle>;
   persistNapToken: (eNapToken: string) => Promise<AuthBundle>;
   requestCookieTokenByStoken: () => Promise<CookieTokenExchangeResult>;
@@ -37,15 +38,15 @@ function hasRootTokens(bundle: AuthBundle): bundle is AuthBundle & { stoken: str
   return Boolean(bundle.stoken && bundle.mid);
 }
 
-function hasCookieTokenV2(bundle: AuthBundle): bundle is CookieSessionBundle {
-  return Boolean(bundle.mid && bundle.cookieTokenV2);
+function hasCookieToken(bundle: AuthBundle): bundle is CookieSessionBundle {
+  return Boolean(bundle.accountId && bundle.cookieToken);
 }
 
 function hasNapToken(bundle: AuthBundle): bundle is AuthBundle & { eNapToken: string } {
   return Boolean(bundle.eNapToken);
 }
 
-function isCookieTokenV2Fresh(
+function isCookieTokenFresh(
   updatedAt: number | undefined,
   now: () => number,
   ttlMs: number,
@@ -66,14 +67,14 @@ export function createPassportNapCore(deps: PassportNapCoreDeps) {
     const current = await deps.readAuthBundle();
     if (
       !forceRefresh
-      && hasCookieTokenV2(current)
-      && isCookieTokenV2Fresh(current.cookieTokenV2UpdatedAt, deps.now, deps.cookieTokenTtlMs)
+      && hasCookieToken(current)
+      && isCookieTokenFresh(current.cookieTokenUpdatedAt, deps.now, deps.cookieTokenTtlMs)
     ) {
       return;
     }
 
     if (cookieTokenRefreshPromise) {
-      deps.logger.debug(`🔁 复用进行中的 cookie_token_v2 刷新${forceRefresh ? '（强制）' : ''}`);
+      deps.logger.debug(`🔁 复用进行中的 cookie_token 刷新${forceRefresh ? '（强制）' : ''}`);
       await cookieTokenRefreshPromise;
       return;
     }
@@ -82,8 +83,8 @@ export function createPassportNapCore(deps: PassportNapCoreDeps) {
       const latestBeforeRefresh = await deps.readAuthBundle();
       if (
         !forceRefresh
-        && hasCookieTokenV2(latestBeforeRefresh)
-        && isCookieTokenV2Fresh(latestBeforeRefresh.cookieTokenV2UpdatedAt, deps.now, deps.cookieTokenTtlMs)
+        && hasCookieToken(latestBeforeRefresh)
+        && isCookieTokenFresh(latestBeforeRefresh.cookieTokenUpdatedAt, deps.now, deps.cookieTokenTtlMs)
       ) {
         return;
       }
@@ -92,14 +93,14 @@ export function createPassportNapCore(deps: PassportNapCoreDeps) {
         throw new Error('未找到 stoken/mid，请先扫码登录');
       }
 
-      const { cookieTokenV2, uid } = await deps.requestCookieTokenByStoken();
-      await deps.persistCookieTokenV2(cookieTokenV2);
+      const { cookieToken, accountId, uid } = await deps.requestCookieTokenByStoken();
+      await deps.persistCookieToken(cookieToken, accountId);
 
       if (uid && !latestBeforeRefresh.stuid) {
         await deps.patchAuthBundle({ stuid: uid });
       }
 
-      deps.logger.info('🔐 已刷新 cookie_token_v2');
+      deps.logger.info('🔐 已刷新 cookie_token');
     })();
 
     cookieTokenRefreshPromise = refreshPromise;
@@ -126,8 +127,8 @@ export function createPassportNapCore(deps: PassportNapCoreDeps) {
     const rolePromise = (async () => {
       await ensureCookieToken(forceRefresh);
       const bundle = await deps.readAuthBundle();
-      if (!hasCookieTokenV2(bundle)) {
-        throw new Error('未找到 account_mid_v2/cookie_token_v2，请先完成扫码登录');
+      if (!hasCookieToken(bundle)) {
+        throw new Error('未找到 cookie_token/account_id，请先完成扫码登录');
       }
 
       const cookie = deps.buildCookieTokenCookie(bundle);
@@ -156,8 +157,8 @@ export function createPassportNapCore(deps: PassportNapCoreDeps) {
     await ensureCookieToken(false);
 
     let bundle = await deps.readAuthBundle();
-    if (!hasCookieTokenV2(bundle)) {
-      throw new Error('未找到 account_mid_v2/cookie_token_v2，无法初始化 e_nap_token');
+    if (!hasCookieToken(bundle)) {
+      throw new Error('未找到 cookie_token/account_id，无法初始化 e_nap_token');
     }
 
     try {
@@ -167,11 +168,11 @@ export function createPassportNapCore(deps: PassportNapCoreDeps) {
         throw error;
       }
 
-      deps.logger.warn('⚠️ e_nap_token 自举命中鉴权失败，升级刷新 cookie_token_v2 后重试');
+      deps.logger.warn('⚠️ e_nap_token 自举命中鉴权失败，升级刷新 cookie_token 后重试');
       await ensureCookieToken(true);
       bundle = await deps.readAuthBundle();
-      if (!hasCookieTokenV2(bundle)) {
-        throw new Error('刷新 cookie_token_v2 后仍缺少 account_mid_v2/cookie_token_v2');
+      if (!hasCookieToken(bundle)) {
+        throw new Error('刷新 cookie_token 后仍缺少 cookie_token/account_id');
       }
 
       return await deps.requestNapBootstrap(role, deps.buildCookieTokenCookie(bundle));

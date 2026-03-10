@@ -12,10 +12,10 @@ export function buildCookieHeader(entries: readonly CookieEntry[]): string {
     .join('; ');
 }
 
-export function buildCookieTokenV2Header(mid?: string, cookieTokenV2?: string): string {
+export function buildCookieTokenHeader(accountId?: string, cookieToken?: string): string {
   return buildCookieHeader([
-    ['account_mid_v2', mid],
-    ['cookie_token_v2', cookieTokenV2],
+    ['account_id', accountId],
+    ['cookie_token', cookieToken],
   ]);
 }
 

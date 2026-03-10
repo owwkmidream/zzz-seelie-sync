@@ -47,13 +47,14 @@ async function flushAsyncWork(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-test('passport core: 新鲜 cookie_token_v2 直接复用，不再交换', async () => {
+test('passport core: 新鲜 cookie_token 直接复用，不再交换', async () => {
   let exchangeCalls = 0;
   const bundle = createBundle({
     stoken: 'stoken',
     mid: 'mid',
-    cookieTokenV2: 'cookie-token-v2',
-    cookieTokenV2UpdatedAt: 10_000,
+    accountId: '428094597',
+    cookieToken: 'cookie-token',
+    cookieTokenUpdatedAt: 10_000,
   });
 
   const core = createPassportNapCore({
@@ -61,17 +62,17 @@ test('passport core: 新鲜 cookie_token_v2 直接复用，不再交换', async 
     logger: createLogger(),
     readAuthBundle: async () => bundle,
     patchAuthBundle: async (patch) => Object.assign(bundle, patch),
-    persistCookieTokenV2: async (cookieTokenV2) => Object.assign(bundle, { cookieTokenV2 }),
+    persistCookieToken: async (cookieToken, accountId) => Object.assign(bundle, { cookieToken, accountId }),
     persistSelectedRole: async (role) => Object.assign(bundle, { selectedRole: role }),
     persistNapToken: async (eNapToken) => Object.assign(bundle, { eNapToken }),
     requestCookieTokenByStoken: async () => {
       exchangeCalls += 1;
-      return { uid: '428094597', cookieTokenV2: 'new-cookie-token-v2' };
+      return { uid: '428094597', cookieToken: 'new-cookie-token', accountId: '428094597' };
     },
     verifyCookieToken: async () => {},
     requestGameRolesByCookieToken: async () => [createRole()],
     requestNapBootstrap: async () => 'nap-token',
-    buildCookieTokenCookie: ({ mid, cookieTokenV2 }) => `account_mid_v2=${mid}; cookie_token_v2=${cookieTokenV2}`,
+    buildCookieTokenCookie: ({ accountId, cookieToken }) => `account_id=${accountId}; cookie_token=${cookieToken}`,
     isAuthRefreshableError: () => false,
     cookieTokenTtlMs: 60_000,
   });
@@ -87,18 +88,19 @@ test('passport core: 并发 ensureCookieToken 只触发一次交换', async () =
     stoken: 'stoken',
     mid: 'mid',
   });
-  const deferred = createDeferred<{ uid: string; cookieTokenV2: string }>();
+  const deferred = createDeferred<{ uid: string; cookieToken: string; accountId: string }>();
 
   const core = createPassportNapCore({
     now: () => 10_000,
     logger: createLogger(),
     readAuthBundle: async () => bundle,
     patchAuthBundle: async (patch) => Object.assign(bundle, patch),
-    persistCookieTokenV2: async (cookieTokenV2) => {
+    persistCookieToken: async (cookieToken, accountId) => {
       persistCalls += 1;
       return Object.assign(bundle, {
-        cookieTokenV2,
-        cookieTokenV2UpdatedAt: 10_000,
+        cookieToken,
+        accountId,
+        cookieTokenUpdatedAt: 10_000,
       });
     },
     persistSelectedRole: async (role) => Object.assign(bundle, { selectedRole: role }),
@@ -110,7 +112,7 @@ test('passport core: 并发 ensureCookieToken 只触发一次交换', async () =
     verifyCookieToken: async () => {},
     requestGameRolesByCookieToken: async () => [createRole()],
     requestNapBootstrap: async () => 'nap-token',
-    buildCookieTokenCookie: ({ mid, cookieTokenV2 }) => `account_mid_v2=${mid}; cookie_token_v2=${cookieTokenV2}`,
+    buildCookieTokenCookie: ({ accountId, cookieToken }) => `account_id=${accountId}; cookie_token=${cookieToken}`,
     isAuthRefreshableError: () => false,
     cookieTokenTtlMs: 60_000,
   });
@@ -123,12 +125,14 @@ test('passport core: 并发 ensureCookieToken 只触发一次交换', async () =
 
   deferred.resolve({
     uid: '428094597',
-    cookieTokenV2: 'cookie-token-v2',
+    cookieToken: 'cookie-token',
+    accountId: '428094597',
   });
 
   await Promise.all([promise1, promise2]);
   assert.equal(persistCalls, 1);
-  assert.equal(bundle.cookieTokenV2, 'cookie-token-v2');
+  assert.equal(bundle.cookieToken, 'cookie-token');
+  assert.equal(bundle.accountId, '428094597');
   assert.equal(bundle.stuid, '428094597');
 });
 
@@ -143,10 +147,10 @@ test('passport core: 角色缓存命中时不再触发 verify / role discovery',
     logger: createLogger(),
     readAuthBundle: async () => bundle,
     patchAuthBundle: async (patch) => Object.assign(bundle, patch),
-    persistCookieTokenV2: async (cookieTokenV2) => Object.assign(bundle, { cookieTokenV2 }),
+    persistCookieToken: async (cookieToken, accountId) => Object.assign(bundle, { cookieToken, accountId }),
     persistSelectedRole: async (nextRole) => Object.assign(bundle, { selectedRole: nextRole }),
     persistNapToken: async (eNapToken) => Object.assign(bundle, { eNapToken }),
-    requestCookieTokenByStoken: async () => ({ uid: '428094597', cookieTokenV2: 'cookie-token-v2' }),
+    requestCookieTokenByStoken: async () => ({ uid: '428094597', cookieToken: 'cookie-token', accountId: '428094597' }),
     verifyCookieToken: async () => {
       verifyCalls += 1;
     },
@@ -155,7 +159,7 @@ test('passport core: 角色缓存命中时不再触发 verify / role discovery',
       return [role];
     },
     requestNapBootstrap: async () => 'nap-token',
-    buildCookieTokenCookie: ({ mid, cookieTokenV2 }) => `account_mid_v2=${mid}; cookie_token_v2=${cookieTokenV2}`,
+    buildCookieTokenCookie: ({ accountId, cookieToken }) => `account_id=${accountId}; cookie_token=${cookieToken}`,
     isAuthRefreshableError: () => false,
     cookieTokenTtlMs: 60_000,
   });
@@ -172,8 +176,9 @@ test('passport core: 冷启动角色发现按 verify -> role 顺序执行', asyn
   const bundle = createBundle({
     stoken: 'stoken',
     mid: 'mid',
-    cookieTokenV2: 'cookie-token-v2',
-    cookieTokenV2UpdatedAt: 10_000,
+    accountId: '428094597',
+    cookieToken: 'cookie-token',
+    cookieTokenUpdatedAt: 10_000,
   });
 
   const core = createPassportNapCore({
@@ -181,13 +186,13 @@ test('passport core: 冷启动角色发现按 verify -> role 顺序执行', asyn
     logger: createLogger(),
     readAuthBundle: async () => bundle,
     patchAuthBundle: async (patch) => Object.assign(bundle, patch),
-    persistCookieTokenV2: async (cookieTokenV2) => Object.assign(bundle, { cookieTokenV2 }),
+    persistCookieToken: async (cookieToken, accountId) => Object.assign(bundle, { cookieToken, accountId }),
     persistSelectedRole: async (nextRole) => {
       calls.push('persistRole');
       return Object.assign(bundle, { selectedRole: nextRole });
     },
     persistNapToken: async (eNapToken) => Object.assign(bundle, { eNapToken }),
-    requestCookieTokenByStoken: async () => ({ uid: '428094597', cookieTokenV2: 'cookie-token-v2' }),
+    requestCookieTokenByStoken: async () => ({ uid: '428094597', cookieToken: 'cookie-token', accountId: '428094597' }),
     verifyCookieToken: async () => {
       calls.push('verify');
     },
@@ -196,7 +201,7 @@ test('passport core: 冷启动角色发现按 verify -> role 顺序执行', asyn
       return [role];
     },
     requestNapBootstrap: async () => 'nap-token',
-    buildCookieTokenCookie: ({ mid, cookieTokenV2 }) => `account_mid_v2=${mid}; cookie_token_v2=${cookieTokenV2}`,
+    buildCookieTokenCookie: ({ accountId, cookieToken }) => `account_id=${accountId}; cookie_token=${cookieToken}`,
     isAuthRefreshableError: () => false,
     cookieTokenTtlMs: 60_000,
   });
@@ -206,15 +211,16 @@ test('passport core: 冷启动角色发现按 verify -> role 顺序执行', asyn
   assert.deepEqual(calls, ['verify', 'roles', 'persistRole']);
 });
 
-test('passport core: e_nap_token 自举命中鉴权失败时只强刷一次 cookie_token_v2 再重试一次', async () => {
+test('passport core: e_nap_token 自举命中鉴权失败时只强刷一次 cookie_token 再重试一次', async () => {
   const role = createRole();
   let exchangeCalls = 0;
   let bootstrapCalls = 0;
   const bundle = createBundle({
     stoken: 'stoken',
     mid: 'mid',
-    cookieTokenV2: 'cookie-token-v2',
-    cookieTokenV2UpdatedAt: 10_000,
+    accountId: '428094597',
+    cookieToken: 'cookie-token',
+    cookieTokenUpdatedAt: 10_000,
     selectedRole: role,
   });
 
@@ -223,15 +229,16 @@ test('passport core: e_nap_token 自举命中鉴权失败时只强刷一次 cook
     logger: createLogger(),
     readAuthBundle: async () => bundle,
     patchAuthBundle: async (patch) => Object.assign(bundle, patch),
-    persistCookieTokenV2: async (cookieTokenV2) => Object.assign(bundle, {
-      cookieTokenV2,
-      cookieTokenV2UpdatedAt: 10_001,
+    persistCookieToken: async (cookieToken, accountId) => Object.assign(bundle, {
+      cookieToken,
+      accountId,
+      cookieTokenUpdatedAt: 10_001,
     }),
     persistSelectedRole: async (nextRole) => Object.assign(bundle, { selectedRole: nextRole }),
     persistNapToken: async (eNapToken) => Object.assign(bundle, { eNapToken }),
     requestCookieTokenByStoken: async () => {
       exchangeCalls += 1;
-      return { uid: '428094597', cookieTokenV2: `cookie-token-v2-${exchangeCalls}` };
+      return { uid: '428094597', cookieToken: `cookie-token-${exchangeCalls}`, accountId: '428094597' };
     },
     verifyCookieToken: async () => {},
     requestGameRolesByCookieToken: async () => [role],
@@ -243,7 +250,7 @@ test('passport core: e_nap_token 自举命中鉴权失败时只强刷一次 cook
 
       return 'nap-token';
     },
-    buildCookieTokenCookie: ({ mid, cookieTokenV2 }) => `account_mid_v2=${mid}; cookie_token_v2=${cookieTokenV2}`,
+    buildCookieTokenCookie: ({ accountId, cookieToken }) => `account_id=${accountId}; cookie_token=${cookieToken}`,
     isAuthRefreshableError: (error) => error instanceof ApiResponseError && error.retcode === -100,
     cookieTokenTtlMs: 60_000,
   });
@@ -263,14 +270,14 @@ test('passport core: 缺少 stoken/mid 时直接报错，不再尝试 fallback',
     logger: createLogger(),
     readAuthBundle: async () => bundle,
     patchAuthBundle: async (patch) => Object.assign(bundle, patch),
-    persistCookieTokenV2: async (cookieTokenV2) => Object.assign(bundle, { cookieTokenV2 }),
+    persistCookieToken: async (cookieToken, accountId) => Object.assign(bundle, { cookieToken, accountId }),
     persistSelectedRole: async (role) => Object.assign(bundle, { selectedRole: role }),
     persistNapToken: async (eNapToken) => Object.assign(bundle, { eNapToken }),
-    requestCookieTokenByStoken: async () => ({ uid: '428094597', cookieTokenV2: 'cookie-token-v2' }),
+    requestCookieTokenByStoken: async () => ({ uid: '428094597', cookieToken: 'cookie-token', accountId: '428094597' }),
     verifyCookieToken: async () => {},
     requestGameRolesByCookieToken: async () => [createRole()],
     requestNapBootstrap: async () => 'nap-token',
-    buildCookieTokenCookie: ({ mid, cookieTokenV2 }) => `account_mid_v2=${mid}; cookie_token_v2=${cookieTokenV2}`,
+    buildCookieTokenCookie: ({ accountId, cookieToken }) => `account_id=${accountId}; cookie_token=${cookieToken}`,
     isAuthRefreshableError: () => false,
     cookieTokenTtlMs: 60_000,
   });

@@ -31,9 +31,9 @@
 | --- | --- | --- | --- |
 | `getCookieAccountInfoBySToken` | `mid + stoken` | 无 | `authBundle` / `legacy` 两套 `stoken` 都成功 |
 | `getLTokenBySToken` | `mid + stoken` | 无 | `authBundle` / `legacy` 两套 `stoken` 都成功 |
-| `verifyCookieToken` | `account_mid_v2 + cookie_token_v2` | 无 | 基于 `2.js` 成功 |
-| `getUserGameRolesByCookieToken` | `account_mid_v2 + cookie_token_v2` | 无 | 基于 Web 模板成功 |
-| `login/account` | `account_mid_v2 + cookie_token_v2` | 无 | 成功写出 `e_nap_token` |
+| `verifyCookieToken` | `account_id + cookie_token` | 无 | 以脚本托管 QR 链路为准 |
+| `getUserGameRolesByCookieToken` | `account_id + cookie_token` | 无 | 以脚本托管 QR 链路为准 |
+| `login/account` | `account_id + cookie_token` | 无 | 成功写出 `e_nap_token` |
 | `login/info` | `e_nap_token` | 无 | 只认业务 token |
 | `avatar_basic_list` | `e_nap_token` | `x-rpc-device_fp` | `device_id` / `platform` 可不显式带 |
 | `batch_avatar_detail_v2` | `e_nap_token` | `x-rpc-device_fp` | 与基础列表一致 |
@@ -50,6 +50,7 @@
 扫码登录
   -> stoken + mid (+ stuid)
   -> getCookieAccountInfoBySToken
+  -> cookie_token + account_id
   -> getUserGameRolesByCookieToken (passport-api)
   -> login/account
   -> 从 Set-Cookie 抓取 e_nap_token
@@ -88,13 +89,14 @@
 - 派生 token
   - `ltoken`
   - `ltuid`
-  - `cookieTokenV2`
+  - `cookieToken`
+  - `accountId`
   - `eNapToken`
 - 运行态辅助信息
   - `selectedRole`
   - `rootTokensUpdatedAt`
   - `ltokenUpdatedAt`
-  - `cookieTokenV2UpdatedAt`
+  - `cookieTokenUpdatedAt`
   - `eNapTokenUpdatedAt`
   - `roleUpdatedAt`
 
@@ -102,7 +104,8 @@
 
 - 旧版 `zzz_passport_tokens` 会自动迁移到新结构
 - 根凭证发生变化时，派生 token 会整体失效并重建
-- 旧 `cookieToken/accountId` 字段仍可能暂存在存储里，但当前 NAP 运行时已不再读取它们
+- 2026-03-11 起，当前 NAP 运行时重新以 `cookieToken + accountId` 为主
+- 早前基于 `D:\\2.js` 观察到的 `cookie_token_v2/account_mid_v2` 仅视为浏览器上下文现象，不再当作脚本托管主链事实
 
 ### 3.2 DeviceProfile
 
@@ -178,7 +181,7 @@
 
 特征：
 
-- 当前运行时只依赖 `account_mid_v2 + cookie_token_v2`
+- 当前运行时只依赖 `account_id + cookie_token`
 - 不再显式拼额外鉴权头
 
 ### 4.4 Nap Bootstrap / Nap Session Profile
@@ -216,8 +219,8 @@
 | `createQRLogin` / `queryQRLoginStatus` | 无 | `x-rpc-app_id + x-rpc-device_id` | 当前样本下已真实成功；中途出现过短暂 `-3502` 频控 |
 | `getLTokenBySToken` | `mid + stoken` | 无 | `authBundle` / `legacy` 两套都成功 |
 | `getCookieAccountInfoBySToken` | `mid + stoken` | 无 | `authBundle` / `legacy` 两套都成功 |
-| `getUserGameRolesByCookieToken` | `account_mid_v2 + cookie_token_v2` | 无 | passport-api 角色发现入口 |
-| `login/account` | `account_mid_v2 + cookie_token_v2` | 无 | 从响应 `Set-Cookie` 抓 `e_nap_token` |
+| `getUserGameRolesByCookieToken` | `account_id + cookie_token` | 无 | passport-api 角色发现入口 |
+| `login/account` | `account_id + cookie_token` | 无 | 从响应 `Set-Cookie` 抓 `e_nap_token` |
 | `login/info` | `e_nap_token` | 无 | 只依赖业务 token |
 | `avatar_basic_list` | `e_nap_token` | `x-rpc-device_fp` | 当前显式最小头只剩 `device_fp` |
 | `batch_avatar_detail_v2` | `e_nap_token` | `x-rpc-device_fp` | 与基础列表一致 |
@@ -236,7 +239,7 @@
 - `src/api/hoyo/cookieJar.ts`
   - 负责拼 Cookie 与解析 `Set-Cookie`
 - `src/api/hoyo/passportCore.ts`
-  - 负责 `stoken -> cookie_token_v2 -> role -> e_nap_token` 的可测核心流程
+  - 负责 `stoken -> cookie_token -> role -> e_nap_token` 的可测核心流程
 - `src/api/hoyo/recordAuthCore.ts`
   - 负责 `mid + stoken -> uid/ltuid -> ltoken` 的可测核心流程
 - `src/api/hoyo/requestCore.ts`
@@ -246,7 +249,7 @@
 - `src/api/hoyo/ds.ts`
   - 负责 `DS` 生成
 - `src/api/hoyo/passportService.ts`
-  - 负责扫码、`stoken -> cookie_token_v2`、角色发现（passport-api）、`e_nap_token` 自举
+  - 负责扫码、`stoken -> cookie_token`、角色发现（passport-api）、`e_nap_token` 自举
 - `src/api/hoyo/authService.ts`
   - 负责用户缓存与 `login/info`
 - `src/api/hoyo/client.ts`

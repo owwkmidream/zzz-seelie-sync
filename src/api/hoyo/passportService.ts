@@ -3,7 +3,7 @@
  * 主链路：扫码 -> stoken/mid -> cookie_token -> 角色 -> e_nap_token
  */
 
-import GM_fetch from '@/utils/gmFetch';
+import GM_fetch, { getResponseHeaderLines } from '@/utils/gmFetch';
 import { logger } from '@/utils/logger';
 import {
   ApiResponse,
@@ -15,7 +15,12 @@ import {
   UserGameRole,
   UserGameRolesResponse,
 } from './types';
-import { buildCookieTokenCookie, buildStokenCookie, getCookieValueFromResponse } from './cookieJar';
+import {
+  buildCookieTokenCookie,
+  buildStokenCookie,
+  getCookieValueFromResponse,
+} from './cookieJar';
+import { extractCookieTokenExchangeResult } from './passportCookieParser';
 import {
   buildCookieTokenExchangeHeaders,
   buildLTokenExchangeHeaders,
@@ -39,7 +44,7 @@ import {
   clearAuthBundle,
   hasRootTokens,
   patchAuthBundle,
-  persistCookieTokenV2,
+  persistCookieToken,
   persistLToken,
   persistNapToken,
   persistRootTokens,
@@ -114,7 +119,7 @@ function isAuthRefreshableError(error: unknown): boolean {
   return false;
 }
 
-async function requestCookieTokenV2ByStoken(): Promise<{ uid?: string; cookieTokenV2: string }> {
+async function requestCookieTokenByStoken(): Promise<{ uid?: string; cookieToken: string; accountId: string }> {
   const bundle = await readAuthBundle();
   const { response, data } = await requestApi<CookieTokenData>(
     `${COOKIE_TOKEN_URL}?stoken=${encodeURIComponent(bundle.stoken ?? '')}`,
@@ -124,18 +129,10 @@ async function requestCookieTokenV2ByStoken(): Promise<{ uid?: string; cookieTok
       cookie: buildStokenCookie(bundle),
       headers: buildCookieTokenExchangeHeaders(),
     },
-    '获取 cookie_token_v2 失败',
+    '获取 cookie_token 失败',
   );
 
-  const cookieTokenV2 = getCookieValueFromResponse(response, 'cookie_token_v2');
-  if (!cookieTokenV2) {
-    throw new Error('获取 cookie_token_v2 失败：响应中未返回 cookie_token_v2');
-  }
-
-  return {
-    uid: data.data.uid,
-    cookieTokenV2,
-  };
+  return extractCookieTokenExchangeResult(getResponseHeaderLines(response, 'set-cookie'), data.data);
 }
 
 async function exchangeLTokenByStoken(): Promise<LTokenData> {
@@ -240,14 +237,14 @@ const passportNapCore = createPassportNapCore({
   logger,
   readAuthBundle,
   patchAuthBundle,
-  persistCookieTokenV2,
+  persistCookieToken,
   persistSelectedRole,
   persistNapToken,
-  requestCookieTokenByStoken: requestCookieTokenV2ByStoken,
+  requestCookieTokenByStoken,
   verifyCookieToken,
   requestGameRolesByCookieToken,
   requestNapBootstrap,
-  buildCookieTokenCookie: buildCookieTokenCookie as (bundle: { mid: string; cookieTokenV2: string }) => string,
+  buildCookieTokenCookie: buildCookieTokenCookie as (bundle: { accountId: string; cookieToken: string }) => string,
   isAuthRefreshableError,
   cookieTokenTtlMs: COOKIE_TOKEN_TTL_MS,
 });

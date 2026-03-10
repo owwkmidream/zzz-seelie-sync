@@ -21,6 +21,7 @@
 
 ### 最近结构变更
 
+- `2026-03-11`：收敛 NAP 脚本托管主链回 `cookie_token + account_id`，新增 `src/api/hoyo/passportCookieParser.ts` 与 `tests/api/hoyo/passportService.test.ts` 覆盖 `getCookieAccountInfoBySToken` 的响应解析，避免再次误判为 `cookie_token_v2`。
 - `2026-03-11`：新增 `src/api/hoyo/deviceProfileCore.ts` 与对应单测，收敛 `getFp` 的 seed/request 标识持久化规则，并把 `getFp` 头压回最小结构。
 - `2026-03-11`：新增 `src/api/hoyo/recordAuthCore.ts`，把 `note` 链的 `ltoken/ltuid` 刷新逻辑下沉到可注入 core，并补上 `recordAuthCore` / `requestCore` 的 note 路径单测。
 - `2026-03-11`：新增 `src/api/hoyo/passportCore.ts`、`src/api/hoyo/requestCore.ts`，把 NAP 主链刷新/重试状态机下沉到可注入 core，并补上 mock 流程单测。
@@ -69,6 +70,7 @@
 | `src/api/hoyo/index.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/items.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/minimalAuthContracts.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/passportCookieParser.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/passportCore.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/passportService.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/recordAuthCore.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |

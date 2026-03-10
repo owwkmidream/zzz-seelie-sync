@@ -1001,7 +1001,7 @@ function buildProbeSpecs(ctx) {
             'x-rpc-game_biz': ctx.twoJs.gameBiz,
           },
           headerNames: ['User-Agent', 'x-rpc-app_id', 'x-rpc-game_biz'],
-          cookieNames: ['account_mid_v2', 'cookie_token_v2', 'account_id_v2', 'cookie_token', 'account_id'],
+          cookieNames: ['account_id', 'cookie_token'],
         }),
         async () => ({
           source: 'current-repo web verify',
@@ -1037,7 +1037,7 @@ function buildProbeSpecs(ctx) {
             'x-rpc-sdk_version',
             'x-rpc-app_version',
           ],
-          cookieNames: ['account_mid_v2', 'cookie_token_v2', 'account_id_v2', 'cookie_token', 'account_id'],
+          cookieNames: ['account_id', 'cookie_token'],
         }),
       ],
       async execute(_ctx, { template, cookieNames, headerNames }) {
@@ -1068,7 +1068,7 @@ function buildProbeSpecs(ctx) {
             'x-rpc-mi_referrer': CONSTS.webMiReferrer,
           },
           headerNames: ['Origin', 'Referer', 'User-Agent', 'x-rpc-mi_referrer'],
-          cookieNames: ['account_mid_v2', 'cookie_token_v2', 'account_id_v2', 'cookie_token', 'account_id'],
+          cookieNames: ['account_id', 'cookie_token'],
         }),
       ],
       async execute(_ctx, { template, cookieNames, headerNames }) {
@@ -1097,7 +1097,7 @@ function buildProbeSpecs(ctx) {
             'Content-Type': 'application/json',
           },
           headerNames: ['User-Agent', 'Content-Type'],
-          cookieNames: ['account_mid_v2', 'cookie_token_v2', 'account_id_v2', 'cookie_token', 'account_id'],
+          cookieNames: ['account_id', 'cookie_token'],
         }),
       ],
       async execute(_ctx, { template, cookieNames, headerNames }) {

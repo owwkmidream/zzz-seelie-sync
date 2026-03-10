@@ -24,6 +24,9 @@
 - 文档只记录键名、头名、模板来源与结果
 - 不落任何真实 token / cookie 实值
 - `stoken` 端点按 `authBundle` / `legacy` 两套 `stoken` 分别实测
+- 2026-03-11 补充说明：
+  - `D:\\2.js` 中出现的 `cookie_token_v2/account_mid_v2` 属于浏览器上下文观测值
+  - 当前脚本托管 QR 链路以 `getCookieAccountInfoBySToken` 实际返回的 `cookie_token/account_id` 为准
 
 ## 2. 方法
 
@@ -53,9 +56,9 @@
 | `getCookieAccountInfoBySToken.legacy` | 成功 | `current-repo X4 mobile` | `mid`, `stoken` | 无 | `legacy stoken` 也可用 |
 | `getLTokenBySToken.authBundle` | 成功 | `current-repo X4 mobile` | `mid`, `stoken` | 无 | `authBundle.stoken` 可用 |
 | `getLTokenBySToken.legacy` | 成功 | `current-repo X4 mobile` | `mid`, `stoken` | 无 | `legacy stoken` 也可用 |
-| `verifyCookieToken` | 成功 | `2.js minimal` | `account_mid_v2`, `cookie_token_v2` | 无 | 不需要额外显式头 |
-| `getUserGameRolesByCookieToken` | 成功 | `current-repo / cleaned-json web` | `account_mid_v2`, `cookie_token_v2` | 无 | 角色发现最小显式结构与 `verifyCookieToken` 一致 |
-| `login/account` | 成功 | `2.js minimal` | `account_mid_v2`, `cookie_token_v2` | 无 | 成功返回 `e_nap_token` |
+| `verifyCookieToken` | 成功 | `TeyvatGuide / QR script-managed session` | `account_id`, `cookie_token` | 无 | 不需要额外显式头 |
+| `getUserGameRolesByCookieToken` | 成功 | `TeyvatGuide / QR script-managed session` | `account_id`, `cookie_token` | 无 | 角色发现最小显式结构与 `verifyCookieToken` 一致 |
+| `login/account` | 成功 | `TeyvatGuide / QR script-managed session` | `account_id`, `cookie_token` | 无 | 成功返回 `e_nap_token` |
 | `login/info` | 成功 | `minimal web session` | `e_nap_token` | 无 | 只要 fresh `e_nap_token` |
 | `avatar_basic_list` | 成功 | `2.js minimal cultivate` | `e_nap_token` | `x-rpc-device_fp` | `device_id` / `platform` 可不显式带 |
 | `batch_avatar_detail_v2` | 成功 | `2.js minimal cultivate` | `e_nap_token` | `x-rpc-device_fp` | 与 `avatar_basic_list` 一致 |
@@ -80,11 +83,11 @@
 ### 4.2 CookieToken / NapToken 链
 
 - `verifyCookieToken`
-  - 最小显式 Cookie：`account_mid_v2 + cookie_token_v2`
+  - 最小显式 Cookie：`account_id + cookie_token`
 - `getUserGameRolesByCookieToken`
-  - 最小显式 Cookie：`account_mid_v2 + cookie_token_v2`
+  - 最小显式 Cookie：`account_id + cookie_token`
 - `login/account`
-  - 最小显式 Cookie：`account_mid_v2 + cookie_token_v2`
+  - 最小显式 Cookie：`account_id + cookie_token`
   - 成功后从 `Set-Cookie` 抽 `e_nap_token`
 
 ### 4.3 Nap 业务端点
@@ -148,7 +151,7 @@
 这次实测后，当前仓库里最值得保留的“真实最小结构”是：
 
 - `mid + stoken` -> `cookie_token / ltoken`
-- `account_mid_v2 + cookie_token_v2` -> `verifyCookieToken / getUserGameRolesByCookieToken / login/account`
+- `account_id + cookie_token` -> `verifyCookieToken / getUserGameRolesByCookieToken / login/account`
 - `e_nap_token` -> `login/info / avatar_*`
 - `ltoken + ltuid` -> `note`
 - `getFp` 关键在 body 画像，而不是额外 Cookie
