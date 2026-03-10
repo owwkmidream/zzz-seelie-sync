@@ -24,4 +24,5 @@ dist-ssr
 *.sw?
 /.vscode/
 /.kiro/
-/temp/
+/temp/*
+!/temp/hoyo-auth-probe.cjs

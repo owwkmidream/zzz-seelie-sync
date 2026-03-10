@@ -28,8 +28,25 @@
 
 1. 全量生成索引：`pnpm run docs:index:generate`
 2. 过期检查：`pnpm run docs:index:check`
+3. 单元测试：`pnpm run test:unit`
+4. 类型检查：`pnpm run type-check`
 
 提交前应至少执行一次 `pnpm run docs:index:check`，若失败先修复再结束任务。
+
+## 测试约定
+
+1. 默认要求：**只要改代码，就要补测试或更新现有测试**。
+   - 不接受“先改完再靠手动点一遍”的交付方式。
+   - 如果当前改动确实无法补自动测试，必须在最终说明里明确写出原因、风险和未覆盖范围。
+2. 当前仓库已有可执行单元测试入口：`pnpm run test:unit`。
+3. 修改 `src/api/hoyo/*`、`tests/api/hoyo/*`、鉴权契约、Cookie/Header 生成逻辑时：
+   - 至少运行 `pnpm run test:unit`
+   - 至少运行 `pnpm run type-check`
+4. 若本次改动包含新增/删除/重命名文件，再顺序执行：
+   - `pnpm run docs:index:generate`
+   - `pnpm run docs:index:check`
+5. 不要并行执行 `docs:index:generate` 和 `docs:index:check`。
+   - 这个仓库里会出现先 `generate`、后 `check` 才稳定通过的情况。
 
 ## 语言与边界
 

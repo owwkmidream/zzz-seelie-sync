@@ -2,15 +2,45 @@
 
 ## 1. 目的
 
-这份文档记录 `zzz-seelie-sync` 当前已经落地的 HoYo 鉴权架构。
+这份文档记录两类事实：
 
-它不再是“猜测某个接口可能吃哪些 Cookie”的草稿，而是当前代码中的**实现事实**：
+- 当前仓库里的 HoYo 鉴权架构
+- 基于真实样本跑出来的端点最小鉴权结构
 
-- 根凭证怎么来
-- 脚本如何派生 `ltoken` / `cookie_token` / `e_nap_token`
-- 每类接口走哪一组 Cookie
-- 每类接口带哪一套手机头 profile
-- 设备档案如何持久化与刷新
+详细实测报告见：
+
+- `docs/api-auth-minimal-probe.md`
+
+这里保留总览，不再把“实现意图”和“实测结论”混在一起。
+
+## 1.1 本次实测输入
+
+- `D:\2.js`
+  - 提供 `COMMON_COOKIES`
+  - 提供 `USER_AGENT`
+  - 提供 `UID / REGION / GAME_BIZ`
+  - 提供 `x-rpc-device_id / x-rpc-device_fp`
+- 外部 fixture
+  - `zzz_device_info`
+  - `zzz_hoyo_auth_bundle`
+  - `zzz_passport_tokens`
+
+## 1.2 实测摘要
+
+| 端点 | 当前实测最小 Cookie | 当前实测最小 Header | 备注 |
+| --- | --- | --- | --- |
+| `getCookieAccountInfoBySToken` | `mid + stoken` | 无 | `authBundle` / `legacy` 两套 `stoken` 都成功 |
+| `getLTokenBySToken` | `mid + stoken` | 无 | `authBundle` / `legacy` 两套 `stoken` 都成功 |
+| `verifyCookieToken` | `account_mid_v2 + cookie_token_v2` | 无 | 基于 `2.js` 成功 |
+| `getUserGameRolesByCookieToken` | `account_mid_v2 + cookie_token_v2` | 无 | 基于 Web 模板成功 |
+| `login/account` | `account_mid_v2 + cookie_token_v2` | 无 | 成功写出 `e_nap_token` |
+| `login/info` | `e_nap_token` | 无 | 只认业务 token |
+| `avatar_basic_list` | `e_nap_token` | `x-rpc-device_fp` | `device_id` / `platform` 可不显式带 |
+| `batch_avatar_detail_v2` | `e_nap_token` | `x-rpc-device_fp` | 与基础列表一致 |
+| `avatar_calc` | `e_nap_token` | 无 | 当前样本下不需要额外显式头 |
+| `note` | `ltoken + ltuid` | `x-rpc-device_id` | `device_fp` 可不显式带 |
+| `getFp` | 无 | 无 | 关键在 body 的设备画像与 `ext_fields` |
+| `createQRLogin` / `queryQRLoginStatus` | 无 | `x-rpc-app_id + x-rpc-device_id` | 最终复跑成功；探测过程中出现过短暂 `-3502` 频控 |
 
 ## 2. 当前总架构
 
@@ -58,14 +88,13 @@
 - 派生 token
   - `ltoken`
   - `ltuid`
-  - `cookieToken`
-  - `accountId`
+  - `cookieTokenV2`
   - `eNapToken`
 - 运行态辅助信息
   - `selectedRole`
   - `rootTokensUpdatedAt`
   - `ltokenUpdatedAt`
-  - `cookieTokenUpdatedAt`
+  - `cookieTokenV2UpdatedAt`
   - `eNapTokenUpdatedAt`
   - `roleUpdatedAt`
 
@@ -73,6 +102,7 @@
 
 - 旧版 `zzz_passport_tokens` 会自动迁移到新结构
 - 根凭证发生变化时，派生 token 会整体失效并重建
+- 旧 `cookieToken/accountId` 字段仍可能暂存在存储里，但当前 NAP 运行时已不再读取它们
 
 ### 3.2 DeviceProfile
 
@@ -128,19 +158,14 @@
 
 用途：
 
-- `getLTokenBySToken`
 - `getCookieAccountInfoBySToken`
+- `getLTokenBySToken`
 
 特征：
 
-- 纯手机 UA
-- `Referer: https://webstatic.mihoyo.com/`
-- `X-Requested-With: com.mihoyo.hyperion`
-- `x-rpc-app_version`
-- `x-rpc-client_type: 5`
-- `x-rpc-device_id`
-- `x-rpc-device_fp`
-- `DS(X4)`
+- 当前 NAP 主链只依赖 `mid + stoken`
+- `getCookieAccountInfoBySToken` 运行时不再显式拼额外鉴权头
+- `getLTokenBySToken` 仍保留手机 X4 profile，供 `note` 链使用
 
 ### 4.3 Role Discovery Profile
 
@@ -150,9 +175,8 @@
 
 特征：
 
-- Web/PC UA
-- `Origin/Referer: https://act.mihoyo.com/`
-- `x-rpc-mi_referrer: https://act.mihoyo.com/zzz/gt/character-builder-h#/`
+- 当前运行时只依赖 `account_mid_v2 + cookie_token_v2`
+- 不再显式拼额外鉴权头
 
 ### 4.4 Nap Bootstrap / Nap Session Profile
 
@@ -164,12 +188,10 @@
 
 特征：
 
-- Web/PC UA
-- `Referer: https://act.mihoyo.com/`
-- `Origin: https://act.mihoyo.com/`
-- `x-rpc-mi_referrer: https://act.mihoyo.com/zzz/gt/character-builder-h#/`
-- `login/account` 不要求设备头
-- `nap_cultivate_tool` 会补 `x-rpc-device_id/x-rpc-device_fp` 与 `x-rpc-platform=4`
+- `login/account` 不再显式拼业务鉴权头
+- `login/info` 不再显式拼业务鉴权头
+- `avatar_basic_list` / `batch_avatar_detail_v2` 只显式补 `x-rpc-device_fp`
+- `avatar_calc` 不再显式拼业务鉴权头
 
 ### 4.5 Game Record Profile
 
@@ -189,18 +211,19 @@
 
 ## 5. 接口路由矩阵
 
-| 接口族 | 主 Cookie 组 | 备用组 | 头部 profile | 说明 |
-| --- | --- | --- | --- | --- |
-| `createQRLogin` / `queryQRLoginStatus` | 无 | 无 | `QR_PROFILE` | 只依赖设备 ID |
-| `getLTokenBySToken` | `mid + stoken (+ stuid)` | 无 | `STOKEN_EXCHANGE` | 从根凭证派生 `ltoken`（用于战绩接口） |
-| `getCookieAccountInfoBySToken` | `mid + stoken (+ stuid)` | 无 | `STOKEN_EXCHANGE` | 从根凭证派生 `cookie_token` |
-| `getUserGameRolesByCookieToken` | `cookie_token + account_id` | 无 | `ROLE_DISCOVERY` | passport-api 角色发现入口 |
-| `login/account` | `cookie_token + account_id` | 无 | `NAP_BOOTSTRAP` | 从响应 `Set-Cookie` 抓 `e_nap_token` |
-| `login/info` | `e_nap_token` | 无 | `NAP_SESSION` | 用于确认业务态与补齐用户缓存 |
-| `avatar_basic_list` | `e_nap_token` | 无 | `NAP_SESSION` | `client.request()` 自动路由 |
-| `batch_avatar_detail_v2` | `e_nap_token` | 无 | `NAP_SESSION` | `client.request()` 自动路由 |
-| `avatar_calc` | `e_nap_token` | 无 | `NAP_SESSION` | `client.request()` 自动路由 |
-| `game_record_zzz/api/zzz/note` | `ltoken + ltuid` | 无 | `GAME_RECORD` | `client.request()` 自动路由 |
+| 接口族 | 当前实测最小 Cookie | 当前实测最小 Header | 说明 |
+| --- | --- | --- | --- |
+| `createQRLogin` / `queryQRLoginStatus` | 无 | `x-rpc-app_id + x-rpc-device_id` | 当前样本下已真实成功；中途出现过短暂 `-3502` 频控 |
+| `getLTokenBySToken` | `mid + stoken` | 无 | `authBundle` / `legacy` 两套都成功 |
+| `getCookieAccountInfoBySToken` | `mid + stoken` | 无 | `authBundle` / `legacy` 两套都成功 |
+| `getUserGameRolesByCookieToken` | `account_mid_v2 + cookie_token_v2` | 无 | passport-api 角色发现入口 |
+| `login/account` | `account_mid_v2 + cookie_token_v2` | 无 | 从响应 `Set-Cookie` 抓 `e_nap_token` |
+| `login/info` | `e_nap_token` | 无 | 只依赖业务 token |
+| `avatar_basic_list` | `e_nap_token` | `x-rpc-device_fp` | 当前显式最小头只剩 `device_fp` |
+| `batch_avatar_detail_v2` | `e_nap_token` | `x-rpc-device_fp` | 与基础列表一致 |
+| `avatar_calc` | `e_nap_token` | 无 | 当前样本下不需要额外显式头 |
+| `game_record_zzz/api/zzz/note` | `ltoken + ltuid` | `x-rpc-device_id` | 当前显式最小头只剩 `device_id` |
+| `device-fp/api/getFp` | 无 | 无 | 关键在 body：`device_id/seed_id/seed_time/device_fp/bbs_device_id/ext_fields` |
 
 ## 6. 代码模块分工
 
@@ -210,12 +233,16 @@
   - 托管 `DeviceProfile`
 - `src/api/hoyo/cookieJar.ts`
   - 负责拼 Cookie 与解析 `Set-Cookie`
+- `src/api/hoyo/passportCore.ts`
+  - 负责 `stoken -> cookie_token_v2 -> role -> e_nap_token` 的可测核心流程
+- `src/api/hoyo/requestCore.ts`
+  - 负责 NAP/Note 请求的重试、singleflight 与 `device_fp` 刷新编排
 - `src/api/hoyo/headerProfiles.ts`
   - 负责手机头 profile
 - `src/api/hoyo/ds.ts`
   - 负责 `DS` 生成
 - `src/api/hoyo/passportService.ts`
-  - 负责扫码、`stoken -> cookie_token`、角色发现（passport-api）、`e_nap_token` 自举
+  - 负责扫码、`stoken -> cookie_token_v2`、角色发现（passport-api）、`e_nap_token` 自举
 - `src/api/hoyo/authService.ts`
   - 负责用户缓存与 `login/info`
 - `src/api/hoyo/client.ts`
@@ -239,12 +266,10 @@
 
 ## 8. 当前已知边界
 
-- 这次改造已经完成静态实现，并通过：
-  - `type-check`
-  - `lint`
-  - `build`
-- 但**尚未使用真实账号重新回归整套新链路**，尤其是：
-  - `login/account` 当前只走 `ltoken + ltuid`，不会再尝试其它 Cookie 组合
-  - `Set-Cookie` 在 Tampermonkey `GM.xmlHttpRequest` 响应头中的稳定性
-- 当前没有实现 `action_ticket` 分支。
-  - 如果后续发现 `login/account` 仍不稳定，再把 `stoken -> action_ticket -> role` 作为第二阶段链路引入。
+- 这份文档里的“最小结构”是**当前样本**下的真实结果，不承诺跨账号、跨地区、跨时间都完全一致。
+- `createQRLogin` / `queryQRLoginStatus` 在本次探测中既出现过成功，也出现过短暂 `retcode=-3502`。
+  - 说明当前结构可用，但频控窗口确实存在。
+- `getFp` 不能只看 header/cookie。
+  - 它真正敏感的是 body 里的设备画像，尤其是 `ext_fields`。
+- `e_nap_token` 依赖端点的最小 Cookie 指“端点本身”只需要 `e_nap_token`。
+  - 不包含“如何先拿到 `e_nap_token`”这一条前置链路。

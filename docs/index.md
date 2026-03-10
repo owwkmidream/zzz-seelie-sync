@@ -21,6 +21,9 @@
 
 ### 最近结构变更
 
+- `2026-03-11`：新增 `src/api/hoyo/passportCore.ts`、`src/api/hoyo/requestCore.ts`，把 NAP 主链刷新/重试状态机下沉到可注入 core，并补上 mock 流程单测。
+- `2026-03-11`：新增 `tests/api/hoyo/*.test.ts` 与 `test:unit`，开始为 HoYo 鉴权改造相关纯逻辑补单元测试，不再只靠手动请求回归。
+- `2026-03-11`：新增 `temp/hoyo-auth-probe.cjs` 与 `docs/api-auth-minimal-probe.md`，把 `D:\2.js` + 真实存储样本的 HoYo 端点最小鉴权结构实测结果落为文档。
 - `2026-03-10`：HoYo 鉴权体系重构为“扫码拿根凭证 -> 脚本派生 LToken / CookieToken / e_nap_token -> 按端点路由 Cookie / 手机头 profile”，新增 `authStore.ts`、`deviceProfile.ts`、`cookieJar.ts`、`headerProfiles.ts`、`ds.ts`、`authRouter.ts`。
 - `2026-02-26`：移除第三方 `@trim21/gm-fetch` 依赖，新增 `src/utils/gmFetch.ts` 统一封装 `GM.xmlHttpRequest`，为后续匿名请求与手动 Cookie 注入预留能力。
 - `2026-02-26`：建立索引维护体系，新增 `AGENT.md`、`scripts/index-doc.js`，并将 `docs/index.md` 固化为“手动区 + 自动区”双层结构。
@@ -33,6 +36,7 @@
 - 主调用链（从页面加载到同步执行）：
   `src/main.ts` → `src/app.ts` → `registerAllComponents()` → `domInjector.init()` → `SeeliePanel` → `SyncService` → (`src/api/hoyo/*` + `src/utils/seelie/*`)。
 - `docs/api-cookie-inventory.md`：HoYo / Seelie 运行时接口与 Cookie 依赖盘点，供后续“手动接管 Cookie”时做最小集合验证。
+- `docs/api-auth-minimal-probe.md`：基于 `D:\2.js` + 真实存储样本跑出的 HoYo 端点最小鉴权结构实测报告，优先用于判断哪些显式 header/cookie 可以删。
 - 手动区维护要求：只写职责、调用链、关键约束与近期结构变化，不复制自动区文件清单。
 - 当出现文件新增/删除/重命名或目录迁移时，先运行 `pnpm run docs:index:generate` 更新自动区，再补本手动区语义信息。
 
@@ -50,6 +54,7 @@
 | `src/api/hoyo/client.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/config.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/cookieJar.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/cookieUtils.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/devicePayload.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/deviceProfile.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/deviceService.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
@@ -60,7 +65,10 @@
 | `src/api/hoyo/headerProfiles.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/index.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/items.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/minimalAuthContracts.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/passportCore.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/passportService.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/requestCore.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/types.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/utils.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/app.ts` | `src` | 应用初始化与 DOM 注入协调 |
