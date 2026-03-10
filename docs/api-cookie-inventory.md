@@ -119,7 +119,9 @@
 - `requestDeviceId`
   - `getFp` body 里的稳定 16 位 hex
 - `seedId`
+  - `getFp` body 里的稳定 16 位 hex
 - `seedTime`
+  - `getFp` body 里的稳定毫秒时间戳
 - `product`
 - `deviceName`
 - `deviceFp`
@@ -229,6 +231,8 @@
   - 托管 `AuthBundle`
 - `src/api/hoyo/deviceProfile.ts`
   - 托管 `DeviceProfile`
+- `src/api/hoyo/deviceProfileCore.ts`
+  - 负责设备档案的创建、解析与 `device_fp` 刷新判定
 - `src/api/hoyo/cookieJar.ts`
   - 负责拼 Cookie 与解析 `Set-Cookie`
 - `src/api/hoyo/passportCore.ts`
@@ -271,6 +275,8 @@
   - 说明当前结构可用，但频控窗口确实存在。
 - `getFp` 不能只看 header/cookie。
   - 它真正敏感的是 body 里的设备画像，尤其是 `ext_fields`。
+- 当前 `getFp` 运行时已经不再显式拼业务鉴权头，但这不代表 body 画像可以随便改。
+  - 真正需要长期保持稳定的是：`requestDeviceId / seedId / seedTime / product / deviceName / ext_fields`。
 - `note` 运行时已经按最小结构收敛，但这仍然是静态/单测层验证，不代表已经完成浏览器实网回归。
 - `e_nap_token` 依赖端点的最小 Cookie 指“端点本身”只需要 `e_nap_token`。
   - 不包含“如何先拿到 `e_nap_token`”这一条前置链路。

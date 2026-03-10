@@ -76,12 +76,7 @@ export function buildQrHeaders(deviceId: string): Record<string, string> {
 }
 
 export function buildDeviceFpHeaders(): Record<string, string> {
-  return {
-    ...buildMobileBaseHeaders(),
-    Referer: HOYO_REFERER.webstatic,
-    'X-Requested-With': 'com.mihoyo.hyperion',
-    'Content-Type': 'application/json',
-  };
+  return buildHeadersFromContract('getFp');
 }
 
 export function buildStokenExchangeHeaders(

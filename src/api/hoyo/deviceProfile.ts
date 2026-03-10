@@ -16,6 +16,7 @@ import {
   generateProductName,
   generateDeviceName,
 } from './deviceUtils';
+import { createDeviceProfileCore } from './deviceProfileCore';
 
 const DEVICE_PROFILE_KEY = 'zzz_device_info';
 const DEVICE_PROFILE_SCHEMA_VERSION = 1;
@@ -23,46 +24,15 @@ const DEVICE_PROFILE_SCHEMA_VERSION = 1;
 let deviceProfileCache: DeviceInfo | null = null;
 let deviceProfilePromise: Promise<DeviceInfo> | null = null;
 
-function createDeviceProfile(): DeviceInfo {
-  return {
-    deviceId: generateUUID(),
-    requestDeviceId: generateSeedId(),
-    product: generateProductName(),
-    deviceName: generateDeviceName(),
-    seedId: generateUUID(),
-    seedTime: Date.now().toString(),
-    deviceFp: DEVICE_FP_PLACEHOLDER,
-    updatedAt: Date.now(),
-    schemaVersion: DEVICE_PROFILE_SCHEMA_VERSION,
-  };
-}
-
-function parseDeviceProfile(raw: string): DeviceInfo | null {
-  try {
-    const parsed = JSON.parse(raw) as Partial<DeviceInfo>;
-    if (!parsed.deviceId || !parsed.deviceFp) {
-      return null;
-    }
-
-    return {
-      deviceId: parsed.deviceId,
-      requestDeviceId: parsed.requestDeviceId || generateSeedId(),
-      product: parsed.product || generateProductName(),
-      deviceName: parsed.deviceName || generateDeviceName(),
-      seedId: parsed.seedId || generateUUID(),
-      seedTime: parsed.seedTime || Date.now().toString(),
-      deviceFp: parsed.deviceFp,
-      updatedAt: typeof parsed.updatedAt === 'number'
-        ? parsed.updatedAt
-        : typeof (parsed as { timestamp?: number }).timestamp === 'number'
-          ? (parsed as { timestamp: number }).timestamp
-          : Date.now(),
-      schemaVersion: DEVICE_PROFILE_SCHEMA_VERSION,
-    };
-  } catch {
-    return null;
-  }
-}
+const deviceProfileCore = createDeviceProfileCore({
+  now: () => Date.now(),
+  generateUUID,
+  generateSeedId,
+  generateProductName,
+  generateDeviceName,
+  deviceFpPlaceholder: DEVICE_FP_PLACEHOLDER,
+  deviceFpTtlMs: DEVICE_FP_TTL_MS,
+});
 
 async function writeDeviceProfile(profile: DeviceInfo): Promise<void> {
   const normalized: DeviceInfo = {
@@ -76,34 +46,22 @@ async function writeDeviceProfile(profile: DeviceInfo): Promise<void> {
 
 async function readDeviceProfile(): Promise<DeviceInfo> {
   const gmRaw = await GM.getValue<string>(DEVICE_PROFILE_KEY, '');
-  const gmProfile = parseDeviceProfile(gmRaw);
+  const gmProfile = deviceProfileCore.parseDeviceProfile(gmRaw);
   if (gmProfile) {
     localStorage.setItem(DEVICE_PROFILE_KEY, JSON.stringify(gmProfile));
     return gmProfile;
   }
 
   const localRaw = localStorage.getItem(DEVICE_PROFILE_KEY) ?? '';
-  const localProfile = parseDeviceProfile(localRaw);
+  const localProfile = deviceProfileCore.parseDeviceProfile(localRaw);
   if (localProfile) {
     await writeDeviceProfile(localProfile);
     return localProfile;
   }
 
-  const created = createDeviceProfile();
+  const created = deviceProfileCore.createDeviceProfile();
   await writeDeviceProfile(created);
   return created;
-}
-
-function shouldRefreshFingerprint(profile: DeviceInfo, forceRefresh = false): boolean {
-  if (forceRefresh) {
-    return true;
-  }
-
-  if (profile.deviceFp === DEVICE_FP_PLACEHOLDER) {
-    return true;
-  }
-
-  return Date.now() - profile.updatedAt > DEVICE_FP_TTL_MS;
 }
 
 async function loadDeviceProfile(forceRefresh = false): Promise<DeviceInfo> {
@@ -113,7 +71,7 @@ async function loadDeviceProfile(forceRefresh = false): Promise<DeviceInfo> {
         deviceProfileCache = await readDeviceProfile();
       }
 
-      if (shouldRefreshFingerprint(deviceProfileCache, forceRefresh)) {
+      if (deviceProfileCore.shouldRefreshFingerprint(deviceProfileCache, forceRefresh)) {
         deviceProfileCache = await refreshDeviceFingerprintInternal(deviceProfileCache);
       }
 
@@ -133,7 +91,10 @@ async function refreshDeviceFingerprintInternal(profile: DeviceInfo): Promise<De
   const response = await GM_fetch(DEVICE_FP_URL, {
     method: 'POST',
     anonymous: true,
-    headers: buildDeviceFpHeaders(),
+    headers: {
+      ...buildDeviceFpHeaders(),
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(requestBody),
   });
 
@@ -181,7 +142,7 @@ export async function refreshDeviceFingerprint(): Promise<DeviceInfo> {
 }
 
 export async function resetDeviceProfile(): Promise<DeviceInfo> {
-  const next = createDeviceProfile();
+  const next = deviceProfileCore.createDeviceProfile();
   await writeDeviceProfile(next);
   deviceProfileCache = next;
 

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  buildDeviceFpHeaders,
   buildGameRecordHeaders,
   buildNapBootstrapHeaders,
   buildNapCultivateHeaders,
@@ -42,4 +43,8 @@ test('Game record 只输出 x-rpc-device_id，不要求显式 device_fp', () => 
   assert.deepEqual(buildGameRecordHeaders(device), {
     'x-rpc-device_id': 'device-id',
   });
+});
+
+test('getFp 不再显式拼业务鉴权头', () => {
+  assert.deepEqual(buildDeviceFpHeaders(), {});
 });

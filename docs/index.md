@@ -21,6 +21,7 @@
 
 ### 最近结构变更
 
+- `2026-03-11`：新增 `src/api/hoyo/deviceProfileCore.ts` 与对应单测，收敛 `getFp` 的 seed/request 标识持久化规则，并把 `getFp` 头压回最小结构。
 - `2026-03-11`：新增 `src/api/hoyo/recordAuthCore.ts`，把 `note` 链的 `ltoken/ltuid` 刷新逻辑下沉到可注入 core，并补上 `recordAuthCore` / `requestCore` 的 note 路径单测。
 - `2026-03-11`：新增 `src/api/hoyo/passportCore.ts`、`src/api/hoyo/requestCore.ts`，把 NAP 主链刷新/重试状态机下沉到可注入 core，并补上 mock 流程单测。
 - `2026-03-11`：新增 `tests/api/hoyo/*.test.ts` 与 `test:unit`，开始为 HoYo 鉴权改造相关纯逻辑补单元测试，不再只靠手动请求回归。
@@ -58,6 +59,7 @@
 | `src/api/hoyo/cookieUtils.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/devicePayload.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/deviceProfile.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/deviceProfileCore.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/deviceService.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/deviceUtils.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/ds.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
