@@ -21,6 +21,7 @@
 
 ### 最近结构变更
 
+- `2026-03-11`：按 `D:\download\act.mihoyo.com_cleaned.json` 收敛 `getFp` 的主字段语义，当前运行时改为 `device_id = deviceId(UUID)`、`seed_id = 16 位 hex`，并移除 `requestDeviceId` 与 `bbs_device_id`。
 - `2026-03-11`：收敛 NAP 脚本托管主链回 `cookie_token + account_id`，新增 `src/api/hoyo/passportCookieParser.ts` 与 `tests/api/hoyo/passportService.test.ts` 覆盖 `getCookieAccountInfoBySToken` 的响应解析，避免再次误判为 `cookie_token_v2`。
 - `2026-03-11`：新增 `src/api/hoyo/deviceProfileCore.ts` 与对应单测，收敛 `getFp` 的 seed/request 标识持久化规则，并把 `getFp` 头压回最小结构。
 - `2026-03-11`：新增 `src/api/hoyo/recordAuthCore.ts`，把 `note` 链的 `ltoken/ltuid` 刷新逻辑下沉到可注入 core，并补上 `recordAuthCore` / `requestCore` 的 note 路径单测。

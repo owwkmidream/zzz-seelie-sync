@@ -626,13 +626,12 @@ function createStokenHeaders(templateName, fixture, url) {
 
 function createGetFpBody(fixture, source) {
   const common = {
-    device_id: fixture.deviceInfo.requestDeviceId,
+    device_id: fixture.deviceInfo.deviceId,
     seed_id: fixture.deviceInfo.seedId,
     seed_time: fixture.deviceInfo.seedTime,
-    platform: '2',
+    platform: '4',
     device_fp: fixture.deviceInfo.deviceFp,
-    app_name: 'bbs_cn',
-    bbs_device_id: fixture.deviceInfo.deviceId,
+    app_name: 'nap_cn',
   };
 
   return JSON.stringify({

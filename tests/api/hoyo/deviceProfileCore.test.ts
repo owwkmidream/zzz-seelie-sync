@@ -14,12 +14,11 @@ function createCore(now = 1_700_000_000_000) {
   });
 }
 
-test('deviceProfileCore: 新建设备档案时持久化 seedId/seedTime/requestDeviceId 结构', () => {
+test('deviceProfileCore: 新建设备档案时持久化 deviceId/seedId/seedTime 结构', () => {
   const core = createCore();
   const profile = core.createDeviceProfile();
 
   assert.equal(profile.deviceId, 'uuid-value');
-  assert.equal(profile.requestDeviceId, 'abcdef1234567890');
   assert.equal(profile.seedId, 'abcdef1234567890');
   assert.equal(profile.seedTime, '1700000000000');
   assert.equal(profile.deviceFp, '0000000000000');
@@ -29,7 +28,6 @@ test('deviceProfileCore: 解析已有档案时保留原始 seed/request 字段',
   const core = createCore();
   const profile = core.parseDeviceProfile(JSON.stringify({
     deviceId: 'device-id',
-    requestDeviceId: 'request-device-id',
     product: 'DGZM5P',
     deviceName: 'POOUD2JQD5H3',
     seedId: 'seed-id',
@@ -40,7 +38,6 @@ test('deviceProfileCore: 解析已有档案时保留原始 seed/request 字段',
 
   assert.deepEqual(profile, {
     deviceId: 'device-id',
-    requestDeviceId: 'request-device-id',
     product: 'DGZM5P',
     deviceName: 'POOUD2JQD5H3',
     seedId: 'seed-id',
@@ -60,7 +57,6 @@ test('deviceProfileCore: 缺字段时按当前画像规则补齐', () => {
 
   assert.deepEqual(profile, {
     deviceId: 'device-id',
-    requestDeviceId: 'abcdef1234567890',
     product: 'DGZM5P',
     deviceName: 'POOUD2JQD5H3',
     seedId: 'abcdef1234567890',
@@ -76,7 +72,6 @@ test('deviceProfileCore: shouldRefreshFingerprint 只在占位值、过期或强
 
   assert.equal(core.shouldRefreshFingerprint({
     deviceId: 'device-id',
-    requestDeviceId: 'request-device-id',
     product: 'DGZM5P',
     deviceName: 'POOUD2JQD5H3',
     seedId: 'seed-id',
@@ -88,7 +83,6 @@ test('deviceProfileCore: shouldRefreshFingerprint 只在占位值、过期或强
 
   assert.equal(core.shouldRefreshFingerprint({
     deviceId: 'device-id',
-    requestDeviceId: 'request-device-id',
     product: 'DGZM5P',
     deviceName: 'POOUD2JQD5H3',
     seedId: 'seed-id',
@@ -100,7 +94,6 @@ test('deviceProfileCore: shouldRefreshFingerprint 只在占位值、过期或强
 
   assert.equal(core.shouldRefreshFingerprint({
     deviceId: 'device-id',
-    requestDeviceId: 'request-device-id',
     product: 'DGZM5P',
     deviceName: 'POOUD2JQD5H3',
     seedId: 'seed-id',
@@ -112,7 +105,6 @@ test('deviceProfileCore: shouldRefreshFingerprint 只在占位值、过期或强
 
   assert.equal(core.shouldRefreshFingerprint({
     deviceId: 'device-id',
-    requestDeviceId: 'request-device-id',
     product: 'DGZM5P',
     deviceName: 'POOUD2JQD5H3',
     seedId: 'seed-id',

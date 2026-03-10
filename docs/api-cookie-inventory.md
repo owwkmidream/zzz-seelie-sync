@@ -68,7 +68,7 @@
   - 非二维码接口统一走 Android 手机头
   - 不再使用旧版 `Pixel + windows_x86_64 + 浏览器环境` 的混搭画像
 - **设备身份长期复用**
-  - `deviceId / requestDeviceId / seedId / seedTime / product / deviceName / deviceFp`
+  - `deviceId / seedId / seedTime / product / deviceName / deviceFp`
     都由脚本长期持久化
 
 ## 3. 存储模型
@@ -118,9 +118,7 @@
 核心字段：
 
 - `deviceId`
-  - 请求头与 `bbs_device_id` 使用的稳定 UUID
-- `requestDeviceId`
-  - `getFp` body 里的稳定 16 位 hex
+  - 请求头与 `getFp.body.device_id` 使用的稳定 UUID
 - `seedId`
   - `getFp` body 里的稳定 16 位 hex
 - `seedTime`
@@ -226,7 +224,7 @@
 | `batch_avatar_detail_v2` | `e_nap_token` | `x-rpc-device_fp` | 与基础列表一致 |
 | `avatar_calc` | `e_nap_token` | 无 | 当前样本下不需要额外显式头 |
 | `game_record_zzz/api/zzz/note` | `ltoken + ltuid` | `x-rpc-device_id` | 当前显式最小头只剩 `device_id` |
-| `device-fp/api/getFp` | 无 | 无 | 关键在 body：`device_id/seed_id/seed_time/device_fp/bbs_device_id/ext_fields` |
+| `device-fp/api/getFp` | 无 | 无 | 关键在 body：`device_id/seed_id/seed_time/device_fp/ext_fields` |
 
 ## 6. 代码模块分工
 
@@ -279,7 +277,7 @@
 - `getFp` 不能只看 header/cookie。
   - 它真正敏感的是 body 里的设备画像，尤其是 `ext_fields`。
 - 当前 `getFp` 运行时已经不再显式拼业务鉴权头，但这不代表 body 画像可以随便改。
-  - 真正需要长期保持稳定的是：`requestDeviceId / seedId / seedTime / product / deviceName / ext_fields`。
+  - 真正需要长期保持稳定的是：`deviceId / seedId / seedTime / product / deviceName / ext_fields`。
 - `note` 运行时已经按最小结构收敛，但这仍然是静态/单测层验证，不代表已经完成浏览器实网回归。
 - `e_nap_token` 依赖端点的最小 Cookie 指“端点本身”只需要 `e_nap_token`。
   - 不包含“如何先拿到 `e_nap_token`”这一条前置链路。

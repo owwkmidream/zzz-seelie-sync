@@ -66,13 +66,12 @@ function buildDeviceExtFields(profile: DeviceInfo): string {
  */
 export function buildDeviceFpRequest(profile: DeviceInfo): DeviceFpRequest {
   return {
-    device_id: profile.requestDeviceId,
+    device_id: profile.deviceId,
     seed_id: profile.seedId,
     seed_time: profile.seedTime,
-    platform: '2',
+    platform: '4',
     device_fp: profile.deviceFp,
-    app_name: 'bbs_cn',
+    app_name: 'nap_cn',
     ext_fields: buildDeviceExtFields(profile),
-    bbs_device_id: profile.deviceId,
   };
 }

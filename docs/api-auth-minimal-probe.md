@@ -64,7 +64,7 @@
 | `batch_avatar_detail_v2` | 成功 | `2.js minimal cultivate` | `e_nap_token` | `x-rpc-device_fp` | 与 `avatar_basic_list` 一致 |
 | `avatar_calc` | 成功 | `2.js minimal cultivate` | `e_nap_token` | 无 | body 使用真实角色样本参数 |
 | `note` | 成功 | `current-repo mobile note` | `ltoken`, `ltuid` | `x-rpc-device_id` | `device_fp` 可不显式带 |
-| `getFp` | 成功 | `current-repo / TeyvatGuide Xiaomi ext_fields` | 无 | 无 | 关键在 body：`device_id/seed_id/seed_time/device_fp/bbs_device_id/ext_fields` |
+| `getFp` | 成功 | `current-repo / TeyvatGuide Xiaomi ext_fields` | 无 | 无 | 关键在 body：`device_id/seed_id/seed_time/device_fp/ext_fields` |
 
 ## 4. 关键结论
 
@@ -122,7 +122,6 @@
     - `seed_id`
     - `seed_time`
     - `device_fp`
-    - `bbs_device_id`
     - `ext_fields`
   - 当前成功 body 画像来源：`current-repo / TeyvatGuide Xiaomi ext_fields`
 

@@ -11,7 +11,6 @@ export interface UserInfo {
 // 设备信息接口
 export interface DeviceInfo {
   deviceId: string;
-  requestDeviceId: string;
   product: string;
   deviceName: string;
   seedId: string;
@@ -94,7 +93,6 @@ export interface DeviceFpRequest {
   device_fp: string;
   app_name: string;
   ext_fields: string;
-  bbs_device_id: string;
 }
 
 // 登录信息响应（用于初始化 e_nap_token 与用户信息）

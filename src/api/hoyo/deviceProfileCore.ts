@@ -14,7 +14,6 @@ export function createDeviceProfileCore(deps: DeviceProfileCoreDeps) {
   function createDeviceProfile(): DeviceInfo {
     return {
       deviceId: deps.generateUUID(),
-      requestDeviceId: deps.generateSeedId(),
       product: deps.generateProductName(),
       deviceName: deps.generateDeviceName(),
       seedId: deps.generateSeedId(),
@@ -34,7 +33,6 @@ export function createDeviceProfileCore(deps: DeviceProfileCoreDeps) {
 
       return {
         deviceId: parsed.deviceId,
-        requestDeviceId: parsed.requestDeviceId || deps.generateSeedId(),
         product: parsed.product || deps.generateProductName(),
         deviceName: parsed.deviceName || deps.generateDeviceName(),
         seedId: parsed.seedId || deps.generateSeedId(),

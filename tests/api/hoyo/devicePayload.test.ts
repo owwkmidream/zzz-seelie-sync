@@ -4,7 +4,6 @@ import { buildDeviceFpRequest } from '../../../src/api/hoyo/devicePayload';
 
 const profile = {
   deviceId: 'device-id',
-  requestDeviceId: 'request-device-id',
   product: 'DGZM5P',
   deviceName: 'POOUD2JQD5H3',
   seedId: 'seed-id',
@@ -14,14 +13,15 @@ const profile = {
   schemaVersion: 1,
 };
 
-test('buildDeviceFpRequest: 使用稳定的 requestDeviceId/seedId/seedTime', () => {
+test('buildDeviceFpRequest: 使用稳定的 deviceId/seedId/seedTime', () => {
   const request = buildDeviceFpRequest(profile);
 
-  assert.equal(request.device_id, 'request-device-id');
+  assert.equal(request.device_id, 'device-id');
   assert.equal(request.seed_id, 'seed-id');
   assert.equal(request.seed_time, '1700000000000');
   assert.equal(request.device_fp, 'device-fp');
-  assert.equal(request.bbs_device_id, 'device-id');
+  assert.equal(request.platform, '4');
+  assert.equal(request.app_name, 'nap_cn');
 });
 
 test('buildDeviceFpRequest: ext_fields 与当前手机画像模板一致', () => {
