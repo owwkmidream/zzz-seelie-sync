@@ -2,7 +2,6 @@ import { createUserInfoErrorView } from './seeliePanelErrorView';
 import type { UserInfoWithError } from './seeliePanelUserInfo';
 
 interface UserInfoViewActions {
-  onOpenMys: () => void;
   onRetry: () => void;
   onStartQRLogin?: () => void;
 }
@@ -36,7 +35,6 @@ export function createUserInfoSection(
   } else if (userInfo && 'error' in userInfo) {
     // 错误状态显示
     const errorContainer = createUserInfoErrorView(userInfo, {
-      onOpenMys: actions.onOpenMys,
       onRetry: actions.onRetry,
       onStartQRLogin: actions.onStartQRLogin,
     });

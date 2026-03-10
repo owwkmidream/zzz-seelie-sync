@@ -22,10 +22,14 @@ export function mapUserInfoError(error: unknown): UserInfoError {
   if (
     message.includes('获取用户角色失败') ||
     message.includes('未登录') ||
+    message.includes('stoken') ||
+    message.includes('ltoken') ||
+    message.includes('e_nap_token') ||
+    message.includes('扫码登录') ||
     message.includes('HTTP 401') ||
     message.includes('HTTP 403')
   ) {
-    return { error: 'login_required', message: '请先登录米游社账号' };
+    return { error: 'login_required', message: '请先扫码登录' };
   }
 
   if (message.includes('未找到绝区零游戏角色')) {

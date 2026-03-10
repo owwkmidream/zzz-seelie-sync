@@ -2,9 +2,20 @@
  * 生成产品名称 (6位大写字母数字组合)
  */
 export function generateProductName(): string {
+  return generateUpperAndNumberString(6);
+}
+
+/**
+ * 生成设备名称 (12位大写字母数字组合)
+ */
+export function generateDeviceName(): string {
+  return generateUpperAndNumberString(12);
+}
+
+function generateUpperAndNumberString(length: number): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < length; i++) {
     result += chars[Math.floor(Math.random() * chars.length)];
   }
   return result;

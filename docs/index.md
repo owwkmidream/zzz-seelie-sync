@@ -16,11 +16,12 @@
 - `src/services/SyncService.ts`：同步编排核心，统一协调电量/角色/材料同步，封装错误处理、Toast 提示与批量结果汇总。
 - `src/services/mappers/itemsSyncMapper.ts`：材料同步映射层，主路径为 ID 映射，命中不足时回退到名称映射，是材料同步准确性的关键点。
 - `src/utils/useDOMInjector.ts` + `src/utils/componentRegistry.ts`：组件注入与生命周期管理中心，处理 DOM 变化与路由变化下的创建/重建/销毁。
-- `src/api/hoyo/*`：米哈游 API 边界层，包含鉴权、设备信息、角色与便笺请求；上层业务应通过统一导出调用，避免绕过封装。
+- `src/api/hoyo/*`：米哈游 API 边界层，现已拆成 auth store、device profile、header profile、cookie router 与业务请求层；上层业务应通过统一导出调用，避免绕过封装。
 - `src/utils/adCleaner.ts` + `src/utils/siteManifest.ts`：去广告能力与站点资源探测核心，使用 manifest + fallback 策略维持规则稳定性。
 
 ### 最近结构变更
 
+- `2026-03-10`：HoYo 鉴权体系重构为“扫码拿根凭证 -> 脚本派生 LToken / CookieToken / e_nap_token -> 按端点路由 Cookie / 手机头 profile”，新增 `authStore.ts`、`deviceProfile.ts`、`cookieJar.ts`、`headerProfiles.ts`、`ds.ts`、`authRouter.ts`。
 - `2026-02-26`：移除第三方 `@trim21/gm-fetch` 依赖，新增 `src/utils/gmFetch.ts` 统一封装 `GM.xmlHttpRequest`，为后续匿名请求与手动 Cookie 注入预留能力。
 - `2026-02-26`：建立索引维护体系，新增 `AGENT.md`、`scripts/index-doc.js`，并将 `docs/index.md` 固化为“手动区 + 自动区”双层结构。
 - `2026-02-20`：材料同步策略升级为“ID 映射优先 + 名称映射降级”，核心变更在 `src/services/SyncService.ts` 与 `src/services/mappers/itemsSyncMapper.ts`。
@@ -31,6 +32,7 @@
 
 - 主调用链（从页面加载到同步执行）：
   `src/main.ts` → `src/app.ts` → `registerAllComponents()` → `domInjector.init()` → `SeeliePanel` → `SyncService` → (`src/api/hoyo/*` + `src/utils/seelie/*`)。
+- `docs/api-cookie-inventory.md`：HoYo / Seelie 运行时接口与 Cookie 依赖盘点，供后续“手动接管 Cookie”时做最小集合验证。
 - 手动区维护要求：只写职责、调用链、关键约束与近期结构变化，不复制自动区文件清单。
 - 当出现文件新增/删除/重命名或目录迁移时，先运行 `pnpm run docs:index:generate` 更新自动区，再补本手动区语义信息。
 
@@ -41,15 +43,21 @@
 
 | Path | Area | Role |
 | --- | --- | --- |
+| `src/api/hoyo/authRouter.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/authService.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/authStore.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/avatar.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/client.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/config.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/cookieJar.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/devicePayload.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/deviceProfile.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/deviceService.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/deviceUtils.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/ds.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/errors.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/game-note.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/headerProfiles.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/index.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/items.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/passportService.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |

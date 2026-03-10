@@ -11,7 +11,7 @@ const QR_SIZE = 180;
 const QR_ERROR_TEXT = '二维码加载失败，请重试';
 
 const STATUS_TEXT: Record<QRLoginStatus, string> = {
-  Created: '请使用米游社 App 扫描二维码',
+  Created: '请使用 App 扫描二维码',
   Scanned: '已扫码，请在手机上确认',
   Confirmed: '登录成功，正在刷新…',
 };

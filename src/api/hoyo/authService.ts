@@ -1,139 +1,73 @@
 import GM_fetch from '@/utils/gmFetch';
-import type {
-  ApiResponse,
-  UserInfo,
-  LoginInfoResponse,
-  UserGameRole,
-} from './types';
-import { logger } from '../../utils/logger';
-import {
-  NAP_LOGIN_INFO_URL,
-  defaultHeaders
-} from './config';
+import type { ApiResponse, LoginInfoResponse, UserGameRole, UserInfo } from './types';
+import { logger } from '@/utils/logger';
+import { NAP_LOGIN_INFO_URL } from './config';
 import { ApiResponseError, HttpRequestError } from './errors';
-import {
-  ensurePassportCookieHeader,
-  hasPersistedStoken,
-  initializeNapToken as initializePassportNapToken,
-  isPassportAuthHttpStatus,
-  isPassportAuthRetcode,
-} from './passportService';
+import { buildNapCookie } from './cookieJar';
+import { buildNapSessionHeaders } from './headerProfiles';
+import { ensureDeviceProfile } from './deviceProfile';
+import { hasNapToken, readAuthBundle } from './authStore';
+import { ensureNapBusinessToken, getPrimaryGameRole } from './passportService';
 
-// 初始化请求标记
-let napTokenInitialized = false;
-
-// 用户信息缓存
 let userInfoCache: UserInfo | null = null;
+let initializePromise: Promise<UserInfo | null> | null = null;
 
-function cacheUserInfo(profile: Pick<LoginInfoResponse, 'game_uid' | 'nickname' | 'level' | 'region'>): void {
+function cacheUserInfoFromRole(role: Pick<UserGameRole, 'game_uid' | 'nickname' | 'level' | 'region'>): void {
+  userInfoCache = {
+    uid: role.game_uid,
+    nickname: role.nickname,
+    level: role.level,
+    region: role.region,
+  };
+}
+
+function cacheUserInfoFromLogin(profile: Pick<LoginInfoResponse, 'game_uid' | 'nickname' | 'level' | 'region'>): void {
   userInfoCache = {
     uid: profile.game_uid,
     nickname: profile.nickname,
     level: profile.level,
     region: profile.region,
   };
-
-  napTokenInitialized = true;
 }
 
-function shouldFallbackToPersistedStoken(error: unknown): boolean {
-  if (error instanceof HttpRequestError) {
-    return isPassportAuthHttpStatus(error.status);
+async function requestLoginInfo(forceRefresh = false): Promise<ApiResponse<LoginInfoResponse>> {
+  if (forceRefresh) {
+    await ensureNapBusinessToken(true);
   }
 
-  if (error instanceof ApiResponseError) {
-    return isPassportAuthRetcode(error.retcode, error.apiMessage);
+  const bundle = await readAuthBundle();
+  if (!hasNapToken(bundle)) {
+    await ensureNapBusinessToken(false);
   }
 
-  if (error instanceof Error) {
-    const msg = error.message.toLowerCase();
-    return msg.includes('登录') || msg.includes('token') || msg.includes('cookie');
+  const latest = await readAuthBundle();
+  if (!hasNapToken(latest)) {
+    throw new Error('未找到 e_nap_token，无法请求登录信息');
   }
 
-  return false;
-}
-
-async function requestLoginInfo(): Promise<ApiResponse<LoginInfoResponse>> {
-  const headers: Record<string, string> = {
-    ...defaultHeaders,
-    Accept: '*/*',
-    Referer: 'https://act.mihoyo.com/',
-  };
-
-  const loginInfoResponse = await GM_fetch(`${NAP_LOGIN_INFO_URL}&ts=${Date.now()}`, {
+  const device = await ensureDeviceProfile();
+  const response = await GM_fetch(`${NAP_LOGIN_INFO_URL}&ts=${Date.now()}`, {
     method: 'GET',
-    headers,
+    anonymous: true,
+    cookie: buildNapCookie(latest),
+    headers: buildNapSessionHeaders(device),
   });
 
-  if (!loginInfoResponse.ok) {
-    throw new HttpRequestError(loginInfoResponse.status, loginInfoResponse.statusText, '获取登录信息失败');
+  if (!response.ok) {
+    throw new HttpRequestError(response.status, response.statusText, '获取登录信息失败');
   }
 
-  const loginInfoData = await loginInfoResponse.json() as ApiResponse<LoginInfoResponse>;
-  if (loginInfoData.retcode !== 0) {
-    throw new ApiResponseError(loginInfoData.retcode, loginInfoData.message, '获取登录信息失败');
+  const data = await response.json() as ApiResponse<LoginInfoResponse>;
+  if (data.retcode !== 0) {
+    throw new ApiResponseError(data.retcode, data.message, '获取登录信息失败');
   }
 
-  return loginInfoData;
+  return data;
 }
 
-/**
- * 获取 nap_token 并缓存用户信息
- */
-async function initializeNapToken(): Promise<void> {
-  if (napTokenInitialized) {
-    return;
-  }
-
-  logger.info('🔄 开始初始化 nap_token 与用户信息...');
-
-  try {
-    let loginInfoData: ApiResponse<LoginInfoResponse>;
-
-    try {
-      // 优先尝试使用现有浏览器登录态
-      loginInfoData = await requestLoginInfo();
-    } catch (primaryError) {
-      if (!await hasPersistedStoken() || !shouldFallbackToPersistedStoken(primaryError)) {
-        throw primaryError;
-      }
-
-      logger.warn('⚠️ 现有登录态不可用，尝试使用持久化 stoken 刷新登录态');
-
-      // 用持久化 stoken -> cookie_token -> login/account 刷新 nap 相关登录态
-      await initializePassportNapToken();
-
-      // 刷新后重试 login/info（cookie 由浏览器自动携带）
-      await ensurePassportCookieHeader();
-      loginInfoData = await requestLoginInfo();
-    }
-
-    if (!loginInfoData.data?.game_uid || !loginInfoData.data.region) {
-      logger.warn('⚠️ 登录信息缺少必要字段，无法初始化用户态');
-      throw new Error('登录信息不完整，未找到绝区零角色信息');
-    }
-
-    const loginInfo = loginInfoData.data;
-    logger.info(`🎮 登录角色: ${loginInfo.nickname} (UID: ${loginInfo.game_uid}, 等级: ${loginInfo.level})`);
-
-    // 缓存用户信息
-    cacheUserInfo(loginInfo);
-
-    logger.info('✅ nap_token 初始化完成');
-    logger.info(`👤 用户信息: ${loginInfo.nickname} (UID: ${loginInfo.game_uid}, 等级: ${loginInfo.level}, 区服: ${loginInfo.region})`);
-  } catch (error) {
-    logger.error('❌ 初始化 nap_token 失败:', error);
-    throw error;
-  }
-}
-
-/**
- * 确保用户信息已初始化
- * 如果没有用户信息缓存，会自动调用初始化
- */
 export async function ensureUserInfo(): Promise<void> {
   if (!userInfoCache) {
-    await initializeNapToken();
+    await initializeUserInfo();
   }
 }
 
@@ -143,27 +77,53 @@ export function getUserInfo(): UserInfo | null {
 
 export function clearUserInfo(): void {
   userInfoCache = null;
-  napTokenInitialized = false;
   logger.info('🗑️ 已清除用户信息缓存');
 }
 
 export async function initializeUserInfo(): Promise<UserInfo | null> {
-  await ensureUserInfo();
-  return userInfoCache;
+  if (userInfoCache) {
+    return userInfoCache;
+  }
+
+  if (!initializePromise) {
+    initializePromise = (async () => {
+      const bundle = await readAuthBundle();
+      if (bundle.selectedRole) {
+        cacheUserInfoFromRole(bundle.selectedRole);
+        return userInfoCache;
+      }
+
+      try {
+        const role = await getPrimaryGameRole(false);
+        cacheUserInfoFromRole(role);
+        return userInfoCache;
+      } catch (roleError) {
+        logger.warn('⚠️ 通过角色发现初始化用户缓存失败，降级尝试 login/info', roleError);
+      }
+
+      const loginInfo = await requestLoginInfo(false);
+      cacheUserInfoFromLogin(loginInfo.data);
+      return userInfoCache;
+    })().finally(() => {
+      initializePromise = null;
+    });
+  }
+
+  return await initializePromise;
 }
 
 export function hydrateUserInfoFromRole(
-  role: Pick<UserGameRole, 'game_uid' | 'nickname' | 'level' | 'region'>
+  role: Pick<UserGameRole, 'game_uid' | 'nickname' | 'level' | 'region'>,
 ): void {
   if (!role.game_uid || !role.region) {
     throw new Error('角色信息不完整，无法写入用户缓存');
   }
 
-  cacheUserInfo(role);
+  cacheUserInfoFromRole(role);
   logger.info(`👤 已使用角色信息更新用户缓存: ${role.nickname} (UID: ${role.game_uid})`);
 }
 
 export function resetNapTokenlInitialization(): void {
-  napTokenInitialized = false;
-  logger.info('🔄 已重置 NapToken 初始化状态');
+  userInfoCache = null;
+  logger.info('🔄 已重置绝区零用户态缓存');
 }

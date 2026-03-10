@@ -3,24 +3,22 @@
 import GM_fetch from '@/utils/gmFetch';
 import type { ApiResponse } from './types';
 import { logger } from '../../utils/logger';
-import {
-  getZZZHeaderWithDevice,
-  getDeviceFingerprint
-} from './deviceService';
-import { NAP_CULTIVATE_TOOL_URL } from './config';
+import { buildLTokenCookie, buildNapCookie } from './cookieJar';
+import { resolveHoyoAuthRoute, type HoyoAuthRoute } from './authRouter';
+import { buildGameRecordHeaders, buildNapCultivateHeaders } from './headerProfiles';
+import { NAP_CULTIVATE_TOOL_URL, DEVICE_FP_ERROR_CODES } from './config';
 import { ensureUserInfo } from './authService';
 import {
   ApiResponseError,
   DeviceFingerprintRefreshError,
   HttpRequestError,
-  InvalidDeviceFingerprintError
 } from './errors';
 import {
-  ensurePassportCookieHeader,
-  hasPersistedStoken,
-  isPassportAuthHttpStatus,
-  isPassportAuthRetcode,
-} from './passportService';
+  getDeviceFingerprint,
+} from './deviceService';
+import { ensureDeviceProfile } from './deviceProfile';
+import { ensureLToken, ensureNapBusinessToken, hasPersistedStoken, isPassportAuthHttpStatus, isPassportAuthRetcode } from './passportService';
+import { hasLToken, hasNapToken, readAuthBundle } from './authStore';
 
 export { generateUUID, generateHexString } from './deviceUtils';
 export { NAP_CULTIVATE_TOOL_URL, GAME_RECORD_URL, DEVICE_FP_URL } from './config';
@@ -31,8 +29,48 @@ export {
   clearUserInfo,
   initializeUserInfo,
   hydrateUserInfoFromRole,
-  resetNapTokenlInitialization
+  resetNapTokenlInitialization,
 } from './authService';
+
+async function buildRouteRequestContext(
+  route: HoyoAuthRoute,
+  forceAuthRefresh = false,
+): Promise<{ headers: Record<string, string>; cookie: string }> {
+  const device = await ensureDeviceProfile();
+
+  if (route === 'nap_cultivate') {
+    await ensureNapBusinessToken(forceAuthRefresh);
+    const bundle = await readAuthBundle();
+    if (!hasNapToken(bundle)) {
+      throw new Error('未找到 e_nap_token，请先完成扫码登录');
+    }
+
+    return {
+      headers: buildNapCultivateHeaders(device),
+      cookie: buildNapCookie(bundle),
+    };
+  }
+
+  await ensureLToken(forceAuthRefresh);
+  const bundle = await readAuthBundle();
+  if (!hasLToken(bundle)) {
+    throw new Error('未找到 ltoken/ltuid，请先完成扫码登录');
+  }
+
+  return {
+    headers: buildGameRecordHeaders(device),
+    cookie: buildLTokenCookie(bundle),
+  };
+}
+
+async function refreshRouteAuth(route: HoyoAuthRoute): Promise<void> {
+  if (route === 'nap_cultivate') {
+    await ensureNapBusinessToken(true);
+    return;
+  }
+
+  await ensureLToken(true);
+}
 
 // 通用请求函数
 export async function request<T = unknown>(
@@ -43,16 +81,15 @@ export async function request<T = unknown>(
     params?: Record<string, string | number>;
     body?: unknown;
     headers?: Record<string, string>;
-  } = {}
+  } = {},
 ): Promise<ApiResponse<T>> {
   const { method = 'GET', params = {}, body, headers = {} } = options;
+  const route = resolveHoyoAuthRoute(baseUrl, endpoint);
 
-  // 如果是 NAP_CULTIVATE_TOOL_URL 的请求，先进行用户初始化
   if (baseUrl === NAP_CULTIVATE_TOOL_URL) {
     await ensureUserInfo();
   }
 
-  // 构建 URL
   let url = `${baseUrl}${endpoint}`;
   if (Object.keys(params).length > 0) {
     const searchParams = new URLSearchParams();
@@ -62,109 +99,83 @@ export async function request<T = unknown>(
     url += `?${searchParams.toString()}`;
   }
 
-  // 设备指纹相关错误码，需要刷新设备指纹并重试
-  const deviceFpErrorCodes = [1034, 5003, 10035, 10041, 10053];
   const requestLabel = `${method} ${endpoint}`;
 
-  // 执行请求的内部函数
   const executeRequest = async (
-    isRetry = false,
-    isAuthRetry = false
+    authRetried = false,
+    deviceRetried = false,
   ): Promise<ApiResponse<T>> => {
-    // 异步获取并合并请求头
-    const zzzHeaders = await getZZZHeaderWithDevice();
+    const routeContext = await buildRouteRequestContext(route, authRetried);
     const finalHeaders: Record<string, string> = {
-      ...zzzHeaders,
-      ...headers
+      ...routeContext.headers,
+      ...headers,
     };
 
-    const persistedStokenAvailable = await hasPersistedStoken();
-
-    if (finalHeaders['x-rpc-device_fp'] === '0000000000000') {
-      throw new InvalidDeviceFingerprintError();
+    if (body !== undefined && !finalHeaders['Content-Type']) {
+      finalHeaders['Content-Type'] = 'application/json';
     }
 
-    logger.debug(`🌐 发起请求 ${requestLabel}${isRetry ? ' (重试)' : ''}`, {
-      endpoint,
+    logger.debug(`🌐 发起请求 ${requestLabel}${authRetried || deviceRetried ? ' (重试)' : ''}`, {
       baseUrl,
-      isRetry
+      endpoint,
+      route,
+      authRetried,
+      deviceRetried,
     });
 
     try {
-      const payload = [url, {
+      const response = await GM_fetch(url, {
         method,
+        anonymous: true,
+        cookie: routeContext.cookie,
         headers: finalHeaders,
-        body: body ? JSON.stringify(body) : undefined
-      }] as const;
-      const response = await GM_fetch(...payload);
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
 
       if (!response.ok) {
-        if (!isAuthRetry && persistedStokenAvailable && isPassportAuthHttpStatus(response.status)) {
-          logger.warn(`⚠️ 鉴权失败，尝试刷新 cookie_token 并重试 ${requestLabel}`, {
-            status: response.status,
-            statusText: response.statusText,
-          });
-
-          await ensurePassportCookieHeader(true);
-          return await executeRequest(isRetry, true);
+        if (!authRetried && await hasPersistedStoken() && isPassportAuthHttpStatus(response.status)) {
+          logger.warn(`⚠️ 鉴权失败，准备刷新路由凭证后重试 ${requestLabel}`);
+          await refreshRouteAuth(route);
+          return await executeRequest(true, deviceRetried);
         }
 
         throw new HttpRequestError(response.status, response.statusText);
       }
 
       const data = await response.json() as ApiResponse<T>;
-
       if (data.retcode !== 0) {
-        // 检查是否为设备指纹相关错误码
-        if (deviceFpErrorCodes.includes(data.retcode) && !isRetry) {
-          logger.warn(`⚠️ 设备指纹错误，准备刷新并重试 ${requestLabel}`, {
-            retcode: data.retcode,
-            message: data.message
-          });
-
-          try {
-            // 刷新设备指纹
-            await getDeviceFingerprint();
-            logger.info(`✅ 设备指纹刷新完成，重试 ${requestLabel}`);
-
-            // 重试请求
-            return await executeRequest(true);
-          } catch (fpError) {
-            logger.error(`❌ 设备指纹刷新失败，无法重试 ${requestLabel}`, fpError);
-            throw new DeviceFingerprintRefreshError(data.retcode, data.message, fpError);
-          }
-        }
-
-        if (!isAuthRetry && persistedStokenAvailable && isPassportAuthRetcode(data.retcode, data.message)) {
-          logger.warn(`⚠️ 业务鉴权失败，尝试刷新 cookie_token 并重试 ${requestLabel}`, {
+        if (DEVICE_FP_ERROR_CODES.has(data.retcode) && !deviceRetried) {
+          logger.warn(`⚠️ 设备指纹错误，准备刷新后重试 ${requestLabel}`, {
             retcode: data.retcode,
             message: data.message,
           });
 
-          await ensurePassportCookieHeader(true);
-          return await executeRequest(isRetry, true);
+          try {
+            await getDeviceFingerprint();
+            return await executeRequest(authRetried, true);
+          } catch (error) {
+            throw new DeviceFingerprintRefreshError(data.retcode, data.message, error);
+          }
         }
 
-        logger.error(`❌ 请求失败 ${requestLabel}`, {
-          retcode: data.retcode,
-          message: data.message,
-          status: response.status
-        });
+        if (!authRetried && await hasPersistedStoken() && isPassportAuthRetcode(data.retcode, data.message)) {
+          logger.warn(`⚠️ 业务鉴权失败，准备刷新路由凭证后重试 ${requestLabel}`, {
+            retcode: data.retcode,
+            message: data.message,
+          });
+          await refreshRouteAuth(route);
+          return await executeRequest(true, deviceRetried);
+        }
+
         throw new ApiResponseError(data.retcode, data.message);
       }
 
-      logger.debug(`✅ 请求成功 ${requestLabel}`, {
-        retcode: data.retcode,
-        message: data.message,
-        retried: isRetry
-      });
       return data;
     } catch (error) {
       if (
-        error instanceof ApiResponseError ||
-        error instanceof HttpRequestError ||
-        error instanceof DeviceFingerprintRefreshError ||
-        error instanceof InvalidDeviceFingerprintError
+        error instanceof ApiResponseError
+        || error instanceof HttpRequestError
+        || error instanceof DeviceFingerprintRefreshError
       ) {
         throw error;
       }
@@ -174,6 +185,5 @@ export async function request<T = unknown>(
     }
   };
 
-  // 执行请求
   return await executeRequest();
 }

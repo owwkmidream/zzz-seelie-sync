@@ -1,7 +1,6 @@
 import type { UserInfoError } from './seeliePanelUserInfo';
 
 interface ErrorViewActions {
-  onOpenMys: () => void;
   onRetry: () => void;
   onStartQRLogin?: () => void;
 }
@@ -51,7 +50,7 @@ export function createUserInfoErrorView(
   errorContainer.appendChild(errorMessage);
 
   if (errorInfo.error === 'login_required') {
-    errorContainer.appendChild(createHint('使用米游社 App 扫码登录，或前往米游社网页登录'));
+    errorContainer.appendChild(createHint('请使用扫码登录完成鉴权'));
     if (actions.onStartQRLogin) {
       errorContainer.appendChild(
         createActionButton(
@@ -61,25 +60,11 @@ export function createUserInfoErrorView(
         )
       );
     }
-    errorContainer.appendChild(
-      createActionButton(
-        'ZSS-action-button ZSS-action-button--retry-default ZSS-mt-2',
-        '前往米游社登录',
-        actions.onOpenMys
-      )
-    );
     return errorContainer;
   }
 
   if (errorInfo.error === 'no_character') {
-    errorContainer.appendChild(createHint('请先在米游社绑定绝区零游戏角色'));
-    errorContainer.appendChild(
-      createActionButton(
-        'ZSS-action-button ZSS-action-button--bind',
-        '前往绑定角色',
-        actions.onOpenMys
-      )
-    );
+    errorContainer.appendChild(createHint('请先绑定绝区零游戏角色后再扫码登录'));
     return errorContainer;
   }
 
@@ -95,7 +80,7 @@ export function createUserInfoErrorView(
     return errorContainer;
   }
 
-  errorContainer.appendChild(createHint('请先重试；若持续失败，请刷新页面并重新登录米游社。'));
+  errorContainer.appendChild(createHint('请先重试；若持续失败，请刷新页面并重新扫码登录。'));
   errorContainer.appendChild(
     createActionButton(
       'ZSS-action-button ZSS-action-button--retry-default',

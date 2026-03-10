@@ -11,8 +11,14 @@ export interface UserInfo {
 // 设备信息接口
 export interface DeviceInfo {
   deviceId: string;
+  requestDeviceId: string;
+  product: string;
+  deviceName: string;
+  seedId: string;
+  seedTime: string;
   deviceFp: string;
-  timestamp: number; // 添加时间戳，用于判断是否需要更新
+  updatedAt: number;
+  schemaVersion: number;
 }
 
 // 设备信息接口
@@ -312,6 +318,11 @@ export interface CookieTokenData {
   cookie_token: string;
 }
 
+/** getLTokenBySToken 响应 data */
+export interface LTokenData {
+  ltoken: string;
+}
+
 /** getUserGameRolesByCookie 响应中的角色信息 */
 export interface UserGameRole {
   game_biz: string;
@@ -327,6 +338,26 @@ export interface UserGameRole {
 /** getUserGameRolesByCookie 响应 data */
 export interface UserGameRolesResponse {
   list: UserGameRole[];
+}
+
+/** 脚本托管的 HoYo 鉴权状态 */
+export interface AuthBundle {
+  stoken?: string;
+  mid?: string;
+  stuid?: string;
+  ltoken?: string;
+  ltuid?: string;
+  cookieToken?: string;
+  accountId?: string;
+  eNapToken?: string;
+  selectedRole?: UserGameRole;
+  updatedAt: number;
+  rootTokensUpdatedAt?: number;
+  ltokenUpdatedAt?: number;
+  cookieTokenUpdatedAt?: number;
+  eNapTokenUpdatedAt?: number;
+  roleUpdatedAt?: number;
+  schemaVersion: number;
 }
 
 /** login/account 响应 data（服务端设置 e_nap_token Cookie） */

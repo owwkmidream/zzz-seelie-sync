@@ -1,8 +1,10 @@
 import { GM } from '$'
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'TRACE', 'OPTIONS', 'CONNECT'] as const
+const RAW_RESPONSE_HEADERS = Symbol('gmFetchRawResponseHeaders')
 
 type HttpMethod = (typeof HTTP_METHODS)[number]
+type GmResponse = Response & { [RAW_RESPONSE_HEADERS]?: string }
 
 export interface GmFetchInit extends RequestInit {
   anonymous?: boolean
@@ -38,6 +40,20 @@ function parseResponseHeaders(rawHeaders: string): Headers {
   return headers
 }
 
+export function getRawResponseHeaders(response: Response): string {
+  return (response as GmResponse)[RAW_RESPONSE_HEADERS] ?? ''
+}
+
+export function getResponseHeaderLines(response: Response, headerName: string): string[] {
+  const needle = `${headerName.toLowerCase()}:`
+
+  return getRawResponseHeaders(response)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.toLowerCase().startsWith(needle))
+    .map((line) => line.slice(needle.length).trim())
+}
+
 export default async function GM_fetch(input: RequestInfo | URL, init: GmFetchInit = {}): Promise<Response> {
   const request = new Request(input, init)
 
@@ -65,11 +81,18 @@ export default async function GM_fetch(input: RequestInfo | URL, init: GmFetchIn
       onload: (res) => {
         const responseHeaders = parseResponseHeaders(res.responseHeaders)
         const responseBody = res.response instanceof Blob ? res.response : new Blob([res.responseText ?? ''])
-        resolve(new Response(responseBody, {
+        const response = new Response(responseBody, {
           status: res.status,
           statusText: res.statusText,
           headers: responseHeaders,
-        }))
+        }) as GmResponse
+        Object.defineProperty(response, RAW_RESPONSE_HEADERS, {
+          value: res.responseHeaders ?? '',
+          enumerable: false,
+          configurable: false,
+          writable: false,
+        })
+        resolve(response)
       },
       onabort: () => {
         reject(new DOMException('Aborted', 'AbortError'))
