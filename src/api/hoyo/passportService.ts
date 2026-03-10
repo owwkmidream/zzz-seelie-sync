@@ -17,6 +17,7 @@ import {
 } from './types';
 import { buildCookieTokenCookie, buildStokenCookie, getCookieValueFromResponse } from './cookieJar';
 import {
+  buildCookieTokenExchangeHeaders,
   buildNapBootstrapHeaders,
   buildQrHeaders,
   buildRoleByCookieTokenHeaders,
@@ -37,12 +38,10 @@ import { generateDS } from './ds';
 import { ensureDeviceProfile, getCurrentDeviceProfile } from './deviceProfile';
 import {
   clearAuthBundle,
-  hasCookieToken,
   hasLToken,
-  hasNapToken,
   hasRootTokens,
   patchAuthBundle,
-  persistCookieToken,
+  persistCookieTokenV2,
   persistLToken,
   persistNapToken,
   persistRootTokens,
@@ -50,8 +49,10 @@ import {
   readAuthBundle,
 } from './authStore';
 import { ApiResponseError, HttpRequestError } from './errors';
+import { createPassportNapCore } from './passportCore';
 
 const QR_EXPIRED_RETCODE = -106;
+let lTokenRefreshPromise: Promise<void> | null = null;
 
 async function requestApi<T>(
   url: string,
@@ -77,14 +78,6 @@ async function requestApi<T>(
   return { response, data };
 }
 
-function isCookieTokenFresh(updatedAt?: number): boolean {
-  if (!updatedAt) {
-    return false;
-  }
-
-  return Date.now() - updatedAt < COOKIE_TOKEN_TTL_MS;
-}
-
 export function isPassportAuthHttpStatus(status: number): boolean {
   return status === 401 || status === 403;
 }
@@ -106,29 +99,45 @@ export async function hasPersistedStoken(): Promise<boolean> {
 }
 
 export async function clearPersistedPassportTokens(): Promise<void> {
+  lTokenRefreshPromise = null;
+  passportNapCore.reset();
   await clearAuthBundle();
 }
 
-async function exchangeCookieTokenByStoken(): Promise<CookieTokenData> {
-  const bundle = await readAuthBundle();
-  if (!hasRootTokens(bundle)) {
-    throw new Error('未找到 stoken/mid，请先扫码登录');
+function isAuthRefreshableError(error: unknown): boolean {
+  if (error instanceof ApiResponseError) {
+    return isPassportAuthRetcode(error.retcode, error.apiMessage);
   }
 
-  const device = await ensureDeviceProfile();
-  const query = { stoken: bundle.stoken };
-  const { data } = await requestApi<CookieTokenData>(
-    `${COOKIE_TOKEN_URL}?stoken=${encodeURIComponent(bundle.stoken)}`,
+  if (error instanceof HttpRequestError) {
+    return isPassportAuthHttpStatus(error.status);
+  }
+
+  return false;
+}
+
+async function requestCookieTokenV2ByStoken(): Promise<{ uid?: string; cookieTokenV2: string }> {
+  const bundle = await readAuthBundle();
+  const { response, data } = await requestApi<CookieTokenData>(
+    `${COOKIE_TOKEN_URL}?stoken=${encodeURIComponent(bundle.stoken ?? '')}`,
     {
       method: 'GET',
       anonymous: true,
       cookie: buildStokenCookie(bundle),
-      headers: buildStokenExchangeHeaders(device, generateDS('X4', 'GET', query)),
+      headers: buildCookieTokenExchangeHeaders(),
     },
-    '获取 cookie_token 失败',
+    '获取 cookie_token_v2 失败',
   );
 
-  return data.data;
+  const cookieTokenV2 = getCookieValueFromResponse(response, 'cookie_token_v2');
+  if (!cookieTokenV2) {
+    throw new Error('获取 cookie_token_v2 失败：响应中未返回 cookie_token_v2');
+  }
+
+  return {
+    uid: data.data.uid,
+    cookieTokenV2,
+  };
 }
 
 async function exchangeLTokenByStoken(): Promise<LTokenData> {
@@ -173,14 +182,13 @@ async function requestGameRolesByCookieToken(cookie: string): Promise<UserGameRo
 }
 
 async function verifyCookieToken(cookie: string): Promise<void> {
-  const device = await ensureDeviceProfile();
   await requestApi(
     VERIFY_COOKIE_TOKEN_URL,
     {
       method: 'POST',
       anonymous: true,
       cookie,
-      headers: buildVerifyCookieTokenHeaders(device),
+      headers: buildVerifyCookieTokenHeaders(),
     },
     '校验 cookie_token 失败',
   );
@@ -193,7 +201,10 @@ async function requestNapBootstrap(role: UserGameRole, cookie: string): Promise<
       method: 'POST',
       anonymous: true,
       cookie,
-      headers: buildNapBootstrapHeaders(await ensureDeviceProfile()),
+      headers: {
+        ...buildNapBootstrapHeaders(),
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         game_biz: role.game_biz,
         lang: 'zh-cn',
@@ -212,32 +223,60 @@ async function requestNapBootstrap(role: UserGameRole, cookie: string): Promise<
   return eNapToken;
 }
 
+const passportNapCore = createPassportNapCore({
+  now: () => Date.now(),
+  logger,
+  readAuthBundle,
+  patchAuthBundle,
+  persistCookieTokenV2,
+  persistSelectedRole,
+  persistNapToken,
+  requestCookieTokenByStoken: requestCookieTokenV2ByStoken,
+  verifyCookieToken,
+  requestGameRolesByCookieToken,
+  requestNapBootstrap,
+  buildCookieTokenCookie: buildCookieTokenCookie as (bundle: { mid: string; cookieTokenV2: string }) => string,
+  isAuthRefreshableError,
+  cookieTokenTtlMs: COOKIE_TOKEN_TTL_MS,
+});
+
 export async function ensureLToken(forceRefresh = false): Promise<void> {
   const current = await readAuthBundle();
   if (!forceRefresh && hasLToken(current)) {
     return;
   }
 
-  const data = await exchangeLTokenByStoken();
-  const latest = await readAuthBundle();
-  const accountId = latest.accountId || latest.stuid;
-  await persistLToken(data.ltoken, accountId);
-  logger.info('🔐 已刷新 ltoken');
-}
-
-export async function ensureCookieToken(forceRefresh = false): Promise<void> {
-  const current = await readAuthBundle();
-  if (!forceRefresh && hasCookieToken(current) && isCookieTokenFresh(current.cookieTokenUpdatedAt)) {
+  if (lTokenRefreshPromise) {
+    logger.debug(`🔁 复用进行中的 ltoken 刷新${forceRefresh ? '（强制）' : ''}`);
+    await lTokenRefreshPromise;
     return;
   }
 
-  const data = await exchangeCookieTokenByStoken();
-  await persistCookieToken(data.cookie_token, data.uid);
-  await patchAuthBundle({
-    stuid: current.stuid || data.uid,
-    ltuid: current.ltuid || data.uid,
-  });
-  logger.info('🔐 已刷新 cookie_token');
+  const refreshPromise = (async () => {
+    const latestBeforeRefresh = await readAuthBundle();
+    if (!forceRefresh && hasLToken(latestBeforeRefresh)) {
+      return;
+    }
+
+    const data = await exchangeLTokenByStoken();
+    const latest = await readAuthBundle();
+    const accountId = latest.accountId || latest.stuid;
+    await persistLToken(data.ltoken, accountId);
+    logger.info('🔐 已刷新 ltoken');
+  })();
+
+  lTokenRefreshPromise = refreshPromise;
+  try {
+    await refreshPromise;
+  } finally {
+    if (lTokenRefreshPromise === refreshPromise) {
+      lTokenRefreshPromise = null;
+    }
+  }
+}
+
+export async function ensureCookieToken(forceRefresh = false): Promise<void> {
+  await passportNapCore.ensureCookieToken(forceRefresh);
 }
 
 export async function ensurePassportCookieHeader(forceRefresh = false): Promise<void> {
@@ -245,48 +284,15 @@ export async function ensurePassportCookieHeader(forceRefresh = false): Promise<
 }
 
 export async function getPrimaryGameRole(forceRefresh = false): Promise<UserGameRole> {
-  await ensureCookieToken(forceRefresh);
-  const bundle = await readAuthBundle();
-  if (!hasCookieToken(bundle)) {
-    throw new Error('未找到 cookie_token/account_id，请先完成扫码登录');
-  }
-
-  await verifyCookieToken(buildCookieTokenCookie(bundle));
-  const roles = await requestGameRolesByCookieToken(buildCookieTokenCookie(bundle));
-  await persistSelectedRole(roles[0]);
-  return roles[0];
-}
-
-async function ensureNapBusinessTokenInternal(forceRefresh = false, role?: UserGameRole): Promise<string> {
-  const current = await readAuthBundle();
-  if (!forceRefresh && hasNapToken(current)) {
-    return current.eNapToken;
-  }
-
-  const resolvedRole = role ?? current.selectedRole ?? await getPrimaryGameRole(forceRefresh);
-
-  await ensureCookieToken(forceRefresh);
-  const fresh = await readAuthBundle();
-
-  if (!hasCookieToken(fresh)) {
-    throw new Error('未找到 cookie_token/account_id，无法初始化 e_nap_token');
-  }
-
-  const eNapToken = await requestNapBootstrap(resolvedRole, buildCookieTokenCookie(fresh));
-  await persistNapToken(eNapToken);
-  await persistSelectedRole(resolvedRole);
-  logger.info('🔐 已完成 e_nap_token 自举');
-  return eNapToken;
+  return await passportNapCore.getPrimaryGameRole(forceRefresh);
 }
 
 export async function initializeNapToken(): Promise<UserGameRole> {
-  const role = await getPrimaryGameRole();
-  await ensureNapBusinessTokenInternal(false, role);
-  return role;
+  return await passportNapCore.initializeNapToken();
 }
 
 export async function ensureNapBusinessToken(forceRefresh = false): Promise<void> {
-  await ensureNapBusinessTokenInternal(forceRefresh);
+  await passportNapCore.ensureNapBusinessToken(forceRefresh);
 }
 
 /** Step 1: 创建二维码 */

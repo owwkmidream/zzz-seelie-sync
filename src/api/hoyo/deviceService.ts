@@ -13,8 +13,8 @@ import type { DeviceInfo } from './types';
  * 兼容旧接口：返回带设备头的手机请求头
  */
 export async function getZZZHeaderWithDevice(): Promise<Record<string, string>> {
-  const profile = await ensureDeviceProfile();
-  return buildNapSessionHeaders(profile);
+  await ensureDeviceProfile();
+  return buildNapSessionHeaders();
 }
 
 /**

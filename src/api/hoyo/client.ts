@@ -6,19 +6,15 @@ import { logger } from '../../utils/logger';
 import { buildLTokenCookie, buildNapCookie } from './cookieJar';
 import { resolveHoyoAuthRoute, type HoyoAuthRoute } from './authRouter';
 import { buildGameRecordHeaders, buildNapCultivateHeaders } from './headerProfiles';
-import { NAP_CULTIVATE_TOOL_URL, DEVICE_FP_ERROR_CODES } from './config';
+import { NAP_CULTIVATE_TOOL_URL } from './config';
 import { ensureUserInfo } from './authService';
-import {
-  ApiResponseError,
-  DeviceFingerprintRefreshError,
-  HttpRequestError,
-} from './errors';
 import {
   getDeviceFingerprint,
 } from './deviceService';
 import { ensureDeviceProfile } from './deviceProfile';
 import { ensureLToken, ensureNapBusinessToken, hasPersistedStoken, isPassportAuthHttpStatus, isPassportAuthRetcode } from './passportService';
 import { hasLToken, hasNapToken, readAuthBundle } from './authStore';
+import { createRouteRequestCore } from './requestCore';
 
 export { generateUUID, generateHexString } from './deviceUtils';
 export { NAP_CULTIVATE_TOOL_URL, GAME_RECORD_URL, DEVICE_FP_URL } from './config';
@@ -34,6 +30,7 @@ export {
 
 async function buildRouteRequestContext(
   route: HoyoAuthRoute,
+  endpoint: string,
   forceAuthRefresh = false,
 ): Promise<{ headers: Record<string, string>; cookie: string }> {
   const device = await ensureDeviceProfile();
@@ -46,7 +43,7 @@ async function buildRouteRequestContext(
     }
 
     return {
-      headers: buildNapCultivateHeaders(device),
+      headers: buildNapCultivateHeaders(endpoint, device),
       cookie: buildNapCookie(bundle),
     };
   }
@@ -63,7 +60,7 @@ async function buildRouteRequestContext(
   };
 }
 
-async function refreshRouteAuth(route: HoyoAuthRoute): Promise<void> {
+async function triggerRouteAuthRefresh(route: HoyoAuthRoute): Promise<void> {
   if (route === 'nap_cultivate') {
     await ensureNapBusinessToken(true);
     return;
@@ -71,6 +68,17 @@ async function refreshRouteAuth(route: HoyoAuthRoute): Promise<void> {
 
   await ensureLToken(true);
 }
+
+const routeRequestCore = createRouteRequestCore({
+  fetch: GM_fetch,
+  logger,
+  buildRouteRequestContext,
+  triggerRouteAuthRefresh,
+  hasPersistedStoken,
+  isPassportAuthHttpStatus,
+  isPassportAuthRetcode,
+  getDeviceFingerprint,
+});
 
 // 通用请求函数
 export async function request<T = unknown>(
@@ -101,89 +109,13 @@ export async function request<T = unknown>(
 
   const requestLabel = `${method} ${endpoint}`;
 
-  const executeRequest = async (
-    authRetried = false,
-    deviceRetried = false,
-  ): Promise<ApiResponse<T>> => {
-    const routeContext = await buildRouteRequestContext(route, authRetried);
-    const finalHeaders: Record<string, string> = {
-      ...routeContext.headers,
-      ...headers,
-    };
-
-    if (body !== undefined && !finalHeaders['Content-Type']) {
-      finalHeaders['Content-Type'] = 'application/json';
-    }
-
-    logger.debug(`🌐 发起请求 ${requestLabel}${authRetried || deviceRetried ? ' (重试)' : ''}`, {
-      baseUrl,
-      endpoint,
-      route,
-      authRetried,
-      deviceRetried,
-    });
-
-    try {
-      const response = await GM_fetch(url, {
-        method,
-        anonymous: true,
-        cookie: routeContext.cookie,
-        headers: finalHeaders,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-      });
-
-      if (!response.ok) {
-        if (!authRetried && await hasPersistedStoken() && isPassportAuthHttpStatus(response.status)) {
-          logger.warn(`⚠️ 鉴权失败，准备刷新路由凭证后重试 ${requestLabel}`);
-          await refreshRouteAuth(route);
-          return await executeRequest(true, deviceRetried);
-        }
-
-        throw new HttpRequestError(response.status, response.statusText);
-      }
-
-      const data = await response.json() as ApiResponse<T>;
-      if (data.retcode !== 0) {
-        if (DEVICE_FP_ERROR_CODES.has(data.retcode) && !deviceRetried) {
-          logger.warn(`⚠️ 设备指纹错误，准备刷新后重试 ${requestLabel}`, {
-            retcode: data.retcode,
-            message: data.message,
-          });
-
-          try {
-            await getDeviceFingerprint();
-            return await executeRequest(authRetried, true);
-          } catch (error) {
-            throw new DeviceFingerprintRefreshError(data.retcode, data.message, error);
-          }
-        }
-
-        if (!authRetried && await hasPersistedStoken() && isPassportAuthRetcode(data.retcode, data.message)) {
-          logger.warn(`⚠️ 业务鉴权失败，准备刷新路由凭证后重试 ${requestLabel}`, {
-            retcode: data.retcode,
-            message: data.message,
-          });
-          await refreshRouteAuth(route);
-          return await executeRequest(true, deviceRetried);
-        }
-
-        throw new ApiResponseError(data.retcode, data.message);
-      }
-
-      return data;
-    } catch (error) {
-      if (
-        error instanceof ApiResponseError
-        || error instanceof HttpRequestError
-        || error instanceof DeviceFingerprintRefreshError
-      ) {
-        throw error;
-      }
-
-      logger.error(`❌ 请求异常 ${requestLabel}`, error);
-      throw error;
-    }
-  };
-
-  return await executeRequest();
+  return await routeRequestCore.execute<T>({
+    url,
+    endpoint,
+    route,
+    method,
+    body,
+    headers,
+    requestLabel,
+  });
 }

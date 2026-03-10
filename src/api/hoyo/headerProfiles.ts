@@ -1,24 +1,20 @@
 import type { DeviceInfo } from './types';
 import {
+  getMinimalAuthContract,
+  resolveNapAuthContractId,
+  type MinimalAuthContractId,
+} from './minimalAuthContracts';
+import {
   ACCEPT_JSON,
   APP_VERSION,
   HOYO_LANGUAGE,
   HOYO_REFERER,
   MOBILE_USER_AGENT,
-  NAP_GEETEST_EXT,
-  NAP_PAGE,
   QR_USER_AGENT,
-  WEB_APP_ID,
-  WEB_DEVICE_MODEL,
-  WEB_DEVICE_NAME,
-  WEB_DEVICE_OS,
-  WEB_MI_REFERRER,
-  WEB_PLATFORM,
-  WEB_SDK_VERSION,
-  WEB_USER_AGENT,
 } from './config';
 
 type DeviceHeaders = Pick<DeviceInfo, 'deviceId' | 'deviceFp'>;
+type AuthHeaderName = 'x-rpc-device_id' | 'x-rpc-device_fp';
 
 function buildMobileBaseHeaders(): Record<string, string> {
   return {
@@ -43,14 +39,29 @@ function withDeviceHeaders(
   };
 }
 
-function buildWebBaseHeaders(): Record<string, string> {
-  return {
-    Accept: ACCEPT_JSON,
-    Origin: HOYO_REFERER.act,
-    Referer: HOYO_REFERER.act,
-    'User-Agent': WEB_USER_AGENT,
-    'x-rpc-mi_referrer': WEB_MI_REFERRER,
-  };
+function buildHeadersFromContract(
+  contractId: MinimalAuthContractId,
+  device?: DeviceHeaders,
+): Record<string, string> {
+  const headers: Record<string, string> = {};
+
+  for (const headerName of getMinimalAuthContract(contractId).minimalHeaders as AuthHeaderName[]) {
+    if (!device) {
+      throw new Error(`缺少设备信息，无法生成鉴权头: ${headerName}`);
+    }
+
+    if (headerName === 'x-rpc-device_id') {
+      headers[headerName] = device.deviceId;
+      continue;
+    }
+
+    if (headerName === 'x-rpc-device_fp') {
+      headers[headerName] = device.deviceFp;
+      continue;
+    }
+  }
+
+  return headers;
 }
 
 export function buildQrHeaders(deviceId: string): Record<string, string> {
@@ -88,6 +99,10 @@ export function buildStokenExchangeHeaders(
   );
 }
 
+export function buildCookieTokenExchangeHeaders(): Record<string, string> {
+  return {};
+}
+
 export function buildRoleDiscoveryHeaders(
   device: DeviceHeaders,
   ds: string,
@@ -103,17 +118,12 @@ export function buildRoleDiscoveryHeaders(
   );
 }
 
-export function buildNapBootstrapHeaders(device: DeviceHeaders): Record<string, string> {
-  return {
-    ...buildWebBaseHeaders(),
-    'Content-Type': 'application/json;',
-  };
+export function buildNapBootstrapHeaders(): Record<string, string> {
+  return buildHeadersFromContract('login/account');
 }
 
-export function buildNapSessionHeaders(device: DeviceHeaders): Record<string, string> {
-  return {
-    ...buildWebBaseHeaders(),
-  };
+export function buildNapSessionHeaders(): Record<string, string> {
+  return buildHeadersFromContract('login/info');
 }
 
 export function buildGameRecordHeaders(device: DeviceHeaders): Record<string, string> {
@@ -126,42 +136,14 @@ export function buildGameRecordHeaders(device: DeviceHeaders): Record<string, st
   );
 }
 
-export function buildVerifyCookieTokenHeaders(device: DeviceHeaders): Record<string, string> {
-  return withDeviceHeaders(
-    {
-      ...buildWebBaseHeaders(),
-      'x-rpc-app_id': WEB_APP_ID,
-      'x-rpc-client_type': '4',
-      'x-rpc-device_model': encodeURIComponent(WEB_DEVICE_MODEL),
-      'x-rpc-device_name': WEB_DEVICE_NAME,
-      'x-rpc-device_os': encodeURIComponent(WEB_DEVICE_OS),
-      'x-rpc-game_biz': 'nap_cn',
-      'x-rpc-lifecycle_id': '',
-      'x-rpc-sdk_version': WEB_SDK_VERSION,
-      'x-rpc-app_version': '',
-    },
-    device,
-  );
+export function buildVerifyCookieTokenHeaders(): Record<string, string> {
+  return buildHeadersFromContract('verifyCookieToken');
 }
 
 export function buildRoleByCookieTokenHeaders(): Record<string, string> {
-  return {
-    ...buildWebBaseHeaders(),
-  };
+  return buildHeadersFromContract('getUserGameRolesByCookieToken');
 }
 
-export function buildNapCultivateHeaders(device: DeviceHeaders): Record<string, string> {
-  return withDeviceHeaders(
-    {
-      ...buildWebBaseHeaders(),
-      'x-rpc-cultivate_source': 'pc',
-      'x-rpc-geetest_ext': NAP_GEETEST_EXT,
-      'x-rpc-is_teaser': '1',
-      'x-rpc-lang': HOYO_LANGUAGE,
-      'x-rpc-lrsag': '',
-      'x-rpc-page': NAP_PAGE,
-      'x-rpc-platform': WEB_PLATFORM,
-    },
-    device,
-  );
+export function buildNapCultivateHeaders(endpoint: string, device: DeviceHeaders): Record<string, string> {
+  return buildHeadersFromContract(resolveNapAuthContractId(endpoint), device);
 }

@@ -315,7 +315,8 @@ export interface QRLoginStatusData {
 /** getCookieAccountInfoBySToken 响应 data */
 export interface CookieTokenData {
   uid: string;
-  cookie_token: string;
+  cookie_token?: string;
+  cookie_token_v2?: string;
 }
 
 /** getLTokenBySToken 响应 data */
@@ -348,6 +349,7 @@ export interface AuthBundle {
   ltoken?: string;
   ltuid?: string;
   cookieToken?: string;
+  cookieTokenV2?: string;
   accountId?: string;
   eNapToken?: string;
   selectedRole?: UserGameRole;
@@ -355,6 +357,7 @@ export interface AuthBundle {
   rootTokensUpdatedAt?: number;
   ltokenUpdatedAt?: number;
   cookieTokenUpdatedAt?: number;
+  cookieTokenV2UpdatedAt?: number;
   eNapTokenUpdatedAt?: number;
   roleUpdatedAt?: number;
   schemaVersion: number;

@@ -5,7 +5,6 @@ import { NAP_LOGIN_INFO_URL } from './config';
 import { ApiResponseError, HttpRequestError } from './errors';
 import { buildNapCookie } from './cookieJar';
 import { buildNapSessionHeaders } from './headerProfiles';
-import { ensureDeviceProfile } from './deviceProfile';
 import { hasNapToken, readAuthBundle } from './authStore';
 import { ensureNapBusinessToken, getPrimaryGameRole } from './passportService';
 
@@ -45,12 +44,11 @@ async function requestLoginInfo(forceRefresh = false): Promise<ApiResponse<Login
     throw new Error('未找到 e_nap_token，无法请求登录信息');
   }
 
-  const device = await ensureDeviceProfile();
   const response = await GM_fetch(`${NAP_LOGIN_INFO_URL}&ts=${Date.now()}`, {
     method: 'GET',
     anonymous: true,
     cookie: buildNapCookie(latest),
-    headers: buildNapSessionHeaders(device),
+    headers: buildNapSessionHeaders(),
   });
 
   if (!response.ok) {
