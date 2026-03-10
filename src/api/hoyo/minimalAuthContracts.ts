@@ -35,14 +35,14 @@ export const MINIMAL_AUTH_CONTRACTS: Record<MinimalAuthContractId, MinimalAuthCo
     endpoint: 'passport-api/account/ma-cn-passport/app/createQRLogin',
     templateSource: 'TeyvatGuide/current-repo QR',
     minimalCookies: [],
-    minimalHeaders: ['x-rpc-app_id', 'x-rpc-device_id'],
+    minimalHeaders: ['x-rpc-app_id', 'x-rpc-device_id', 'x-rpc-device_fp'],
     refreshDependency: 'none',
   },
   queryQRLoginStatus: {
     endpoint: 'passport-api/account/ma-cn-passport/app/queryQRLoginStatus',
     templateSource: 'TeyvatGuide/current-repo QR',
     minimalCookies: [],
-    minimalHeaders: ['x-rpc-app_id', 'x-rpc-device_id'],
+    minimalHeaders: ['x-rpc-app_id', 'x-rpc-device_id', 'x-rpc-device_fp'],
     refreshDependency: 'qr_ticket',
   },
   getCookieAccountInfoBySToken: {
@@ -91,14 +91,14 @@ export const MINIMAL_AUTH_CONTRACTS: Record<MinimalAuthContractId, MinimalAuthCo
     endpoint: 'act-api-takumi/event/nap_cultivate_tool/user/avatar_basic_list',
     templateSource: '2.js minimal cultivate',
     minimalCookies: ['e_nap_token'],
-    minimalHeaders: ['x-rpc-device_fp'],
+    minimalHeaders: ['x-rpc-device_id', 'x-rpc-device_fp'],
     refreshDependency: 'e_nap_token',
   },
   batch_avatar_detail_v2: {
     endpoint: 'act-api-takumi/event/nap_cultivate_tool/user/batch_avatar_detail_v2',
     templateSource: '2.js minimal cultivate',
     minimalCookies: ['e_nap_token'],
-    minimalHeaders: ['x-rpc-device_fp'],
+    minimalHeaders: ['x-rpc-device_id', 'x-rpc-device_fp'],
     refreshDependency: 'e_nap_token',
   },
   avatar_calc: {
@@ -112,7 +112,7 @@ export const MINIMAL_AUTH_CONTRACTS: Record<MinimalAuthContractId, MinimalAuthCo
     endpoint: 'api-takumi-record/event/game_record_zzz/api/zzz/note',
     templateSource: 'current-repo mobile note',
     minimalCookies: ['ltoken', 'ltuid'],
-    minimalHeaders: ['x-rpc-device_id'],
+    minimalHeaders: ['x-rpc-device_id', 'x-rpc-device_fp'],
     refreshDependency: 'none',
   },
   getFp: {

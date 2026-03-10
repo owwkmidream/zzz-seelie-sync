@@ -12,14 +12,14 @@ test('minimal auth contracts: NAP 主链结构与实测一致', () => {
   assert.deepEqual(getMinimalAuthContract('getUserGameRolesByCookieToken').minimalCookies, ['account_id', 'cookie_token']);
   assert.deepEqual(getMinimalAuthContract('login/account').minimalCookies, ['account_id', 'cookie_token']);
   assert.deepEqual(getMinimalAuthContract('login/info').minimalCookies, ['e_nap_token']);
-  assert.deepEqual(getMinimalAuthContract('avatar_basic_list').minimalHeaders, ['x-rpc-device_fp']);
-  assert.deepEqual(getMinimalAuthContract('batch_avatar_detail_v2').minimalHeaders, ['x-rpc-device_fp']);
+  assert.deepEqual(getMinimalAuthContract('avatar_basic_list').minimalHeaders, ['x-rpc-device_id', 'x-rpc-device_fp']);
+  assert.deepEqual(getMinimalAuthContract('batch_avatar_detail_v2').minimalHeaders, ['x-rpc-device_id', 'x-rpc-device_fp']);
   assert.deepEqual(getMinimalAuthContract('avatar_calc').minimalHeaders, []);
 });
 
 test('minimal auth contracts: note 与 stoken 交换结构与实测一致', () => {
   assert.deepEqual(getMinimalAuthContract('note').minimalCookies, ['ltoken', 'ltuid']);
-  assert.deepEqual(getMinimalAuthContract('note').minimalHeaders, ['x-rpc-device_id']);
+  assert.deepEqual(getMinimalAuthContract('note').minimalHeaders, ['x-rpc-device_id', 'x-rpc-device_fp']);
   assert.deepEqual(getMinimalAuthContract('getCookieAccountInfoBySToken').minimalCookies, ['mid', 'stoken']);
   assert.deepEqual(getMinimalAuthContract('getLTokenBySToken').minimalCookies, ['mid', 'stoken']);
 });
