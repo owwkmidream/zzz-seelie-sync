@@ -31,21 +31,6 @@ export const NAP_TOKEN_URL = `${API_TAKUMI_BASE_URL}/common/badge/v1/login/accou
 export const MOBILE_USER_AGENT = `Mozilla/5.0 (Linux; Android 12) Mobile miHoYoBBS/${APP_VERSION}`;
 export const QR_USER_AGENT = `HYPContainer/${HYP_CONTAINER_VERSION}`;
 export const ACCEPT_JSON = 'application/json, text/plain, */*';
-export const WEB_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36';
-export const WEB_APP_ID = 'cieb8o6xs1kw';
-export const WEB_SDK_VERSION = '2.49.0';
-export const WEB_DEVICE_NAME = 'Chrome';
-export const WEB_DEVICE_MODEL = 'Chrome 146.0.0.0';
-export const WEB_DEVICE_OS = 'Windows 10 64-bit';
-export const WEB_MI_REFERRER = 'https://act.mihoyo.com/zzz/gt/character-builder-h#/';
-export const WEB_PLATFORM = '4';
-export const NAP_PAGE = 'v2.6.0_apps-h_#';
-export const NAP_GEETEST_EXT = JSON.stringify({
-  gameId: 8,
-  page: 'v2.6.0_apps-h_#',
-  viewSource: 1,
-  actionSource: 132,
-});
 
 export const HOYO_REFERER = {
   act: 'https://act.mihoyo.com/',

@@ -101,7 +101,7 @@ export default defineConfig({
         downloadURL,
         updateURL,
         license: 'MIT',
-        match: ['https://zzz.seelie.me/*', 'https://do-not-exist.mihoyo.com/'],
+        match: ['https://zzz.seelie.me/*'],
         // GM API 权限
         grant: [
           'GM.xmlHttpRequest',
