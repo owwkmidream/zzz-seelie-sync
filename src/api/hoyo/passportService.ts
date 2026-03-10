@@ -18,10 +18,10 @@ import {
 import { buildCookieTokenCookie, buildStokenCookie, getCookieValueFromResponse } from './cookieJar';
 import {
   buildCookieTokenExchangeHeaders,
+  buildLTokenExchangeHeaders,
   buildNapBootstrapHeaders,
   buildQrHeaders,
   buildRoleByCookieTokenHeaders,
-  buildStokenExchangeHeaders,
   buildVerifyCookieTokenHeaders,
 } from './headerProfiles';
 import {
@@ -34,11 +34,9 @@ import {
   QUERY_QR_LOGIN_STATUS_URL,
   VERIFY_COOKIE_TOKEN_URL,
 } from './config';
-import { generateDS } from './ds';
-import { ensureDeviceProfile, getCurrentDeviceProfile } from './deviceProfile';
+import { getCurrentDeviceProfile } from './deviceProfile';
 import {
   clearAuthBundle,
-  hasLToken,
   hasRootTokens,
   patchAuthBundle,
   persistCookieTokenV2,
@@ -50,9 +48,9 @@ import {
 } from './authStore';
 import { ApiResponseError, HttpRequestError } from './errors';
 import { createPassportNapCore } from './passportCore';
+import { createRecordAuthCore } from './recordAuthCore';
 
 const QR_EXPIRED_RETCODE = -106;
-let lTokenRefreshPromise: Promise<void> | null = null;
 
 async function requestApi<T>(
   url: string,
@@ -99,8 +97,8 @@ export async function hasPersistedStoken(): Promise<boolean> {
 }
 
 export async function clearPersistedPassportTokens(): Promise<void> {
-  lTokenRefreshPromise = null;
   passportNapCore.reset();
+  recordAuthCore.reset();
   await clearAuthBundle();
 }
 
@@ -146,17 +144,31 @@ async function exchangeLTokenByStoken(): Promise<LTokenData> {
     throw new Error('未找到 stoken/mid，请先扫码登录');
   }
 
-  const device = await ensureDeviceProfile();
-  const query = { stoken: bundle.stoken };
   const { data } = await requestApi<LTokenData>(
     `${LTOKEN_URL}?stoken=${encodeURIComponent(bundle.stoken)}`,
     {
       method: 'GET',
       anonymous: true,
       cookie: buildStokenCookie(bundle),
-      headers: buildStokenExchangeHeaders(device, generateDS('X4', 'GET', query)),
+      headers: buildLTokenExchangeHeaders(),
     },
     '获取 ltoken 失败',
+  );
+
+  return data.data;
+}
+
+async function requestCookieAccountInfoByStoken(): Promise<CookieTokenData> {
+  const bundle = await readAuthBundle();
+  const { data } = await requestApi<CookieTokenData>(
+    `${COOKIE_TOKEN_URL}?stoken=${encodeURIComponent(bundle.stoken ?? '')}`,
+    {
+      method: 'GET',
+      anonymous: true,
+      cookie: buildStokenCookie(bundle),
+      headers: buildCookieTokenExchangeHeaders(),
+    },
+    '获取通行证账号信息失败',
   );
 
   return data.data;
@@ -240,39 +252,17 @@ const passportNapCore = createPassportNapCore({
   cookieTokenTtlMs: COOKIE_TOKEN_TTL_MS,
 });
 
+const recordAuthCore = createRecordAuthCore({
+  logger,
+  readAuthBundle,
+  patchAuthBundle,
+  persistLToken,
+  requestCookieAccountInfoByStoken,
+  requestLTokenByStoken: exchangeLTokenByStoken,
+});
+
 export async function ensureLToken(forceRefresh = false): Promise<void> {
-  const current = await readAuthBundle();
-  if (!forceRefresh && hasLToken(current)) {
-    return;
-  }
-
-  if (lTokenRefreshPromise) {
-    logger.debug(`🔁 复用进行中的 ltoken 刷新${forceRefresh ? '（强制）' : ''}`);
-    await lTokenRefreshPromise;
-    return;
-  }
-
-  const refreshPromise = (async () => {
-    const latestBeforeRefresh = await readAuthBundle();
-    if (!forceRefresh && hasLToken(latestBeforeRefresh)) {
-      return;
-    }
-
-    const data = await exchangeLTokenByStoken();
-    const latest = await readAuthBundle();
-    const accountId = latest.accountId || latest.stuid;
-    await persistLToken(data.ltoken, accountId);
-    logger.info('🔐 已刷新 ltoken');
-  })();
-
-  lTokenRefreshPromise = refreshPromise;
-  try {
-    await refreshPromise;
-  } finally {
-    if (lTokenRefreshPromise === refreshPromise) {
-      lTokenRefreshPromise = null;
-    }
-  }
+  await recordAuthCore.ensureLToken(forceRefresh);
 }
 
 export async function ensureCookieToken(forceRefresh = false): Promise<void> {

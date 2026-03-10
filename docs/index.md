@@ -21,6 +21,7 @@
 
 ### 最近结构变更
 
+- `2026-03-11`：新增 `src/api/hoyo/recordAuthCore.ts`，把 `note` 链的 `ltoken/ltuid` 刷新逻辑下沉到可注入 core，并补上 `recordAuthCore` / `requestCore` 的 note 路径单测。
 - `2026-03-11`：新增 `src/api/hoyo/passportCore.ts`、`src/api/hoyo/requestCore.ts`，把 NAP 主链刷新/重试状态机下沉到可注入 core，并补上 mock 流程单测。
 - `2026-03-11`：新增 `tests/api/hoyo/*.test.ts` 与 `test:unit`，开始为 HoYo 鉴权改造相关纯逻辑补单元测试，不再只靠手动请求回归。
 - `2026-03-11`：新增 `temp/hoyo-auth-probe.cjs` 与 `docs/api-auth-minimal-probe.md`，把 `D:\2.js` + 真实存储样本的 HoYo 端点最小鉴权结构实测结果落为文档。
@@ -68,6 +69,7 @@
 | `src/api/hoyo/minimalAuthContracts.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/passportCore.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/passportService.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
+| `src/api/hoyo/recordAuthCore.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/requestCore.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/types.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |
 | `src/api/hoyo/utils.ts` | `api/hoyo` | 米哈游 API 客户端与鉴权模块 |

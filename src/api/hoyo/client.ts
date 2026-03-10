@@ -11,7 +11,7 @@ import { ensureUserInfo } from './authService';
 import {
   getDeviceFingerprint,
 } from './deviceService';
-import { ensureDeviceProfile } from './deviceProfile';
+import { ensureDeviceProfile, getCurrentDeviceProfile } from './deviceProfile';
 import { ensureLToken, ensureNapBusinessToken, hasPersistedStoken, isPassportAuthHttpStatus, isPassportAuthRetcode } from './passportService';
 import { hasLToken, hasNapToken, readAuthBundle } from './authStore';
 import { createRouteRequestCore } from './requestCore';
@@ -33,9 +33,8 @@ async function buildRouteRequestContext(
   endpoint: string,
   forceAuthRefresh = false,
 ): Promise<{ headers: Record<string, string>; cookie: string }> {
-  const device = await ensureDeviceProfile();
-
   if (route === 'nap_cultivate') {
+    const device = await ensureDeviceProfile();
     await ensureNapBusinessToken(forceAuthRefresh);
     const bundle = await readAuthBundle();
     if (!hasNapToken(bundle)) {
@@ -54,6 +53,7 @@ async function buildRouteRequestContext(
     throw new Error('未找到 ltoken/ltuid，请先完成扫码登录');
   }
 
+  const device = await getCurrentDeviceProfile();
   return {
     headers: buildGameRecordHeaders(device),
     cookie: buildLTokenCookie(bundle),

@@ -103,6 +103,10 @@ export function buildCookieTokenExchangeHeaders(): Record<string, string> {
   return {};
 }
 
+export function buildLTokenExchangeHeaders(): Record<string, string> {
+  return {};
+}
+
 export function buildRoleDiscoveryHeaders(
   device: DeviceHeaders,
   ds: string,
@@ -127,13 +131,7 @@ export function buildNapSessionHeaders(): Record<string, string> {
 }
 
 export function buildGameRecordHeaders(device: DeviceHeaders): Record<string, string> {
-  return withDeviceHeaders(
-    {
-      ...buildMobileBaseHeaders(),
-      Referer: HOYO_REFERER.act,
-    },
-    device,
-  );
+  return buildHeadersFromContract('note', device);
 }
 
 export function buildVerifyCookieTokenHeaders(): Record<string, string> {

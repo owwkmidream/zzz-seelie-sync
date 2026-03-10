@@ -165,7 +165,8 @@
 
 - 当前 NAP 主链只依赖 `mid + stoken`
 - `getCookieAccountInfoBySToken` 运行时不再显式拼额外鉴权头
-- `getLTokenBySToken` 仍保留手机 X4 profile，供 `note` 链使用
+- `getLTokenBySToken` 运行时也不再显式拼额外鉴权头
+- `note` 链若缺 `ltuid/stuid`，会先用 `getCookieAccountInfoBySToken` 自动补 uid，再刷新 `ltoken`
 
 ### 4.3 Role Discovery Profile
 
@@ -201,12 +202,9 @@
 
 特征：
 
-- 纯手机 UA
-- `Referer: https://act.mihoyo.com/`
-- `x-rpc-app_version`
-- `x-rpc-client_type: 5`
-- `x-rpc-device_id`
-- `x-rpc-device_fp`
+- 当前运行时只依赖 `ltoken + ltuid`
+- 当前显式最小业务头只保留 `x-rpc-device_id`
+- `note` 路由不再强制要求已刷新 `device_fp`
 - 当前实现**不附带 DS**
 
 ## 5. 接口路由矩阵
@@ -235,6 +233,8 @@
   - 负责拼 Cookie 与解析 `Set-Cookie`
 - `src/api/hoyo/passportCore.ts`
   - 负责 `stoken -> cookie_token_v2 -> role -> e_nap_token` 的可测核心流程
+- `src/api/hoyo/recordAuthCore.ts`
+  - 负责 `mid + stoken -> uid/ltuid -> ltoken` 的可测核心流程
 - `src/api/hoyo/requestCore.ts`
   - 负责 NAP/Note 请求的重试、singleflight 与 `device_fp` 刷新编排
 - `src/api/hoyo/headerProfiles.ts`
@@ -271,5 +271,6 @@
   - 说明当前结构可用，但频控窗口确实存在。
 - `getFp` 不能只看 header/cookie。
   - 它真正敏感的是 body 里的设备画像，尤其是 `ext_fields`。
+- `note` 运行时已经按最小结构收敛，但这仍然是静态/单测层验证，不代表已经完成浏览器实网回归。
 - `e_nap_token` 依赖端点的最小 Cookie 指“端点本身”只需要 `e_nap_token`。
   - 不包含“如何先拿到 `e_nap_token`”这一条前置链路。

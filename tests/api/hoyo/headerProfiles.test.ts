@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  buildGameRecordHeaders,
   buildNapBootstrapHeaders,
   buildNapCultivateHeaders,
   buildNapSessionHeaders,
@@ -35,4 +36,10 @@ test('NAP cultivate 未配置端点直接抛错，避免静默 fallback', () => 
     () => buildNapCultivateHeaders('/user/unknown', device),
     /未配置的 NAP 鉴权结构/,
   );
+});
+
+test('Game record 只输出 x-rpc-device_id，不要求显式 device_fp', () => {
+  assert.deepEqual(buildGameRecordHeaders(device), {
+    'x-rpc-device_id': 'device-id',
+  });
 });
