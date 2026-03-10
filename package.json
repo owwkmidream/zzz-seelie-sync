@@ -9,6 +9,8 @@
     "build:nightly": "cross-env RELEASE_NIGHTLY=true vite build",
     "build:release": "cross-env RELEASE=true vite build",
     "preview": "vite build && vite preview",
+    "test": "pnpm run test:unit",
+    "test:unit": "tsx --test tests/**/*.test.ts",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
     "lint:prod": "cross-env NODE_ENV=production eslint src --ext .js,.jsx,.ts,.tsx",
@@ -32,6 +34,7 @@
     "cross-env": "^10.0.0",
     "eslint": "^9.32.0",
     "globals": "^16.3.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.2",
     "vite": "^7.0.6",
     "vite-plugin-monkey": "^6.0.1"
