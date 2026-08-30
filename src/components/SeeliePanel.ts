@@ -20,12 +20,21 @@ import { createUserInfoSection } from './seeliePanelUserInfoView';
 import { createSyncSectionView } from './seeliePanelSyncView';
 import { createQRLoginModal, updateQRLoginStatus, refreshQRCode } from './seeliePanelQrLoginView';
 import { ensurePanelStyles } from './zssPanelStyles';
+import { PANEL_TARGET_SELECTOR, resolvePanelTarget } from './seeliePanelTargets';
 
 type SyncOperationStatus = 'success' | 'warning' | 'error';
 
 interface SyncOperationResult {
   status: SyncOperationStatus;
   message: string;
+}
+
+export interface SeeliePanelOptions {
+  /**
+   * 自定义挂载宿主。传入时面板挂到该元素内，不再依赖站点侧边栏，
+   * 用于 GM 菜单悬浮窗兜底。
+   */
+  mountHost?: HTMLElement;
 }
 
 export class SeeliePanel {
@@ -41,11 +50,15 @@ export class SeeliePanel {
   private qrLoginGeneration = 0;
 
   // 组件相关的选择器常量
-  public static readonly TARGET_SELECTOR = 'div.flex.flex-col.items-center.justify-center.w-full.mt-3';
+  public static readonly TARGET_SELECTOR = PANEL_TARGET_SELECTOR;
   public static readonly PANEL_SELECTOR = '[data-seelie-panel="true"]';
 
-  constructor() {
+  /** 自定义挂载宿主（悬浮窗模式使用），为空时挂到站点侧边栏 */
+  private readonly mountHost: HTMLElement | null;
+
+  constructor(options: SeeliePanelOptions = {}) {
     // 移除自动初始化，由外部控制
+    this.mountHost = options.mountHost ?? null;
   }
 
   /**
@@ -64,7 +77,7 @@ export class SeeliePanel {
    * 创建面板
    */
   private async createPanel(): Promise<void> {
-    const targetContainer = document.querySelector(SeeliePanel.TARGET_SELECTOR);
+    const targetContainer = this.mountHost ?? resolvePanelTarget();
     if (!targetContainer) {
       throw new Error('目标容器未找到');
     }
@@ -664,12 +677,16 @@ export class SeeliePanel {
       this.container = null;
     }
 
-    // 额外清理：移除页面上所有可能存在的面板（防止重复创建）
-    const allPanels = document.querySelectorAll(SeeliePanel.PANEL_SELECTOR);
-    allPanels.forEach(panel => {
-      if (panel.parentNode) {
-        panel.parentNode.removeChild(panel);
-      }
+    // 额外清理：移除残留面板（防止重复创建）。
+    // 悬浮窗模式只清自己宿主内的，避免把侧边栏面板一起删掉，反之亦然。
+    const cleanupRoots: ParentNode[] = this.mountHost
+      ? [this.mountHost]
+      : Array.from(document.querySelectorAll(PANEL_TARGET_SELECTOR));
+
+    cleanupRoots.forEach(root => {
+      root.querySelectorAll(SeeliePanel.PANEL_SELECTOR).forEach(panel => {
+        panel.remove();
+      });
     });
 
     logger.debug('Seelie 面板已销毁');

@@ -2,25 +2,19 @@ import { getCachedSiteManifest, getSiteManifest, type SiteManifest } from './sit
 import { logger } from './logger'
 import { useRouterWatcher } from './useRouterWatcher'
 
-const PLEASE_IMAGE_SELECTOR = 'img[src*="please.png"]'
-const AD_SLOT_SELECTOR = '#large-leaderboard-ad, #leaderboard-target, .pw-incontent'
-const SIGNAL_TRACKER_SELECTOR = 'a[href*="stardb.gg/zzz/signal-tracker"]'
-
-const LEGACY_AD_CONTAINER_SELECTOR = 'div.overflow-hidden.relative.text-white:has(#leaderboard-target)'
-const MODERN_AD_CONTAINER_SELECTOR = 'div.relative.mx-auto.overflow-hidden.shrink-0:has(#leaderboard-target):has(.pw-incontent)'
+import {
+  AD_SLOT_SELECTOR,
+  LEGACY_AD_CONTAINER_SELECTOR,
+  MODERN_AD_CONTAINER_SELECTOR,
+  PLEASE_IMAGE_SELECTOR,
+  SIDEBAR_DIVIDER_SELECTOR,
+  SIGNAL_TRACKER_SELECTOR,
+  buildEarlyHideStyle as buildEarlyHideStyleText,
+  buildUBlockRules
+} from './adCleanerRules'
 
 const TARGET_HOST = 'zzz.seelie.me'
 const EARLY_HIDE_STYLE_ID = 'seelie-ad-cleaner-style'
-
-const BASE_UBLOCK_RULES = [
-  '! zzz-seelie-sync 强化规则（由脚本动态生成）',
-  'zzz.seelie.me##img[src*="img/stickers/please.png"]',
-  'zzz.seelie.me###leaderboard-target',
-  'zzz.seelie.me###large-leaderboard-ad',
-  'zzz.seelie.me##.pw-incontent',
-  'zzz.seelie.me##div.relative.mx-auto.overflow-hidden.shrink-0:has(#leaderboard-target):has(.pw-incontent)',
-  'zzz.seelie.me##div.overflow-hidden.relative.text-white:has(#leaderboard-target)'
-]
 
 const adContainerSelectors = new Set<string>([
   LEGACY_AD_CONTAINER_SELECTOR,
@@ -41,36 +35,22 @@ function getSignalTrackerSelector(): string {
 }
 
 function getCleanupTriggerSelector(): string {
+  const parts = [PLEASE_IMAGE_SELECTOR, AD_SLOT_SELECTOR]
+
   const signalSelector = getSignalTrackerSelector()
   if (signalSelector) {
-    return `${PLEASE_IMAGE_SELECTOR}, ${AD_SLOT_SELECTOR}, ${signalSelector}`
+    parts.push(signalSelector)
   }
-  return `${PLEASE_IMAGE_SELECTOR}, ${AD_SLOT_SELECTOR}`
+
+  // 分割线是条件渲染节点（settings.sidebar_divider_style），Vue 会重新插入，
+  // 因此它自身的出现也要能触发清理，否则切换设置后残留分割线不会被回收
+  parts.push(SIDEBAR_DIVIDER_SELECTOR)
+
+  return parts.join(', ')
 }
 
 function buildEarlyHideStyle(): string {
-  const nodeSelectors = [PLEASE_IMAGE_SELECTOR, AD_SLOT_SELECTOR]
-  const signalSelector = getSignalTrackerSelector()
-  if (signalSelector) {
-    nodeSelectors.push(signalSelector)
-  }
-
-  const containerSelectors = new Set<string>(adContainerSelectors)
-  containerSelectors.add(`div.overflow-hidden.relative.text-white:has(${PLEASE_IMAGE_SELECTOR})`)
-  containerSelectors.add(`div.overflow-hidden.relative.text-white:has(${AD_SLOT_SELECTOR})`)
-  containerSelectors.add(`div.relative.mx-auto.overflow-hidden.shrink-0:has(${PLEASE_IMAGE_SELECTOR})`)
-  containerSelectors.add(`div.relative.mx-auto.overflow-hidden.shrink-0:has(${AD_SLOT_SELECTOR})`)
-
-  return `
-${nodeSelectors.join(',\n')} {
-  display: none !important;
-  visibility: hidden !important;
-}
-
-${Array.from(containerSelectors).join(',\n')} {
-  display: none !important;
-}
-`
+  return buildEarlyHideStyleText(adContainerSelectors, getSignalTrackerSelector())
 }
 
 function refreshEarlyHideStyleContent(): void {
@@ -237,22 +217,94 @@ function collectSignalTrackerLinks(): Set<HTMLElement> {
   return links
 }
 
+/**
+ * 判断是否为侧边栏分割线。
+ *
+ * 分割线 class 已经改过两次名（zzz-divider → thematic-divider / simple-divider），
+ * 且已成为用户可配置项，所以这里不硬编码具体 class：
+ * 空的、带 `*-divider` class 的 div 即视为分割线。
+ */
+function isSidebarDivider(element: HTMLElement): boolean {
+  if (element.tagName !== 'DIV' || element.children.length > 0) {
+    return false
+  }
+
+  // 先走已知 class 选择器（快路径），失败再按 class 命名规律兜底
+  if (element.matches(SIDEBAR_DIVIDER_SELECTOR)) {
+    return true
+  }
+
+  return Array.from(element.classList).some((token) => token.endsWith('-divider'))
+}
+
+/**
+ * 收集 Signal Tracker 所在的导航分组，以及紧贴其之前的那条分割线。
+ *
+ * 站点侧边栏结构（index-*.js 渲染函数 ur()）：
+ *   主导航分组 → 分割线① → Signal Tracker 分组 → 分割线② → 设置入口
+ *
+ * 只删链接会留下空壳分组，让两条分割线贴在一起，视觉上多出一条线。
+ * 因此连带删掉空壳分组和分割线①，保留分割线②作为导航/设置分隔。
+ */
+function collectSignalTrackerLayout(): Set<HTMLElement> {
+  const nodes = new Set<HTMLElement>()
+
+  document.querySelectorAll(SIGNAL_TRACKER_SELECTOR).forEach((link) => {
+    if (!(link instanceof HTMLElement)) {
+      return
+    }
+
+    // 从链接向上找它所在的导航分组，不依赖分组自身的 class
+    const wrapper = link.parentElement
+    if (!wrapper || wrapper === document.body) {
+      return
+    }
+
+    // 分组里除了这条链接没有别的内容时才整体删，避免误删主导航
+    const otherChildren = Array.from(wrapper.children).filter((child) => child !== link)
+    if (otherChildren.length > 0) {
+      return
+    }
+
+    // 分组前后两条分割线都要删：只删一条会留下一条孤线
+    const siblings = [wrapper.previousElementSibling, wrapper.nextElementSibling]
+    siblings.forEach((sibling) => {
+      if (sibling instanceof HTMLElement && isSidebarDivider(sibling)) {
+        nodes.add(sibling)
+      }
+    })
+
+    nodes.add(wrapper)
+  })
+
+  return nodes
+}
+
 function cleanupAds(): number {
   const containers = collectAdContainers()
+  // 先取分组与分割线，再取链接：链接被删后 :has() 就选不中分组了
+  const signalTrackerLayout = collectSignalTrackerLayout()
   const signalTrackerLinks = collectSignalTrackerLinks()
 
   containers.forEach((container) => {
     container.remove()
   })
 
-  signalTrackerLinks.forEach((link) => {
-    link.remove()
+  signalTrackerLayout.forEach((node) => {
+    node.remove()
   })
 
-  const removedCount = containers.size + signalTrackerLinks.size
+  // 分组已整体移除时，其中的链接会一起消失，这里只兜底处理游离链接
+  signalTrackerLinks.forEach((link) => {
+    if (link.isConnected) {
+      link.remove()
+    }
+  })
+
+  const removedCount = containers.size + signalTrackerLayout.size
   if (removedCount > 0) {
     logger.info(
-      `🧹 已移除广告节点 ${removedCount} 个（横幅: ${containers.size}，Signal Tracker: ${signalTrackerLinks.size}）`
+      `🧹 已移除广告节点 ${removedCount} 个（横幅: ${containers.size}，Signal Tracker 区块: ${signalTrackerLayout.size}）`
     )
   }
 
@@ -337,22 +389,8 @@ function startCleanerRuntime(): void {
   logger.info('✅ 去广告模块已启动（manifest + fallback）')
 }
 
-function buildUBlockRules(): string[] {
-  const rules = new Set<string>(BASE_UBLOCK_RULES)
-
-  adContainerSelectors.forEach((selector) => {
-    rules.add(`zzz.seelie.me##${selector}`)
-  })
-
-  signalTrackerSelectors.forEach((selector) => {
-    rules.add(`zzz.seelie.me##${selector}`)
-  })
-
-  return Array.from(rules)
-}
-
 export function getUBlockRulesText(): string {
-  return buildUBlockRules().join('\n')
+  return buildUBlockRules(adContainerSelectors, signalTrackerSelectors).join('\n')
 }
 
 /**
