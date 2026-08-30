@@ -17,9 +17,16 @@
 - `src/services/mappers/itemsSyncMapper.ts`：材料同步映射层，主路径为 ID 映射，命中不足时回退到名称映射，是材料同步准确性的关键点。
 - `src/utils/useDOMInjector.ts` + `src/utils/componentRegistry.ts`：组件注入与生命周期管理中心，处理 DOM 变化与路由变化下的创建/重建/销毁。
 - `src/api/hoyo/*`：米哈游 API 边界层，现已拆成 auth store、device profile、header profile、cookie router 与业务请求层；上层业务应通过统一导出调用，避免绕过封装。
-- `src/utils/adCleaner.ts` + `src/utils/siteManifest.ts`：去广告能力与站点资源探测核心，使用 manifest + fallback 策略维持规则稳定性。
+- `src/utils/adCleaner.ts` + `src/utils/adCleanerRules.ts` + `src/utils/siteManifest.ts`：去广告能力与站点资源探测核心，使用 manifest + fallback 策略维持规则稳定性；选择器与规则文本已下沉到 `adCleanerRules.ts`（纯逻辑，可单测）。
+- `src/components/seeliePanelTargets.ts`：面板挂载点候选与解析，按“精确 → 宽松 → 历史”顺序降级，是站点改版后面板能否注入的唯一判断入口。
+- `src/components/SeeliePanelFloating.ts` + `src/utils/gmMenu.ts`：GM 菜单悬浮窗兜底通道，不依赖站点 DOM，站点结构再变时仍可唤出面板。
+- `src/utils/nativeSyncTree.ts` + `src/utils/nativeSyncHijack.ts` + `src/utils/nativeSyncHijackRuntime.ts`：劫持站点原生 SYNC 按钮。站点原生同步走 postMessage 向浏览器扩展取 cookie、再经 `gb.inmagi.com/cors` 代理打国际服 HoYoLAB，国服账号走不通；但其落数据终点 `addGoal()` 与本脚本相同，因此改为替换组件的 `clickedSync` / `sync` 方法，复用组件自身的 loading / error / 弹窗状态。**不要**尝试在 postMessage 层伪造扩展应答——后续国际服 URL 在 bundle 里是写死的。
 
 ### 最近结构变更
+
+- `2026-08-30`：站点侧边栏改版适配。挂载点 class 由 `...w-full mt-3` 变为 `...w-full mt-4 pt-4 border-t border-white/5`，新增 `src/components/seeliePanelTargets.ts` 承载候选解析；去广告补上 Signal Tracker 空壳分组与其前置分割线的清理，消除“多出来的分割线”；新增 `src/components/SeeliePanelFloating.ts` + `src/utils/gmMenu.ts` 提供 GM 菜单悬浮窗入口（`@grant GM.registerMenuCommand`）。站点结构事实来自 `index-*.js` 渲染函数，主页 HTML 只是空壳。
+- `2026-08-30`：新增原生 SYNC 按钮劫持（`nativeSyncTree.ts` / `nativeSyncHijack.ts` / `nativeSyncHijackRuntime.ts`），并在 `SeelieCore` 上补 `getRootComponent()` 供组件树遍历。站点共 6 处 `$t("sync")` 按钮，组件特征是同时具备 `clickedSync` / `sync` / `getCookie` 三个方法。控制台可调 `zssProbeNativeSync()` 查看识别结果与 proxy 可写性。
+- `2026-08-30`：侧边栏分割线已成为用户可配置项（`settings.sidebar_divider_style`），class 在 `thematic-divider` / `simple-divider` / 不渲染三态间切换，旧 `zzz-divider` 已下线。分割线同时从 hoisted 静态节点变为带 key 的条件渲染节点，Vue 会重新插入，因此已纳入 MutationObserver 的清理触发条件。`adCleaner` 的分组识别改为从链接向上取 `parentElement` 并校验“分组内仅此一条链接”，分割线识别以 `*-divider` 命名规律兜底，不再硬编码具体 class——该 class 在两周内已改名两次。
 
 - `2026-03-11`：更新 `minimalAuthContracts` 的最小 Header 约束：`createQRLogin` / `queryQRLoginStatus` 增加 `x-rpc-device_fp`，`avatar_basic_list` / `batch_avatar_detail_v2` 增加 `x-rpc-device_id`，`note` 增加 `x-rpc-device_fp`。
 - `2026-03-11`：按 `D:\download\act.mihoyo.com_cleaned.json` 收敛 `getFp` 的主字段语义，当前运行时改为 `device_id = deviceId(UUID)`、`seed_id = 16 位 hex`，并移除 `requestDeviceId` 与 `bbs_device_id`。
@@ -40,6 +47,11 @@
 
 - 主调用链（从页面加载到同步执行）：
   `src/main.ts` → `src/app.ts` → `registerAllComponents()` → `domInjector.init()` → `SeeliePanel` → `SyncService` → (`src/api/hoyo/*` + `src/utils/seelie/*`)。
+- 兜底调用链（侧边栏挂载点缺失时）：
+  `src/app.ts` → `initGmMenu()` → GM 菜单 → `openFloatingPanel()` → `new SeeliePanel({ mountHost })`。
+- 站点 DOM 结构事实的获取方式：`https://zzz.seelie.me` 主页是 Vue 空壳（仅 `#app`），
+  侧边栏 class 串只存在于 `/assets/index-*.js` 的渲染函数里。改版排查时先抓 bundle
+  再 grep `class:"..."`，不要指望从主页 HTML 看到结构。
 - `docs/api-cookie-inventory.md`：HoYo / Seelie 运行时接口与 Cookie 依赖盘点，供后续“手动接管 Cookie”时做最小集合验证。
 - `docs/api-auth-minimal-probe.md`：基于 `D:\2.js` + 真实存储样本跑出的 HoYo 端点最小鉴权结构实测报告，优先用于判断哪些显式 header/cookie 可以删。
 - 手动区维护要求：只写职责、调用链、关键约束与近期结构变化，不复制自动区文件清单。
@@ -82,11 +94,13 @@
 | `src/app.ts` | `src` | 应用初始化与 DOM 注入协调 |
 | `src/components/SeeliePanel.ts` | `components` | Seelie 面板相关 UI 组件 |
 | `src/components/seeliePanelErrorView.ts` | `components` | Seelie 面板相关 UI 组件 |
+| `src/components/SeeliePanelFloating.ts` | `components` | Seelie 面板相关 UI 组件 |
 | `src/components/seeliePanelQrLoginView.ts` | `components` | Seelie 面板相关 UI 组件 |
 | `src/components/seeliePanelSettingsView.ts` | `components` | Seelie 面板相关 UI 组件 |
 | `src/components/seeliePanelSyncOptions.ts` | `components` | Seelie 面板相关 UI 组件 |
 | `src/components/seeliePanelSyncResult.ts` | `components` | Seelie 面板相关 UI 组件 |
 | `src/components/seeliePanelSyncView.ts` | `components` | Seelie 面板相关 UI 组件 |
+| `src/components/seeliePanelTargets.ts` | `components` | Seelie 面板相关 UI 组件 |
 | `src/components/seeliePanelUserInfo.ts` | `components` | Seelie 面板相关 UI 组件 |
 | `src/components/seeliePanelUserInfoView.ts` | `components` | Seelie 面板相关 UI 组件 |
 | `src/components/zssPanelStyles.ts` | `components` | Seelie 面板相关 UI 组件 |
@@ -96,10 +110,15 @@
 | `src/services/SyncService.ts` | `services` | 业务服务编排 |
 | `src/utils/adCleaner.ts` | `utils` | 页面广告清理逻辑 |
 | `src/utils/adCleanerMenu.ts` | `utils` | 去广告设置菜单 |
+| `src/utils/adCleanerRules.ts` | `utils` | 通用工具模块 |
 | `src/utils/componentRegistry.ts` | `utils` | 组件注册入口 |
 | `src/utils/devGlobals.ts` | `utils` | 开发调试全局导出 |
 | `src/utils/gmFetch.ts` | `utils` | 通用工具模块 |
+| `src/utils/gmMenu.ts` | `utils` | 通用工具模块 |
 | `src/utils/logger.ts` | `utils` | 日志工具 |
+| `src/utils/nativeSyncHijack.ts` | `utils` | 通用工具模块 |
+| `src/utils/nativeSyncHijackRuntime.ts` | `utils` | 通用工具模块 |
+| `src/utils/nativeSyncTree.ts` | `utils` | 通用工具模块 |
 | `src/utils/seelie/calculators.ts` | `utils/seelie` | Seelie 数据处理核心模块 |
 | `src/utils/seelie/constants.ts` | `utils/seelie` | Seelie 数据处理核心模块 |
 | `src/utils/seelie/core.ts` | `utils/seelie` | Seelie 数据处理核心模块 |
