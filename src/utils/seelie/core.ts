@@ -347,6 +347,16 @@ export class SeelieCore {
   }
 
   /**
+   * 获取根组件实例（供劫持原生按钮时遍历组件树用）
+   */
+  getRootComponent(): VueComponent | null {
+    if (!this.ensureInitialized()) {
+      return null
+    }
+    return this.rootComponent
+  }
+
+  /**
    * 重新初始化（当页面路由变化时调用）
    */
   refresh(): void {
