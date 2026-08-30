@@ -21,6 +21,94 @@ export function ensurePanelStyles(): void {
   border-color: #dbe1eb33;
 }
 
+/* 站点侧边栏底部区块自带 border-t，面板插到首位后这条线会悬在面板正上方 */
+div.flex.flex-col.items-center.justify-center.w-full.mt-4.pt-4:has(> .ZSS-panel) {
+  border-top-width: 0 !important;
+  padding-top: 0 !important;
+}
+
+.ZSS-floating-host {
+  position: fixed;
+  top: 5rem;
+  right: 1.5rem;
+  z-index: 2147483000;
+  width: 20rem;
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 6rem);
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(19 16 37);
+  border-radius: .75rem;
+  border: 1px solid #dbe1eb33;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 45%);
+  overflow: hidden;
+}
+
+.ZSS-floating-host.ZSS-floating-highlight {
+  box-shadow: 0 0 0 2px #dcff3dcc, 0 18px 48px rgb(0 0 0 / 45%);
+}
+
+.ZSS-floating-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .5rem .75rem;
+  background-color: rgb(31 30 54);
+  border-bottom: 1px solid #dbe1eb26;
+  cursor: grab;
+  user-select: none;
+}
+
+.ZSS-floating-header.ZSS-floating-dragging {
+  cursor: grabbing;
+}
+
+.ZSS-floating-title {
+  font-size: .8125rem;
+  font-weight: 600;
+  color: rgb(255 255 255);
+}
+
+.ZSS-floating-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 1.125rem;
+  line-height: 1;
+  color: rgb(148 156 182);
+  background: transparent;
+  border: none;
+  border-radius: .25rem;
+  cursor: pointer;
+  transition: color .15s ${HOST_EASE}, background-color .15s ${HOST_EASE};
+}
+
+.ZSS-floating-close:hover {
+  color: rgb(255 255 255);
+  background-color: #dbe1eb1f;
+}
+
+.ZSS-floating-close:focus-visible {
+  outline: 2px solid #dcff3dcc;
+  outline-offset: 1px;
+}
+
+.ZSS-floating-body {
+  padding: .75rem;
+  overflow-y: auto;
+}
+
+/* 悬浮窗里面板已有外层容器，去掉重复的边框和下边距 */
+.ZSS-floating-body > .ZSS-panel {
+  margin-bottom: 0;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+}
+
 .ZSS-user-section {
   display: flex;
   flex-direction: column;

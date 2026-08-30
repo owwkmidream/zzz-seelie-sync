@@ -108,7 +108,8 @@ export default defineConfig({
           'GM.cookie',
           'GM.getValue',
           'GM.setValue',
-          'GM.deleteValue'
+          'GM.deleteValue',
+          'GM.registerMenuCommand'
         ],
         // 允许跨域请求到米哈游API
         connect: [
